@@ -28,15 +28,110 @@
 
 #include <unistd.h>
 
+#ifdef _MSC_VER
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <filesystem>
+#endif
+
 namespace Cpl
 {
-    CPL_INLINE bool IsFileExist(const String& name, bool warning = false)
+    CPL_INLINE String FolderSeparator()
+    {
+#ifdef WIN32
+        return String("\\");
+#elif defined(__unix__)
+        return String("/");
+#else
+        std::cerr << "FolderSeparator: Is not implemented yet!\n";
+        return return String("");
+#endif
+    }
+
+    CPL_INLINE String MakePath(const String& a, const String& b)
+    {
+        if (a.empty())
+            return b;
+        String s = FolderSeparator();
+        return a + (a[a.size() - 1] == s[0] ? "" : s) + b;
+    }
+
+    CPL_INLINE bool FileExists(const String& name)
     {
         if (access(name.c_str(), F_OK) == -1)
         {
-            CPL_IF_LOG_SS(warning, Warning, "File '" << name << "' is not exist!");
             return false;
         }
         return true;
+    }
+
+    CPL_INLINE bool DirectoryExists(const String& path)
+    {
+#ifdef _MSC_VER
+        DWORD fileAttribute = GetFileAttributes(path.c_str());
+        return ((fileAttribute != INVALID_FILE_ATTRIBUTES) &&
+            (fileAttribute & FILE_ATTRIBUTE_DIRECTORY) != 0);
+#else
+        DIR* dir = opendir(path.c_str());
+        if (dir != NULL)
+        {
+            ::closedir(dir);
+            return true;
+        }
+        else
+            return false;
+#endif
+    }
+
+    CPL_INLINE bool CreatePath(const String& path)
+    {
+#if defined(_MSC_VER) && _MSC_VER <= 1900
+        return std::tr2::sys::create_directories(std::tr2::sys::path(path));
+#else
+        return std::system((String("mkdir -p ") + path).c_str()) == 0;
+#endif
+    }
+
+    inline StringList GetFileList(const String& directory, const String& filter, bool files, bool directories)
+    {
+        std::list<String> names;
+#ifdef _MSC_VER
+        ::WIN32_FIND_DATA fd;
+        ::HANDLE hFind = ::FindFirstFile(MakePath(directory, filter).c_str(), &fd);
+        if (hFind != INVALID_HANDLE_VALUE)
+        {
+            do
+            {
+                String name = fd.cFileName;
+                if (files && !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+                    names.push_back(fd.cFileName);
+                if (directories && (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && name != "." && name != "..")
+                    names.push_back(name);
+            } while (::FindNextFile(hFind, &fd));
+            ::FindClose(hFind);
+        }
+#else
+        DIR* dir = ::opendir(directory.c_str());
+        if (dir != NULL)
+        {
+            struct dirent* drnt;
+            while ((drnt = ::readdir(dir)) != NULL)
+            {
+                String name = drnt->d_name;
+                if (name == "." || name == "..")
+                    continue;
+                if (files && drnt->d_type != DT_DIR)
+                    names.push_back(String(drnt->d_name));
+                if (directories && drnt->d_type == DT_DIR)
+                    names.push_back(String(drnt->d_name));
+            }
+            ::closedir(dir);
+        }
+        else
+            std::cout << "There is an error during (" << errno << ") opening '" << directory << "' !" << std::endl;
+#endif
+        return names;
     }
 }

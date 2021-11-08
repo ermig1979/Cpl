@@ -36,6 +36,7 @@
 #include <vector>
 #include <iomanip>
 #include <limits>
+#include <list>
 
 #if defined(_MSC_VER)
 #define CPL_INLINE __forceinline
@@ -49,6 +50,7 @@ namespace Cpl
 {
     typedef std::string String;
     typedef std::vector<String> Strings;
+    typedef std::list<String> StringList;
     typedef int Int;
     typedef std::vector<Int> Ints;
     typedef float Float;
