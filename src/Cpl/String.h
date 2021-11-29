@@ -197,4 +197,23 @@ namespace Cpl
             ss << " ";
         return ss.str();
     }
+
+    CPL_INLINE void ReplaceAllInplace(String& str, const String& pattern, const std::string& repl) 
+    {
+        size_t pos = 0;
+        auto plen = pattern.length();
+        auto rlen = repl.length();
+        while ((pos = str.find(pattern, pos)) != std::string::npos) 
+        {
+            str.replace(pos, plen, repl);
+            pos += rlen;
+        }
+    }
+
+    CPL_INLINE String ReplaceAll(const String& str, const String& pattern, const std::string& repl)
+    {
+        String res = str;
+        ReplaceAllInplace(res, pattern, repl);
+        return res;
+    }
 }

@@ -26,7 +26,10 @@
 
 #include "Cpl/Log.h"
 
+#ifdef __linux__
 #include <unistd.h>
+#include <dirent.h>
+#endif
 
 #ifdef _MSC_VER
 #ifndef NOMINMAX
@@ -35,6 +38,40 @@
 #include <windows.h>
 #include <filesystem>
 #endif
+
+namespace
+{
+    // https://www.geeksforgeeks.org/wildcard-character-matching/
+    bool match(const char* first, const char* second, size_t firstLen, size_t secondLen)
+    {
+        // If we reach at the end of both strings, we are done
+        if (firstLen == 0 && secondLen == 0)
+            return true;
+
+        // Make sure that the characters after '*' are present
+        // in second string. This function assumes that the first
+        // string will not contain two consecutive '*'
+        if (*first == '*' && firstLen != 1 && secondLen == 0)
+            return false;
+
+        // If the first string contains '?', or current characters
+        // of both strings match
+        if (*first == '?' || *first == *second)
+            return match(first + 1, second + 1, firstLen - 1, secondLen - 1);
+
+        // If there is *, then there are two possibilities
+        // a) We consider current character of second string
+        // b) We ignore current character of second string.
+        if (*first == '*')
+            return match(first + 1, second, firstLen - 1, secondLen) || match(first, second + 1, firstLen, secondLen - 1);
+        return false;
+    }
+
+    bool match(const Cpl::String& first, const Cpl::String& second)
+    {
+        return match(first.c_str(), second.c_str(), first.size(), second.size());
+    }
+}
 
 namespace Cpl
 {
@@ -122,6 +159,8 @@ namespace Cpl
                 String name = drnt->d_name;
                 if (name == "." || name == "..")
                     continue;
+                if (!filter.empty() && !match(filter, name))
+                    continue;
                 if (files && drnt->d_type != DT_DIR)
                     names.push_back(String(drnt->d_name));
                 if (directories && drnt->d_type == DT_DIR)
@@ -133,5 +172,36 @@ namespace Cpl
             std::cout << "There is an error during (" << errno << ") opening '" << directory << "' !" << std::endl;
 #endif
         return names;
+    }
+
+    CPL_INLINE String GetNameByPath(const String& path_)
+    {
+#ifdef _MSC_VER
+#if _MSC_VER <= 1900
+        std::tr2::sys::path path(path_);
+        return path.filename().string();
+#else
+        std::filesystem::path path(path_);
+        return path.filename().string();
+#endif
+#elif defined(__unix__)
+        size_t pos = path_.find_last_of("/");
+        if (pos == std::string::npos)
+            return path_;
+        else
+            return path_.substr(pos + 1);
+#else
+        std::cerr << "GetNameByPath: Is not implemented yet!\n";
+        return "";
+#endif
+    }
+
+    CPL_INLINE String DirectoryByPath(const String& path)
+    {
+        size_t pos = path.find_last_of(FolderSeparator());
+        if (pos == std::string::npos)
+            return path.find(".") == 0 ? String("") : path;
+        else
+            return path.substr(0, pos);
     }
 }
