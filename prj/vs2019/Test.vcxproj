@@ -25,6 +25,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\Test\Test.cpp" />
+    <ClCompile Include="..\..\src\Test\TestParam.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\Cpl\Args.h" />

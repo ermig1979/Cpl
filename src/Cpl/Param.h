@@ -298,35 +298,34 @@ enum type \
 #define CPL_PARAM_ENUM_CONV(ns, type, unknown, size, ...) \
 namespace Cpl \
 {\
-    using namespace ns; \
-    template<> CPL_INLINE Cpl::String ToStr<type>(const type& value) \
+    template<> CPL_INLINE Cpl::String ToStr<ns##type>(const ns##type& value) \
     {\
         static thread_local Cpl::Strings names; \
         Cpl::ParseEnumNames(#__VA_ARGS__, names); \
-        return (value > type##unknown && value < type##size) ? names[value].substr(sizeof(#type) - 1) : Cpl::String(); \
+        return (value > ns##type##unknown && value < ns##type##size) ? names[value].substr(sizeof(#type) - 1) : Cpl::String(); \
     }\
     \
-    template<> CPL_INLINE void ToVal<type>(const Cpl::String& string, type& value)\
+    template<> CPL_INLINE void ToVal<ns##type>(const Cpl::String& string, ns##type& value)\
     {\
-        value = Cpl::ToEnum<type, type##size>(string); \
+        value = Cpl::ToEnum<ns##type, ns##type##size>(string); \
     }\
 }
 
 #define CPL_PARAM_ENUM0(type, ...) \
     CPL_PARAM_ENUM_DECL(type, Unknown, Size, __VA_ARGS__) \
-    CPL_PARAM_ENUM_CONV(Cpl, type, Unknown, Size, __VA_ARGS__)
+    CPL_PARAM_ENUM_CONV(::, type, Unknown, Size, __VA_ARGS__)
 
 #define CPL_PARAM_ENUM1(ns1, type, ...) \
     namespace ns1 { CPL_PARAM_ENUM_DECL(type, Unknown, Size, __VA_ARGS__) } \
-    CPL_PARAM_ENUM_CONV(ns1, type, Unknown, Size, __VA_ARGS__)
+    CPL_PARAM_ENUM_CONV(ns1::, type, Unknown, Size, __VA_ARGS__)
 
 #define CPL_PARAM_ENUM2(ns1, ns2, type, ...) \
     namespace ns1 { namespace ns2 { CPL_PARAM_ENUM_DECL(type, Unknown, Size, __VA_ARGS__) } }\
-    CPL_PARAM_ENUM_CONV(ns1::ns2, type, Unknown, Size, __VA_ARGS__)
+    CPL_PARAM_ENUM_CONV(ns1::ns2::, type, Unknown, Size, __VA_ARGS__)
 
 #define CPL_PARAM_ENUM3(ns1, ns2, ns3, type, ...) \
     namespace ns1 { namespace ns2 { namespace ns3 {CPL_PARAM_ENUM_DECL(type, Unknown, Size, __VA_ARGS__) } } }\
-    CPL_PARAM_ENUM_CONV(ns1::ns2::ns3, type, Unknown, Size, __VA_ARGS__)
+    CPL_PARAM_ENUM_CONV(ns1::ns2::ns3::, type, Unknown, Size, __VA_ARGS__)
 
 #define CPL_PARAM_HOLDER(holder, type, name) \
 struct holder : public Cpl::Param<type> \

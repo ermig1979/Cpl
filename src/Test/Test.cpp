@@ -49,6 +49,9 @@ namespace Test
     bool name##AddToList(){ g_tests.push_back(Test::Test(#name, name##Test)); return true; } \
     bool name##AtList = name##AddToList();
 
+    TEST_ADD(ParamSimple);
+    TEST_ADD(ParamEnum);
+
     struct Options : public Cpl::ArgsParser
     {
         bool help;
@@ -59,7 +62,7 @@ namespace Test
             : Cpl::ArgsParser(argc, argv, true)
         {
             help = HasArg("-h", "-?");
-            logLevel = (Log::Level)Cpl::ToVal<Int>(GetArg2("-ll", "--logLevel", "0", false));
+            logLevel = (Log::Level)Cpl::ToVal<Int>(GetArg2("-ll", "--logLevel", "3", false));
             include = GetArgs("-i", Strings(), false);
             exclude = GetArgs("-e", Strings(), false);
         }
@@ -85,6 +88,27 @@ namespace Test
         std::cout << " -e=test  - exclude test filter." << std::endl << std::endl;
         std::cout << " -ll=1    - a log level." << std::endl << std::endl;
         std::cout << " -h or -? - to print this help message." << std::endl << std::endl;
+        return 0;
+    }
+
+    int MakeTests(const Tests& tests, const Options& options)
+    {
+        for (size_t t = 0; t < tests.size(); ++t)
+        {
+            const Test& test = tests[t];
+            CPL_LOG_SS(Info, test.name << "Test is started :");
+            bool result = test.test();
+            if (result)
+            {
+                CPL_LOG_SS(Info, test.name << "Test is OK." << std::endl);
+            }
+            else
+            {
+                CPL_LOG_SS(Error, test.name << "Test has errors. TEST EXECUTION IS TERMINATED!" << std::endl);
+                return 1;
+            }
+        }
+        CPL_LOG_SS(Info, "ALL TESTS ARE FINISHED SUCCESSFULLY!" << std::endl);
         return 0;
     }
 }
@@ -120,5 +144,5 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    return 0;
+    return Test::MakeTests(tests, options);
 }
