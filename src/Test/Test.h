@@ -1,5 +1,5 @@
 /*
-* Common Purpose Library (http://github.com/ermig1979/Cpl).
+* Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
 * Copyright (c) 2021-2021 Yermalayeu Ihar.
 *
@@ -21,39 +21,16 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
 */
-
 #pragma once
 
-#include "Cpl/Config.h"
+#include "Cpl/Defs.h"
+#include "Cpl/Args.h"
+#include "Cpl/Log.h"
 
-#include <assert.h>
-#include <limits.h>
-
-#include <iterator>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <vector>
-#include <iomanip>
-#include <limits>
-#include <list>
-
-#if defined(_MSC_VER)
-#define CPL_INLINE __forceinline
-#elif defined(__GNUC__)
-#define CPL_INLINE inline __attribute__ ((always_inline))
-#else
-#error This platform is unsupported!
-#endif
-
-namespace Cpl
+namespace Test
 {
-    typedef std::string String;
-    typedef std::vector<String> Strings;
-    typedef std::list<String> StringList;
-    typedef int Int;
-    typedef std::vector<Int> Ints;
-    typedef unsigned int UInt;
-    typedef float Float;
-    typedef std::vector<Float> Floats;
+    typedef Cpl::Log Log;
+    typedef Cpl::Int Int;
+    typedef Cpl::String String;
+    typedef Cpl::Strings Strings;
 }

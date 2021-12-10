@@ -1,7 +1,8 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2021 Yermalayeu Ihar.
+* Copyright (c) 2021-2021 Yermalayeu Ihar,
+*               2021-2021 Andrey Drogolyub.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +43,7 @@
 namespace
 {
     // https://www.geeksforgeeks.org/wildcard-character-matching/
-    bool match(const char* first, const char* second, size_t firstLen, size_t secondLen)
+    inline bool Match(const char* first, const char* second, size_t firstLen, size_t secondLen)
     {
         // If we reach at the end of both strings, we are done
         if (firstLen == 0 && secondLen == 0)
@@ -57,19 +58,19 @@ namespace
         // If the first string contains '?', or current characters
         // of both strings match
         if (*first == '?' || *first == *second)
-            return match(first + 1, second + 1, firstLen - 1, secondLen - 1);
+            return Match(first + 1, second + 1, firstLen - 1, secondLen - 1);
 
         // If there is *, then there are two possibilities
         // a) We consider current character of second string
         // b) We ignore current character of second string.
         if (*first == '*')
-            return match(first + 1, second, firstLen - 1, secondLen) || match(first, second + 1, firstLen, secondLen - 1);
+            return Match(first + 1, second, firstLen - 1, secondLen) || Match(first, second + 1, firstLen, secondLen - 1);
         return false;
     }
 
-    bool match(const Cpl::String& first, const Cpl::String& second)
+    inline bool Match(const Cpl::String& first, const Cpl::String& second)
     {
-        return match(first.c_str(), second.c_str(), first.size(), second.size());
+        return Match(first.c_str(), second.c_str(), first.size(), second.size());
     }
 }
 
@@ -159,7 +160,7 @@ namespace Cpl
                 String name = drnt->d_name;
                 if (name == "." || name == "..")
                     continue;
-                if (!filter.empty() && !match(filter, name))
+                if (!filter.empty() && !Match(filter, name))
                     continue;
                 if (files && drnt->d_type != DT_DIR)
                     names.push_back(String(drnt->d_name));
