@@ -30,6 +30,72 @@ namespace Test
 {
     bool ParamSimpleTest()
     {
+        struct TestParam
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        TestParamHolder test;
+
+        test().value() = 9;
+
+        return true;
+    }
+
+    //---------------------------------------------------------------------------------------------
+
+    bool ParamStructTest()
+    {
+        struct ChildParam
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+        };
+
+        struct TestParam
+        {
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VECTOR(ChildParam, params);
+            CPL_PARAM_STRUCT(ChildParam, child);
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        TestParamHolder test;
+
+        test().child().name() = "Horse";
+
+        return true;
+    }
+
+    //---------------------------------------------------------------------------------------------
+
+    bool ParamVectorTest()
+    {
+        struct ChildParam
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+        };
+
+        struct TestParam
+        {
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VECTOR(ChildParam, children);
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        TestParamHolder test;
+
+        test().children().push_back(ChildParam());
+        test().children()[0].value() = 5;
 
         return true;
     }
@@ -77,10 +143,31 @@ namespace Test
 
         TestParamHolder test;
 
-        test().enum0() = Enum2;
-        test().enum1() = A::Enum2;
+        test().enum0() = Enum4;
+        test().enum1() = A::Enum3;
         test().enum2() = A::B::Enum2;
-        test().enum3() = A::B::C::Enum2;
+        test().enum3() = A::B::C::Enum1;
+
+        return true;
+    }
+
+    //---------------------------------------------------------------------------------------------
+
+    bool ParamMapTest()
+    {
+        struct ValueParam
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+        };
+
+        struct TestParam
+        {
+            CPL_PARAM_VALUE(String, name, "Name");
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
 
         return true;
     }

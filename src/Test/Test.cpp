@@ -50,7 +50,10 @@ namespace Test
     bool name##AtList = name##AddToList();
 
     TEST_ADD(ParamSimple);
+    TEST_ADD(ParamStruct);
+    TEST_ADD(ParamVector);
     TEST_ADD(ParamEnum);
+    TEST_ADD(ParamMap);
 
     struct Options : public Cpl::ArgsParser
     {
