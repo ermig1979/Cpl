@@ -42,6 +42,11 @@ namespace Cpl
 
         virtual bool Changed() const = 0;
 
+        CPL_INLINE bool Equal(const Param& other) const
+        {
+            return EqualNode((Unknown*)&other);
+        }
+
         CPL_INLINE void Clone(const Param& other)
         {
             CloneNode((Unknown*)&other);
@@ -124,6 +129,8 @@ namespace Cpl
 
         virtual Unknown* End() const = 0;
 
+        virtual bool EqualNode(const Unknown* other) const = 0;
+
         virtual void CloneNode(const Unknown* other) = 0;
 
         virtual bool LoadNode(Xml::XmlNode<char>* xmlParent) = 0;
@@ -157,6 +164,11 @@ namespace Cpl
         Unknown* End() const override 
         { 
             return (Unknown*)(this + 1);
+        }
+
+        bool EqualNode(const Unknown* other) const override
+        {
+            return this->_value == ((ParamValue*)other)->_value;
         }
 
         void CloneNode(const Unknown * other) override
@@ -212,6 +224,21 @@ namespace Cpl
         CPL_INLINE Unknown* ChildBeg() const
         { 
             return (Unknown*)(&this->_value); 
+        }
+
+        bool EqualNode(const Unknown* other) const override
+        {
+            const ParamStruct* that = (ParamStruct*)other;
+            for (Unknown* tc = this->ChildBeg(), *oc = that->ChildBeg();; tc = tc->End(), oc = oc->End())
+            {
+                if (tc >= this->End())
+                    return oc >= that->End();
+                if (oc >= that->End())
+                    return tc >= this->End();
+                if (!tc->EqualNode(oc))
+                    return false;
+            }
+            return true;
         }
 
         void CloneNode(const Unknown * other) override
@@ -289,11 +316,24 @@ namespace Cpl
             return (Unknown*)(this->_value.data() + index);
         }
 
+        bool EqualNode(const Unknown* other) const override
+        {
+            const ParamVector* that = (ParamVector*)other;
+            if (this->Size() != that->Size())
+                return false;
+            for (Unknown* tc = this->ChildBeg(0), *oc = that->ChildBeg(0), *end = this->ChildBeg(Size()); tc < end; tc = tc->End(), oc = oc->End())
+            {
+                if (!tc->EqualNode(oc))
+                    return false;
+            }
+            return true;
+        }
+
         void CloneNode(const Unknown * other) override
         {
             const ParamVector * that = (ParamVector*)other;
             Resize(that->Size());
-            for (Unknown* tc = this->ChildBeg(0), *oc = that->ChildBeg(0), *end = this->ChildBeg(Size() + 1); tc < end; tc = tc->End(), oc = oc->End())
+            for (Unknown* tc = this->ChildBeg(0), *oc = that->ChildBeg(0), *end = this->ChildBeg(Size()); tc < end; tc = tc->End(), oc = oc->End())
                 tc->CloneNode(oc);
         }
 
@@ -377,6 +417,32 @@ namespace Cpl
         CPL_INLINE Unknown* ChildEnd(const T& value) const
         {
             return (Unknown*)(&value + 1);
+        }
+
+        bool EqualNode(const Unknown* other) const override
+        {
+            const ParamMap* that = (ParamMap*)other;
+            if (this->_value.size() != that->_value.size())
+                return false;
+            for (Map::const_iterator o = that->_value.begin(), t = this->_value.begin(); o != that->_value.end(); ++o, ++t)
+            {
+                if (o->first != t->first)
+                    return false;
+                const Unknown* oChild = that->ChildBeg(o->second);
+                const Unknown* oChildEnd = that->ChildEnd(o->second);
+                const Unknown* tChild = this->ChildBeg(t->second);
+                const Unknown* tChildEnd = this->ChildEnd(t->second);
+                for (;; oChild = oChild->End(), tChild = tChild->End())
+                {
+                    if (tChild >= tChildEnd)
+                        return oChild >= oChildEnd;
+                    if (oChild >= oChildEnd)
+                        return tChild >= tChildEnd;
+                    if (!oChild->EqualNode(tChild))
+                        return false;
+                }
+            }
+            return true;
         }
 
         void CloneNode(const Unknown* other) override

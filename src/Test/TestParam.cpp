@@ -49,7 +49,7 @@ namespace Test
         if (!loaded.Load("simple_short.xml"))
             return false;
 
-        return true;
+        return loaded.Equal(test);
     }
 
     //---------------------------------------------------------------------------------------------
@@ -81,7 +81,7 @@ namespace Test
         if (!loaded.Load("struct_full.xml"))
             return false;
 
-        return true;
+        return loaded.Equal(test);
     }
 
     //---------------------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ namespace Test
         if (!loaded.Load("vector_full.xml"))
             return false;
 
-        return true;
+        return loaded.Equal(test);
     }
 }
 
@@ -171,8 +171,7 @@ namespace Test
         if (!loaded.Load("enum_full.xml"))
             return false;
 
-
-        return true;
+        return loaded.Equal(test);
     }
 
     //---------------------------------------------------------------------------------------------
@@ -207,7 +206,7 @@ namespace Test
         if (!loaded.Load("map_copy_full.xml"))
             return false;
 
-        return true;
+        return loaded.Equal(test);
     }
 }
 
