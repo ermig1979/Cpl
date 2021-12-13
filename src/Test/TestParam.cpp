@@ -32,16 +32,22 @@ namespace Test
     {
         struct TestParam
         {
-            CPL_PARAM_VALUE(Int, value, 0);
             CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VALUE(Int, value, 0);
             CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
         };
 
         CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
 
-        TestParamHolder test;
+        TestParamHolder test, loaded;
 
         test().value() = 9;
+
+        test.Save("simple_short.xml", false);
+        test.Save("simple_full.xml", true);
+
+        if (!loaded.Load("simple_short.xml"))
+            return false;
 
         return true;
     }
@@ -60,15 +66,20 @@ namespace Test
         struct TestParam
         {
             CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_VECTOR(ChildParam, params);
             CPL_PARAM_STRUCT(ChildParam, child);
         };
 
         CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
 
-        TestParamHolder test;
+        TestParamHolder test, loaded;
 
         test().child().name() = "Horse";
+
+        test.Save("struct_short.xml", false);
+        test.Save("struct_full.xml", true);
+
+        if (!loaded.Load("struct_full.xml"))
+            return false;
 
         return true;
     }
@@ -92,10 +103,16 @@ namespace Test
 
         CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
 
-        TestParamHolder test;
+        TestParamHolder test, loaded;
 
         test().children().push_back(ChildParam());
         test().children()[0].value() = 5;
+
+        test.Save("vector_short.xml", false);
+        test.Save("vector_full.xml", true);
+
+        if (!loaded.Load("vector_full.xml"))
+            return false;
 
         return true;
     }
@@ -155,19 +172,43 @@ namespace Test
 
     bool ParamMapTest()
     {
-        struct ValueParam
-        {
-            CPL_PARAM_VALUE(Int, value, 0);
-            CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
-        };
+        //struct ValueParam
+        //{
+        //    CPL_PARAM_VALUE(Int, value, 0);
+        //    CPL_PARAM_VALUE(String, name, "Name");
+        //    CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+        //};
 
-        struct TestParam
-        {
-            CPL_PARAM_VALUE(String, name, "Name");
-        };
+        //struct TestParam
+        //{
+        //    CPL_PARAM_VALUE(String, name, "Name");
+        //};
 
-        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+        //CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        //typedef std::map<int, double> DMap;
+        //typedef std::map<short, float> FMap;
+
+        //DMap dm;
+        //dm[0] = 0.0;
+        //dm[2] = 0.2;
+        //dm[1] = 0.1;
+
+        //for (DMap::iterator it = dm.begin(); it != dm.end(); ++it)
+        //{
+        //    std::cout << it->first << " " << it->second << std::endl;
+        //}
+
+        //FMap& fm = (FMap&)dm;
+        //FMap::iterator beg = fm.begin();
+        //FMap::iterator end = fm.end();
+
+        //DMap::iterator p = (DMap::iterator&)beg;
+        //p++;
+        //for (FMap::iterator it = (FMap::iterator&)dm.begin(); it != (FMap::iterator&)dm.end(); ++it)
+        //{
+        //    std::cout << it->first << " " << (double&)it->second << std::endl;
+        //}
 
         return true;
     }

@@ -32,56 +32,34 @@ namespace Cpl
     template<class T> struct Param
     {
         typedef T Type;
-        
-        CPL_INLINE const Type & operator () () const { return _value; }
-        CPL_INLINE Type & operator () ()  { return _value; }
 
-        CPL_INLINE const String & Name() const { return _name; }
+        CPL_INLINE const Type& operator () () const { return _value; }
+        CPL_INLINE Type& operator () () { return _value; }
 
-        virtual Type Default() const { return T(); }
+        CPL_INLINE const String& Name() const { return _name; };
 
-        virtual bool Changed() const
+        virtual CPL_INLINE Type Default() const { return T(); } 
+
+        virtual bool Changed() const = 0;
+
+        CPL_INLINE void Clone(const Param& other)
         {
-            for (const Unknown * child = StructBegin(); child < StructEnd(); child = StructNext(child))
-            {
-                if (child->Changed())
-                    return true;
-            }
-            return false;
+            CloneNode((Unknown*)&other);
         }
 
-        virtual void Clone(const Param & other)
-        {
-            switch (_mode)
-            {
-            case Value:
-                this->Clone(other);
-                break;
-            case Struct:
-                for (Unknown * tc = this->StructBegin(), *oc = other.StructBegin(); tc < this->StructEnd(); tc = this->StructNext(tc), oc = this->StructNext(oc))
-                    tc->Clone(*oc);
-                break;
-            case Vector:
-                this->Resize(other.VectorEnd() - other.VectorBegin());
-                for (Unknown * tc = this->VectorBegin(), *oc = other.VectorBegin(); tc < this->VectorEnd(); tc = this->VectorNext(tc), oc = this->VectorNext(oc))
-                    tc->Clone(*oc);
-                break;
-            }
-        }
-
-        bool Save(std::ostream & os, bool full) const
+        bool Save(std::ostream& os, bool full) const
         {
             Xml::XmlDocument<char> doc;
-            Cpl::Xml::XmlNode<char> * xmlDeclaration = doc.AllocateNode(Cpl::Xml::NodeDeclaration);
+            Cpl::Xml::XmlNode<char>* xmlDeclaration = doc.AllocateNode(Cpl::Xml::NodeDeclaration);
             xmlDeclaration->AppendAttribute(doc.AllocateAttribute("version", "1.0"));
             xmlDeclaration->AppendAttribute(doc.AllocateAttribute("encoding", "utf-8"));
             doc.AppendNode(xmlDeclaration);
-            this->Save(doc, &doc, full);
+            this->SaveNode(doc, &doc, full);
             Xml::Print(os, doc);
             return true;
         }
 
-        bool Save(const String & path, bool full) const
+        bool Save(const String& path, bool full) const
         {
             bool result = false;
             std::ofstream ofs(path.c_str());
@@ -93,19 +71,19 @@ namespace Cpl
             return result;
         }
 
-        bool Load(const char * data, size_t size)
+        bool Load(const char* data, size_t size)
         {
             Xml::File<char> file(data, size);
             return Load(file);
         }
 
-        bool Load(std::istream & is)
+        bool Load(std::istream& is)
         {
             Xml::File<char> file(is);
             return Load(file);
         }
 
-        bool Load(const String & path)
+        bool Load(const String& path)
         {
             bool result = false;
             std::ifstream ifs(path.c_str());
@@ -118,128 +96,252 @@ namespace Cpl
         }
 
     protected:
-        enum Mode
-        {
-            Value,
-            Struct,
-            Vector,
-        };
-
-        Mode _mode;
         String _name;
-        size_t _size, _item;
         Type _value;
 
-        Param(Mode mode, const String & name, size_t size, size_t item = 0)
-            : _mode(mode)
-            , _name(name)
-            , _size(size)
-            , _item(item)
+        Param(const String &name)
+            : _name(name)
+            , _value()
         {
         }
-        
-        virtual String ToStr() const { return ""; }
-        virtual void ToVal(const String & string) {}
-        virtual void Resize(size_t size) {}
-        CPL_INLINE String ItemName() const { return "item"; }
 
-        template<typename> friend struct Param;
-
-        typedef Param<int> Unknown;
-
-        CPL_INLINE Unknown * StructBegin() const { return (Unknown*)(&_value); }
-        CPL_INLINE Unknown * StructNext(const Unknown * param) const { return (Unknown*)((char*)param + param->_size); }
-        CPL_INLINE Unknown * StructEnd() const { return (Unknown *)((char*)this + this->_size); }
-
-        CPL_INLINE Unknown * VectorBegin() const { return (*(std::vector<Unknown>*)&_value).data(); }
-        CPL_INLINE Unknown * VectorNext(const Unknown * param) const { return (Unknown*)((char*)param + this->_item); }
-        CPL_INLINE Unknown * VectorEnd() const { return (*(std::vector<Unknown>*)&_value).data() + (*(std::vector<Unknown>*)&_value).size(); }
-
-        bool Load(Xml::File<char> & file)
+        bool Load(Xml::File<char>& file)
         {
             Xml::XmlDocument<char> doc;
             try
             {
                 doc.Parse<0>(file.Data());
             }
-            catch (std::exception & e)
+            catch (std::exception& e)
             {
                 std::cout << "Can't parse xml! There is an exception: " << e.what() << std::endl;
                 return false;
             }
-            return this->Load(&doc);
+            return this->LoadNode(&doc);
         }
 
-        bool Load(Xml::XmlNode<char> * xmlParent)
+        typedef Param<int> Unknown;
+
+        virtual Unknown* End() const = 0;
+
+        virtual void CloneNode(const Unknown* other) = 0;
+
+        virtual bool LoadNode(Xml::XmlNode<char>* xmlParent) = 0;
+
+        virtual void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const = 0;
+
+        template<typename> friend struct Param;
+        template<typename> friend struct ParamValue;
+        template<typename> friend struct ParamStruct;
+        template<typename> friend struct ParamVector;
+    };
+
+    //---------------------------------------------------------------------------------------------
+
+    template<class T> struct ParamValue : public Cpl::Param<T>
+    {
+        bool Changed() const override 
         {
-            Xml::XmlNode<char> * xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
+            return this->Default() != _value;
+        }
+
+    protected:
+        typedef Cpl::Param<int> Unknown;
+
+        ParamValue(const String& name)
+            : Param(name)
+        {
+        } 
+
+        Unknown* End() const override 
+        { 
+            return (Unknown*)(this + 1);
+        }
+
+        void CloneNode(const Unknown * other) override
+        {
+            this->_value = ((ParamValue*)other)->_value;
+        }
+
+        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
+            if (xmlCurrent)
+                Cpl::ToVal(xmlCurrent->Value(), this->_value);
+            return true;
+        }
+
+        void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
+            xmlCurrent->Value(xmlDoc.AllocateString(Cpl::ToStr(this->_value).c_str()));
+            xmlParent->AppendNode(xmlCurrent);
+        }
+
+        template<typename> friend struct ParamValue;
+    };
+
+    //---------------------------------------------------------------------------------------------
+
+    template<class T> struct ParamStruct : public Cpl::Param<T>
+    {
+        bool Changed() const override
+        {
+            for (const Unknown* child = this->ChildBeg(); child < this->End(); child = child->End())
+            {
+                if (child->Changed())
+                    return true;
+            }
+            return false;
+        }
+
+    protected:
+        typedef Cpl::Param<int> Unknown;
+
+        ParamStruct(const String& name)
+            : Param(name)
+        {
+        }
+
+        Unknown* End() const override 
+        {   
+            return (Unknown*)(this + 1); 
+        }
+
+        CPL_INLINE Unknown* ChildBeg() const
+        { 
+            return (Unknown*)(&this->_value); 
+        }
+
+        void CloneNode(const Unknown * other) override
+        {
+            const ParamStruct* that = (ParamStruct*)other;
+            for (Unknown* tc = this->ChildBeg(), *oc = that->ChildBeg(); tc < this->End(); tc = tc->End(), oc = oc->End())
+                tc->CloneNode(oc);
+        }
+
+        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
             if (xmlCurrent)
             {
-                switch (_mode)
+                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
                 {
-                case Value:
-                    this->ToVal(xmlCurrent->Value());
-                    break;
-                case Struct:
-                    for (Unknown * paramChild = this->StructBegin(); paramChild < this->StructEnd(); paramChild = this->StructNext(paramChild))
-                    {
-                        if (!paramChild->Load(xmlCurrent))
-                            return true;
-                    }
-                    break;
-                case Vector:
-                    this->Resize(Xml::CountChildren(xmlCurrent));
-                    Xml::XmlNode<char> * xmlItem = xmlCurrent->FirstNode();
-                    for (Unknown * paramItem = this->VectorBegin(); paramItem < this->VectorEnd(); paramItem = this->VectorNext(paramItem))
-                    {
-                        if (ItemName() != xmlItem->Name())
-                            return false;
-                        const Unknown * paramChildEnd = this->VectorNext(paramItem);
-                        for (Unknown * paramChild = paramItem; paramChild < paramChildEnd; paramChild = this->StructNext(paramChild))
-                        {
-                            if (!paramChild->Load(xmlItem))
-                                return true;
-                        }
-                        xmlItem = xmlItem->NextSibling();
-                    }
-                    break;
+                    if (!paramChild->LoadNode(xmlCurrent))
+                        return true;
                 }
             }
             return true;
         }
 
-        void Save(Xml::XmlDocument<char> & xmlDoc, Xml::XmlNode<char> * xmlParent, bool full) const
+        void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
         {
-            Xml::XmlNode<char> * xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
-            switch (_mode)
+            Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
+            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
             {
-            case Value:
-                xmlCurrent->Value(xmlDoc.AllocateString(this->ToStr().c_str()));
-                break;
-            case Struct:
-                for (const Unknown * paramChild = this->StructBegin(); paramChild < this->StructEnd(); paramChild = this->StructNext(paramChild))
-                {
-                    if (full || paramChild->Changed())
-                        paramChild->Save(xmlDoc, xmlCurrent, full);
-                }
-                break;
-            case Vector:
-                for (const Unknown * paramItem = this->VectorBegin(); paramItem < this->VectorEnd(); paramItem = this->VectorNext(paramItem))
-                {
-                    Xml::XmlNode<char> * xmlItem = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(ItemName().c_str()));
-                    const Unknown * paramChildEnd = this->VectorNext(paramItem);
-                    for (const Unknown * paramChild = paramItem; paramChild < paramChildEnd; paramChild = this->StructNext(paramChild))
-                    {
-                        if (full || paramChild->Changed())
-                            paramChild->Save(xmlDoc, xmlItem, full);
-                    }
-                    xmlCurrent->AppendNode(xmlItem);
-                }
-                break;
+                if (full || paramChild->Changed())
+                    paramChild->SaveNode(xmlDoc, xmlCurrent, full);
             }
             xmlParent->AppendNode(xmlCurrent);
         }
+
+        template<typename> friend struct ParamStruct;
+        template<typename> friend struct ParamVector;
     };
+
+    //---------------------------------------------------------------------------------------------
+
+    template<class T> struct ParamVector : public Cpl::Param<std::vector<T>>
+    {
+        bool Changed() const override
+        {
+            return !_value.empty();
+        }
+
+    protected:
+        typedef Cpl::Param<int> Unknown;
+
+        ParamVector(const String& name)
+            : Param(name)
+        {
+        }
+
+        Unknown* End() const override 
+        { 
+            return (Unknown*)(this + 1); 
+        }
+
+        CPL_INLINE String ItemName() const { return "item"; }
+
+        CPL_INLINE void Resize(size_t size)
+        {
+            this->_value.resize(size);
+        }
+
+        CPL_INLINE size_t Size() const
+        {
+            return this->_value.size();
+        }
+
+        CPL_INLINE Unknown* ChildBeg(size_t index) const
+        {
+            return (Unknown*)(this->_value.data() + index);
+        }
+
+        void CloneNode(const Unknown * other) override
+        {
+            const ParamVector * that = (ParamVector*)other;
+            Resize(that->Size());
+            for (Unknown* tc = this->ChildBeg(0), *oc = that->ChildBeg(0), *end = this->ChildBeg(Size() + 1); tc < end; tc = tc->End(), oc = oc->End())
+                tc->CloneNode(oc);
+        }
+
+        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
+            if (xmlCurrent)
+            {
+                Resize(Xml::CountChildren(xmlCurrent));
+                Xml::XmlNode<char>* xmlItem = xmlCurrent->FirstNode();
+                for (size_t i = 0; i < Size(); ++i)
+                {
+                    if (ItemName() != xmlItem->Name())
+                        return false;
+                    Unknown* paramChild = this->ChildBeg(i);
+                    const Unknown* paramChildEnd = this->ChildBeg(i + 1);
+                    for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                    {
+                        if (!paramChild->LoadNode(xmlItem))
+                            return true;
+                    }
+                    xmlItem = xmlItem->NextSibling();
+                }
+            }
+            return true;
+        }
+
+        void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
+            for (size_t i = 0; i < Size(); ++i)
+            {
+                const Unknown* paramChild = this->ChildBeg(i);
+                const Unknown* paramChildEnd = this->ChildBeg(i + 1);
+                Xml::XmlNode<char>* xmlItem = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(ItemName().c_str()));
+                for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                {
+                    if (full || paramChild->Changed())
+                        paramChild->SaveNode(xmlDoc, xmlItem, full);
+                }
+                xmlCurrent->AppendNode(xmlItem);
+            }
+            xmlParent->AppendNode(xmlCurrent);
+        }
+
+        template<typename> friend struct ParamVector;
+    };
+
+    //---------------------------------------------------------------------------------------------
 
     CPL_INLINE void ParseEnumNames(const char * data, Strings & names)
     {
@@ -260,31 +362,25 @@ namespace Cpl
 }
 
 #define CPL_PARAM_VALUE(type, name, value) \
-struct Param_##name : public Cpl::Param<type> \
+struct Param_##name : public Cpl::ParamValue<type> \
 { \
-typedef Cpl::Param<type> Base; \
-Param_##name() : Base(Base::Value, #name, sizeof(Param_##name)) { this->_value = this->Default(); } \
-virtual type Default() const { return value; } \
-virtual Cpl::String ToStr() const { return Cpl::ToStr((*this)()); } \
-virtual void ToVal(const Cpl::String & string) { Cpl::ToVal(string, this->_value); } \
-virtual bool Changed() const { return this->Default() != this->_value; } \
-virtual void Clone(const Param_##name & other) { this->_value = other._value; } \
+    typedef Cpl::ParamValue<type> Base; \
+    Param_##name() : Base(#name) { this->_value = this->Default(); } \
+    type Default() const override { return value; } \
 } name;
 
 #define CPL_PARAM_STRUCT(type, name) \
-struct Param_##name : public Cpl::Param<type> \
+struct Param_##name : public Cpl::ParamStruct<type> \
 { \
-typedef Cpl::Param<type> Base; \
-Param_##name() : Base(Base::Struct, #name, sizeof(Param_##name)) {} \
+    typedef Cpl::ParamStruct<type> Base; \
+    Param_##name() : Base(#name) {} \
 } name;
 
 #define CPL_PARAM_VECTOR(type, name) \
-struct Param_##name : public Cpl::Param<std::vector<type>> \
+struct Param_##name : public Cpl::ParamVector<type> \
 { \
-typedef Cpl::Param<std::vector<type>> Base; \
-Param_##name() : Base(Base::Vector, #name, sizeof(Param_##name), sizeof(type)) {} \
-virtual void Resize(size_t size) { this->_value.resize(size); } \
-virtual bool Changed() const { return !this->_value.empty(); } \
+    typedef Cpl::ParamVector<type> Base; \
+    Param_##name() : Base(#name) {} \
 } name;
 
 #define CPL_PARAM_ENUM_DECL(type, unknown, size, ...) \
@@ -328,8 +424,8 @@ namespace Cpl \
     CPL_PARAM_ENUM_CONV(ns1::ns2::ns3::, type, Unknown, Size, __VA_ARGS__)
 
 #define CPL_PARAM_HOLDER(holder, type, name) \
-struct holder : public Cpl::Param<type> \
+struct holder : public Cpl::ParamStruct<type> \
 { \
-typedef Cpl::Param<type> Base; \
-holder() : Base(Base::Struct, #name, sizeof(holder)) {} \
+    typedef Cpl::ParamStruct<type> Base; \
+    holder() : Base(#name) {} \
 };
