@@ -134,6 +134,7 @@ namespace Cpl
         template<typename> friend struct ParamValue;
         template<typename> friend struct ParamStruct;
         template<typename> friend struct ParamVector;
+        template<typename, typename> friend struct ParamMap;
     };
 
     //---------------------------------------------------------------------------------------------
@@ -343,6 +344,122 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
+    template<class K, class T> struct ParamMap : public Cpl::Param<std::map<K, T>>
+    {
+        bool Changed() const override
+        {
+            return !_value.empty();
+        }
+
+    protected:
+        typedef Cpl::Param<int> Unknown;
+        typedef std::map<K, T> Map;
+
+        ParamMap(const String& name)
+            : Param(name)
+        {
+        }
+
+        Unknown* End() const override
+        {
+            return (Unknown*)(this + 1);
+        }
+
+        CPL_INLINE String ItemName() const { return "item"; }
+        CPL_INLINE String KeyName() const { return "key"; }
+        CPL_INLINE String ValueName() const { return "value"; }
+
+        CPL_INLINE Unknown* ChildBeg(const T & value) const
+        {
+            return (Unknown*)(&value);
+        }
+
+        CPL_INLINE Unknown* ChildEnd(const T& value) const
+        {
+            return (Unknown*)(&value + 1);
+        }
+
+        void CloneNode(const Unknown* other) override
+        {
+            const ParamMap* that = (ParamMap*)other;
+            for (Map::const_iterator it = that->_value.begin(); it != that->_value.end(); ++it)
+            {
+                T& value = this->_value[it->first];
+                const Unknown* srcChild = that->ChildBeg(it->second);
+                const Unknown* srcChildEnd = that->ChildEnd(it->second);
+                Unknown* dstChild = this->ChildBeg(value);
+                Unknown* dstChildEnd = this->ChildEnd(value);
+                for (; srcChild < srcChildEnd; srcChild = srcChild->End(), dstChild = dstChild->End())
+                    dstChild->CloneNode(srcChild);
+            }
+        }
+
+        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
+            if (xmlCurrent)
+            {
+                size_t size = Xml::CountChildren(xmlCurrent);
+                Xml::XmlNode<char>* xmlItem = xmlCurrent->FirstNode();
+                for (size_t i = 0; i < size; ++i)
+                {
+                    if (ItemName() != xmlItem->Name())
+                        return false;
+                    Xml::XmlNode<char>* xmlKey = xmlItem->FirstNode(KeyName().c_str());
+                    if (xmlKey)
+                    {
+                        K key;
+                        Cpl::ToVal(xmlKey->Value(), key);
+                        T & value = this->_value[key];
+                        Xml::XmlNode<char>* xmlValue = xmlItem->FirstNode(ValueName().c_str());
+                        if (xmlValue)
+                        {
+                            Unknown* paramChild = ChildBeg(value);
+                            Unknown* paramChildEnd = ChildEnd(value);
+                            for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                            {
+                                if (!paramChild->LoadNode(xmlValue))
+                                    return true;
+                            }
+                        }
+                    }
+                    xmlItem = xmlItem->NextSibling();
+                }
+            }
+            return true;
+        }
+
+        void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
+            for (Map::const_iterator it = _value.begin(); it != _value.end(); ++it)
+            {
+                Xml::XmlNode<char>* xmlItem = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(ItemName().c_str()));
+
+                Xml::XmlNode<char>* xmlKey = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(KeyName().c_str()));
+                xmlKey->Value(xmlDoc.AllocateString(Cpl::ToStr(it->first).c_str()));
+                xmlItem->AppendNode(xmlKey);
+
+                Xml::XmlNode<char>* xmlValue = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(ValueName().c_str()));
+                const Unknown* paramChild = this->ChildBeg(it->second);
+                const Unknown* paramChildEnd = this->ChildEnd(it->second);
+                for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                {
+                    if (full || paramChild->Changed())
+                        paramChild->SaveNode(xmlDoc, xmlValue, full);
+                }
+                xmlItem->AppendNode(xmlValue);
+
+                xmlCurrent->AppendNode(xmlItem);
+            }
+            xmlParent->AppendNode(xmlCurrent);
+        }
+
+        template<typename, typename> friend struct ParamMap;
+    };
+
+    //---------------------------------------------------------------------------------------------
+
     CPL_INLINE void ParseEnumNames(const char * data, Strings & names)
     {
         if (names.size())
@@ -380,6 +497,13 @@ struct Param_##name : public Cpl::ParamStruct<type> \
 struct Param_##name : public Cpl::ParamVector<type> \
 { \
     typedef Cpl::ParamVector<type> Base; \
+    Param_##name() : Base(#name) {} \
+} name;
+
+#define CPL_PARAM_MAP(key, type, name) \
+struct Param_##name : public Cpl::ParamMap<key, type> \
+{ \
+    typedef Cpl::ParamMap<key, type> Base; \
     Param_##name() : Base(#name) {} \
 } name;
 

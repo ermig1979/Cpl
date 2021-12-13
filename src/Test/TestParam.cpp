@@ -158,12 +158,19 @@ namespace Test
 
         CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
 
-        TestParamHolder test;
+        TestParamHolder test, loaded;
 
         test().enum0() = Enum4;
         test().enum1() = A::Enum3;
         test().enum2() = A::B::Enum2;
         test().enum3() = A::B::C::Enum1;
+
+        test.Save("enum_short.xml", false);
+        test.Save("enum_full.xml", true);
+
+        if (!loaded.Load("enum_full.xml"))
+            return false;
+
 
         return true;
     }
@@ -172,43 +179,33 @@ namespace Test
 
     bool ParamMapTest()
     {
-        //struct ValueParam
-        //{
-        //    CPL_PARAM_VALUE(Int, value, 0);
-        //    CPL_PARAM_VALUE(String, name, "Name");
-        //    CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
-        //};
+        struct ValueParam
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+        };
 
-        //struct TestParam
-        //{
-        //    CPL_PARAM_VALUE(String, name, "Name");
-        //};
+        struct TestParam
+        {
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_MAP(String, ValueParam, map);
+        };
 
-        //CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
 
-        //typedef std::map<int, double> DMap;
-        //typedef std::map<short, float> FMap;
+        TestParamHolder test, loaded, copy;
 
-        //DMap dm;
-        //dm[0] = 0.0;
-        //dm[2] = 0.2;
-        //dm[1] = 0.1;
+        test().map()["new"].value() = 42;
+        test().map()["old"];
 
-        //for (DMap::iterator it = dm.begin(); it != dm.end(); ++it)
-        //{
-        //    std::cout << it->first << " " << it->second << std::endl;
-        //}
+        copy.Clone(test);
 
-        //FMap& fm = (FMap&)dm;
-        //FMap::iterator beg = fm.begin();
-        //FMap::iterator end = fm.end();
+        test.Save("map_short.xml", false);
+        copy.Save("map_copy_full.xml", true);
 
-        //DMap::iterator p = (DMap::iterator&)beg;
-        //p++;
-        //for (FMap::iterator it = (FMap::iterator&)dm.begin(); it != (FMap::iterator&)dm.end(); ++it)
-        //{
-        //    std::cout << it->first << " " << (double&)it->second << std::endl;
-        //}
+        if (!loaded.Load("map_copy_full.xml"))
+            return false;
 
         return true;
     }
