@@ -26,6 +26,7 @@
 
 #include "Cpl/Xml.h"
 #include "Cpl/String.h"
+#include "Cpl/Log.h"
 
 namespace Cpl
 {
@@ -42,8 +43,6 @@ namespace Cpl
         CPL_INLINE Type& operator () () { return _value; }
 
         CPL_INLINE const String& Name() const { return _name; };
-
-        virtual CPL_INLINE Type Default() const { return T(); } 
 
         virtual bool Changed() const = 0;
 
@@ -78,6 +77,10 @@ namespace Cpl
                 result = this->Save(ofs, full);
                 ofs.close();
             }
+            else
+            {
+                CPL_LOG_SS(Error, "Can't open output file: '" << path << "' !");
+            }
             return result;
         }
 
@@ -102,6 +105,10 @@ namespace Cpl
                 result = this->Load(ifs);
                 ifs.close();
             }
+            else
+            {
+                CPL_LOG_SS(Error, "Can't open intput file: '" << path << "' !");
+            }
             return result;
         }
 
@@ -124,7 +131,7 @@ namespace Cpl
             }
             catch (std::exception& e)
             {
-                std::cout << "Can't parse xml! There is an exception: " << e.what() << std::endl;
+                CPL_LOG_SS(Error, "Can't parse xml! There is an exception: " << e.what());
                 return false;
             }
             return this->LoadNode(&doc);
@@ -153,10 +160,14 @@ namespace Cpl
 
     template<class T> struct ParamValue : public Cpl::Param<T>
     {
+        typedef T Type;
+
         bool Changed() const override 
         {
             return this->Default() != this->_value;
         }
+
+        virtual CPL_INLINE Type Default() const = 0;
 
     protected:
         typedef Cpl::Param<T> Base;
@@ -197,6 +208,76 @@ namespace Cpl
             xmlParent->AppendNode(xmlCurrent);
         }
     };
+
+    //---------------------------------------------------------------------------------------------
+
+    template<class T> struct ParamValidator
+    {
+        typedef T Type;
+
+        ParamValidator(Type& value, const Type& def, const Type& min, const Type& max)
+            : _value(value)
+            , _def(def)
+            , _min(min)
+            , _max(max)
+        {
+        }
+
+        operator Type()
+        { 
+            return _value; 
+        }
+
+        ParamValidator<Type>& operator = (const Type& value)
+        {
+            if (this->_min <= value && value <= this->_max)
+                this->_value = value;
+            else
+            {
+                this->_value = this->_def;
+                CPL_LOG_SS(Warning, "Value " << value << " is lied out of valid range [ " << this->_min 
+                    << " .. " << this->_max << " ]! Default value " << this->_def << " will be used.");
+            }
+            return *this;
+        }
+
+    private:
+        Type& _value;
+        Type _def, _min, _max;
+    };
+
+
+    template<class T> struct ParamLimited : public Cpl::ParamValue<T>
+    {
+        typedef T Type;
+
+        CPL_INLINE ParamValidator<Type> operator () () { return ParamValidator<Type>(this->_value, this->Default(), this->Min(), this->Max()); }
+
+        virtual CPL_INLINE Type Min() const = 0;
+        virtual CPL_INLINE Type Max() const = 0;
+
+    protected:
+        typedef Cpl::ParamValue<T> Base;
+        typedef Cpl::Param<int> Unknown;
+
+        ParamLimited(const String& name)
+            : Base(name)
+        {
+        }
+
+        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
+            if (xmlCurrent)
+            {
+                T value;
+                Cpl::ToVal(xmlCurrent->Value(), value);
+                (*this)() = value;
+            }
+            return true;
+        }
+    };
+
 
     //---------------------------------------------------------------------------------------------
 
@@ -552,6 +633,16 @@ struct Param_##name : public Cpl::ParamValue<type> \
     typedef Cpl::ParamValue<type> Base; \
     Param_##name() : Base(#name) { this->_value = this->Default(); } \
     type Default() const override { return value; } \
+} name;
+
+#define CPL_PARAM_LIMITED(type, name, value, min, max) \
+struct Param_##name : public Cpl::ParamLimited<type> \
+{ \
+    typedef Cpl::ParamLimited<type> Base; \
+    Param_##name() : Base(#name) { assert(min <= value && value <= max); this->_value = this->Default(); } \
+    type Default() const override { return value; } \
+    type Min() const override { return min; } \
+    type Max() const override { return max; } \
 } name;
 
 #define CPL_PARAM_STRUCT(type, name) \

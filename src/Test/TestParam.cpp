@@ -283,4 +283,33 @@ namespace Test
 
 //---------------------------------------------------------------------------------------------
 
+namespace Test
+{
+    bool ParamLimitedTest()
+    {
+        struct TestParam
+        {
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_LIMITED(Int, value, 0, -5, 6);
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        TestParamHolder test, loaded;
+
+        double val = test().value();
+
+        test().value() = 9;
+
+        test.Save("limited_short.xml", false);
+        test.Save("limited_full.xml", true);
+
+        if (!loaded.Load("limited_full.xml"))
+            return false;
+
+        return loaded.Equal(test);
+    }
+}
+
+//---------------------------------------------------------------------------------------------
 
