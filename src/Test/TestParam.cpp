@@ -210,3 +210,77 @@ namespace Test
     }
 }
 
+//---------------------------------------------------------------------------------------------
+
+CPL_PARAM_ENUM1(A, DeviceType,
+    DeviceTypeGpu,
+    DeviceTypeCpu
+);
+
+CPL_PARAM_ENUM1(A, NetworkMode,
+    NetworkModeFp32,
+    NetworkModeInt8,
+    NetworkModeFp16
+);
+
+namespace A
+{
+    typedef Cpl::String String;
+
+    struct InferParam
+    {
+        CPL_PARAM_VALUE(String, config, "");
+        CPL_PARAM_VALUE(int, batchSize, 1);
+        CPL_PARAM_VALUE(NetworkMode, netMode, NetworkModeFp16);
+    };
+}
+
+namespace B
+{
+    typedef Cpl::String String;
+
+    struct PipelineParam
+    {
+        CPL_PARAM_VALUE(String, name, "");
+        CPL_PARAM_VALUE(int, gpuId, 0);
+        CPL_PARAM_VALUE(size_t, batchSize, 1);
+        CPL_PARAM_VALUE(float, fps, 30.0f);
+        CPL_PARAM_VALUE(String, srcPath, "");
+        CPL_PARAM_VALUE(size_t, srcBeg, 0);
+        CPL_PARAM_VALUE(size_t, srcEnd, -1);
+        CPL_PARAM_VALUE(String, outPath, "");
+        CPL_PARAM_STRUCT(A::InferParam, detector);
+        CPL_PARAM_STRUCT(A::InferParam, classifier);
+        CPL_PARAM_STRUCT(A::InferParam, descriptor);
+        CPL_PARAM_MAP(String, A::InferParam, inference);
+        CPL_PARAM_VALUE(size_t, muxerHeight, 1080);
+        CPL_PARAM_VALUE(size_t, muxerWidth, 1920);
+        CPL_PARAM_VALUE(int, saveJpegQuality, 85);
+    };
+
+    CPL_PARAM_HOLDER(PipelineParamHolder, PipelineParam, pipeline);
+}
+
+namespace Test
+{
+    bool ParamMapBugTest()
+    {
+        B::PipelineParamHolder test, loaded, copy;
+
+        test().inference()["gender"].config() = "gender.txt";
+
+        copy.Clone(test);
+
+        test.Save("map_short.xml", false);
+        copy.Save("map_copy_full.xml", true);
+
+        if (!loaded.Load("map_copy_full.xml"))
+            return false;
+
+        return loaded.Equal(test);
+    }
+}
+
+//---------------------------------------------------------------------------------------------
+
+

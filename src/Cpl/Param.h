@@ -29,6 +29,11 @@
 
 namespace Cpl
 {
+    template<typename> struct ParamValue;
+    template<typename> struct ParamStruct;
+    template<typename> struct ParamVector;
+    template<typename, typename> struct ParamMap;
+
     template<class T> struct Param
     {
         typedef T Type;
@@ -191,8 +196,6 @@ namespace Cpl
             xmlCurrent->Value(xmlDoc.AllocateString(Cpl::ToStr(this->_value).c_str()));
             xmlParent->AppendNode(xmlCurrent);
         }
-
-        template<typename> friend struct ParamValue;
     };
 
     //---------------------------------------------------------------------------------------------
@@ -274,9 +277,6 @@ namespace Cpl
             }
             xmlParent->AppendNode(xmlCurrent);
         }
-
-        template<typename> friend struct ParamStruct;
-        template<typename> friend struct ParamVector;
     };
 
     //---------------------------------------------------------------------------------------------
@@ -381,8 +381,6 @@ namespace Cpl
             }
             xmlParent->AppendNode(xmlCurrent);
         }
-
-        template<typename> friend struct ParamVector;
     };
 
     //---------------------------------------------------------------------------------------------
@@ -524,8 +522,6 @@ namespace Cpl
             }
             xmlParent->AppendNode(xmlCurrent);
         }
-
-        template<typename, typename> friend struct ParamMap;
     };
 
     //---------------------------------------------------------------------------------------------
@@ -547,6 +543,8 @@ namespace Cpl
         }
     }
 }
+
+//-------------------------------------------------------------------------------------------------
 
 #define CPL_PARAM_VALUE(type, name, value) \
 struct Param_##name : public Cpl::ParamValue<type> \

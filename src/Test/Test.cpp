@@ -30,23 +30,23 @@ namespace Test
 {
     typedef bool(*TestPtr)();
 
-    struct Test
+    struct Group
     {
         String name;
         TestPtr test;
 
-        Test(const String& n, const TestPtr& t)
+        Group(const String& n, const TestPtr& t)
             : name(n)
             , test(t)
         {
         }
     };
-    typedef std::vector<Test> Tests;
-    Tests g_tests;
+    typedef std::vector<Group> Groups;
+    Groups g_groups;
 
 #define TEST_ADD(name) \
     bool name##Test(); \
-    bool name##AddToList(){ g_tests.push_back(Test::Test(#name, name##Test)); return true; } \
+    bool name##AddToList(){ g_groups.push_back(Group(#name, name##Test)); return true; } \
     bool name##AtList = name##AddToList();
 
     TEST_ADD(ParamSimple);
@@ -54,6 +54,7 @@ namespace Test
     TEST_ADD(ParamVector);
     TEST_ADD(ParamEnum);
     TEST_ADD(ParamMap);
+    TEST_ADD(ParamMapBug);
 
     struct Options : public Cpl::ArgsParser
     {
@@ -70,14 +71,14 @@ namespace Test
             exclude = GetArgs("-e", Strings(), false);
         }
 
-        bool Required(const Test& test)
+        bool Required(const Group& group)
         {
             bool required = include.empty();
             for (size_t i = 0; i < include.size() && !required; ++i)
-                if (test.name.find(include[i]) != std::string::npos)
+                if (group.name.find(include[i]) != std::string::npos)
                     required = true;
             for (size_t i = 0; i < exclude.size() && required; ++i)
-                if (test.name.find(exclude[i]) != std::string::npos)
+                if (group.name.find(exclude[i]) != std::string::npos)
                     required = false;
             return required;
         }
@@ -94,20 +95,20 @@ namespace Test
         return 0;
     }
 
-    int MakeTests(const Tests& tests, const Options& options)
+    int MakeTests(const Groups& groups, const Options& options)
     {
-        for (size_t t = 0; t < tests.size(); ++t)
+        for (size_t t = 0; t < groups.size(); ++t)
         {
-            const Test& test = tests[t];
-            CPL_LOG_SS(Info, test.name << "Test is started :");
-            bool result = test.test();
+            const Group& group = groups[t];
+            CPL_LOG_SS(Info, group.name << "Test is started :");
+            bool result = group.test();
             if (result)
             {
-                CPL_LOG_SS(Info, test.name << "Test is OK." << std::endl);
+                CPL_LOG_SS(Info, group.name << "Test is OK." << std::endl);
             }
             else
             {
-                CPL_LOG_SS(Error, test.name << "Test has errors. TEST EXECUTION IS TERMINATED!" << std::endl);
+                CPL_LOG_SS(Error, group.name << "Test has errors. TEST EXECUTION IS TERMINATED!" << std::endl);
                 return 1;
             }
         }
@@ -126,12 +127,12 @@ int main(int argc, char* argv[])
     Cpl::Log::s_log.SetStd();
     Cpl::Log::s_log.SetLevel(options.logLevel);
 
-    Test::Tests tests;
-    for (const Test::Test& test : Test::g_tests)
-        if (options.Required(test))
-            tests.push_back(test);
+    Test::Groups groups;
+    for (const Test::Group& group : Test::g_groups)
+        if (options.Required(group))
+            groups.push_back(group);
 
-    if (tests.empty())
+    if (groups.empty())
     {
         std::stringstream ss;
         ss << "There are not any suitable tests for current filters! " << std::endl;
@@ -147,5 +148,5 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    return Test::MakeTests(tests, options);
+    return Test::MakeTests(groups, options);
 }
