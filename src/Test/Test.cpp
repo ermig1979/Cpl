@@ -23,6 +23,8 @@
 */
 
 #define CPL_IMPLEMENT
+#include "Cpl/Log.h"
+#include "Cpl/Performance.h"
 
 #include "Test/Test.h"
 
@@ -57,6 +59,8 @@ namespace Test
     TEST_ADD(ParamMapBug);
     TEST_ADD(ParamLimited);
     TEST_ADD(ParamTemplate);
+
+    TEST_ADD(PerformanceSimple);
 
     struct Options : public Cpl::ArgsParser
     {

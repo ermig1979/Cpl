@@ -26,6 +26,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\Test\Test.cpp" />
     <ClCompile Include="..\..\src\Test\TestParam.cpp" />
+    <ClCompile Include="..\..\src\Test\TestPerformance.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\Cpl\Args.h" />
@@ -35,6 +36,7 @@
     <ClInclude Include="..\..\src\Cpl\File.h" />
     <ClInclude Include="..\..\src\Cpl\Log.h" />
     <ClInclude Include="..\..\src\Cpl\Param.h" />
+    <ClInclude Include="..\..\src\Cpl\Performance.h" />
     <ClInclude Include="..\..\src\Cpl\String.h" />
     <ClInclude Include="..\..\src\Cpl\Xml.h" />
     <ClInclude Include="..\..\src\Test\Test.h" />

@@ -89,13 +89,14 @@ namespace Cpl
     template<class T> CPL_INLINE void ToVal(const String& string, T& value)
     {
         std::stringstream ss(string);
-        if(string != " ")
+        if(string != "" || string != " ")
             ss >> value;
     }
 
     template<> CPL_INLINE void ToVal<String>(const String& string, String& value)
     {
-        value = string;
+        if (string != "")
+            value = string;
     }
 
     template<> CPL_INLINE void ToVal<size_t>(const String& string, size_t& value)

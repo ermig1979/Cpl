@@ -26,5 +26,7 @@
 
 #define CPL_LOG_ENABLE
 
+#define CPL_PERF_ENABLE
+
 //#define CPL_IMPLEMENT
 

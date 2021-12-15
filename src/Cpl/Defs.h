@@ -41,11 +41,16 @@
 
 #if defined(_MSC_VER)
 #define CPL_INLINE __forceinline
+#define CPL_FUNCTION __FUNCTION__
 #elif defined(__GNUC__)
 #define CPL_INLINE inline __attribute__ ((always_inline))
+#define CPL_FUNCTION __PRETTY_FUNCTION__
 #else
 #error This platform is unsupported!
 #endif
+
+#define CPL_CAT_DO(a, b) a##b
+#define CPL_CAT(a, b) CPL_CAT_DO(a, b)
 
 namespace Cpl
 {
