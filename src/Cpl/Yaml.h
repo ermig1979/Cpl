@@ -191,9 +191,8 @@ namespace Cpl
                 MapType
             };
 
-            eType m_Type; ///< Type of iterator.
-            void* m_pImp; ///< Implementation of iterator class.
-
+            eType m_Type;
+            void* m_pImp;
         };
 
         class ConstIterator
@@ -220,7 +219,6 @@ namespace Cpl
             bool operator != (const ConstIterator& it);
 
         private:
-
             enum eType
             {
                 None,
@@ -228,15 +226,23 @@ namespace Cpl
                 MapType
             };
 
-            eType m_Type; ///< Type of iterator.
-            void* m_pImp; ///< Implementation of constant iterator class.
-
+            eType m_Type;
+            void* m_pImp;
         };
 
         class Node
         {
-
+            Node(bool)
+                : m_pImp(nullptr)
+            {
+            }
         public:
+
+            inline static Node & Empty()
+            {
+                static Node empty = Node(true);
+                return empty;
+            }
 
             friend class Iterator;
 
@@ -329,6 +335,12 @@ namespace Cpl
 
         namespace Detail
         {
+            CPL_INLINE String & EmptyString()
+            {
+                static String empty = String();
+                return empty;
+            }
+
             class TypeImp
             {
             public:
@@ -364,7 +376,7 @@ namespace Cpl
 
                 virtual const std::string& GetData() const
                 {
-                    return std::string();
+                    return Detail::EmptyString();
                 }
 
                 virtual bool SetData(const std::string& data)
@@ -486,7 +498,7 @@ namespace Cpl
 
                 virtual const std::string& GetData() const
                 {
-                    return std::string();
+                    return Detail::EmptyString();
                 }
 
                 virtual bool SetData(const std::string& data)
@@ -857,7 +869,40 @@ namespace Cpl
 
                 std::map<std::string, Node*>::const_iterator m_Iterator;
             };
+
+            CPL_INLINE String ErrorInvalidCharacter() { return "Invalid character found."; }
+            CPL_INLINE String ErrorKeyMissing() { return "Missing key."; }
+            CPL_INLINE String ErrorKeyIncorrect() { return "Incorrect key."; }
+            CPL_INLINE String ErrorValueIncorrect() { return "Incorrect value."; }
+            CPL_INLINE String ErrorTabInOffset() { return "Tab found in offset."; }
+            CPL_INLINE String ErrorBlockSequenceNotAllowed() { return "Sequence entries are not allowed in this context."; }
+            CPL_INLINE String ErrorUnexpectedDocumentEnd() { return "Unexpected document end."; }
+            CPL_INLINE String ErrorDiffEntryNotAllowed() { return "Different entry is not allowed in this context."; }
+            CPL_INLINE String ErrorIncorrectOffset() { return "Incorrect offset."; }
+            CPL_INLINE String ErrorSequenceError() { return "Error in sequence node."; }
+            CPL_INLINE String ErrorCannotOpenFile() { return "Cannot open file."; }
+            CPL_INLINE String ErrorIndentation() { return "Space indentation is less than 2."; }
+            CPL_INLINE String ErrorInvalidBlockScalar() { return "Invalid block scalar."; }
+            CPL_INLINE String ErrorInvalidQuote() { return "Invalid quote."; }
         }
+
+        //-----------------------------------------------------------------------------------------
+
+        class ReaderLine;
+
+        std::string ExceptionMessage(const std::string& message, ReaderLine& line);
+        std::string ExceptionMessage(const std::string& message, ReaderLine& line, const size_t errorPos);
+        std::string ExceptionMessage(const std::string& message, const size_t errorLine, const size_t errorPos);
+        std::string ExceptionMessage(const std::string& message, const size_t errorLine, const std::string& data);
+
+        bool FindQuote(const std::string& input, size_t& start, size_t& end, size_t searchPos = 0);
+        size_t FindNotCited(const std::string& input, char token, size_t& preQuoteCount);
+        size_t FindNotCited(const std::string& input, char token);
+        bool ValidateQuote(const std::string& input);
+        void CopyNode(const Node& from, Node& to);
+        bool ShouldBeCited(const std::string& key);
+        void AddEscapeTokens(std::string& input, const std::string& tokens);
+        void RemoveAllEscapeTokens(std::string& input);
 
         //-----------------------------------------------------------------------------------------
 
@@ -949,7 +994,7 @@ namespace Cpl
                 break;
             }
 
-            return { String(), Node() };
+            return { String(), Node::Empty() };
         }
 
         inline Iterator& Iterator::operator ++ (int dummy)
@@ -1101,7 +1146,7 @@ namespace Cpl
                 break;
             }
 
-            return { String(), Node() };
+            return { String(), Node::Empty() };
         }
 
         inline ConstIterator& ConstIterator::operator ++ (int dummy)
@@ -1165,5 +1210,1203 @@ namespace Cpl
 
         //-----------------------------------------------------------------------------------------
 
+#define NODE_IMP static_cast<Detail::NodeImp*>(m_pImp)
+#define NODE_IMP_EXT(node) static_cast<Detail::NodeImp*>(node.m_pImp)
+#define TYPE_IMP static_cast<Detail::NodeImp*>(m_pImp)->m_pImp
+#define IT_IMP static_cast<Detail::IteratorImp*>(m_pImp)
+
+        inline Node::Node() 
+            : m_pImp(new Detail::NodeImp())
+        {
+        }
+
+        inline Node::Node(const Node& node)
+            : Node()
+        {
+            *this = node;
+        }
+
+        inline Node::Node(const std::string& value) :
+            Node()
+        {
+            *this = value;
+        }
+
+        inline Node::Node(const char* value) :
+            Node()
+        {
+            *this = value;
+        }
+
+        inline Node::~Node()
+        {
+            delete static_cast<Detail::NodeImp*>(m_pImp);
+        }
+
+        inline Node::eType Node::Type() const
+        {
+            return NODE_IMP->m_Type;
+        }
+
+        inline bool Node::IsNone() const
+        {
+            return NODE_IMP->m_Type == Node::None;
+        }
+
+        inline bool Node::IsSequence() const
+        {
+            return NODE_IMP->m_Type == Node::SequenceType;
+        }
+
+        inline bool Node::IsMap() const
+        {
+            return NODE_IMP->m_Type == Node::MapType;
+        }
+
+        inline bool Node::IsScalar() const
+        {
+            return NODE_IMP->m_Type == Node::ScalarType;
+        }
+
+        inline void Node::Clear()
+        {
+            NODE_IMP->Clear();
+        }
+
+        inline size_t Node::Size() const
+        {
+            if (TYPE_IMP == nullptr)
+            {
+                return 0;
+            }
+
+            return TYPE_IMP->GetSize();
+        }
+
+        inline Node& Node::Insert(const size_t index)
+        {
+            NODE_IMP->InitSequence();
+            return *TYPE_IMP->Insert(index);
+        }
+
+        inline Node& Node::PushFront()
+        {
+            NODE_IMP->InitSequence();
+            return *TYPE_IMP->PushFront();
+        }
+
+        inline Node& Node::PushBack()
+        {
+            NODE_IMP->InitSequence();
+            return *TYPE_IMP->PushBack();
+        }
+
+        inline Node& Node::operator[](const size_t index)
+        {
+            NODE_IMP->InitSequence();
+            Node* pNode = TYPE_IMP->GetNode(index);
+            if (pNode == nullptr)
+                return Node::Empty();
+            return *pNode;
+        }
+
+        inline Node& Node::operator[](const std::string& key)
+        {
+            NODE_IMP->InitMap();
+            return *TYPE_IMP->GetNode(key);
+        }
+
+        inline void Node::Erase(const size_t index)
+        {
+            if (TYPE_IMP == nullptr || NODE_IMP->m_Type != Node::SequenceType)
+                return;
+            return TYPE_IMP->Erase(index);
+        }
+
+        inline void Node::Erase(const std::string& key)
+        {
+            if (TYPE_IMP == nullptr || NODE_IMP->m_Type != Node::MapType)
+            {
+                return;
+            }
+
+            return TYPE_IMP->Erase(key);
+        }
+
+        inline Node& Node::operator = (const Node& node)
+        {
+            NODE_IMP->Clear();
+            CopyNode(node, *this);
+            return *this;
+        }
+
+        inline Node& Node::operator = (const std::string& value)
+        {
+            NODE_IMP->InitScalar();
+            TYPE_IMP->SetData(value);
+            return *this;
+        }
+
+        inline Node& Node::operator = (const char* value)
+        {
+            NODE_IMP->InitScalar();
+            TYPE_IMP->SetData(value ? std::string(value) : "");
+            return *this;
+        }
+
+        inline Iterator Node::Begin()
+        {
+            Iterator it;
+
+            if (TYPE_IMP != nullptr)
+            {
+                Detail::IteratorImp* pItImp = nullptr;
+
+                switch (NODE_IMP->m_Type)
+                {
+                case Node::SequenceType:
+                    it.m_Type = Iterator::SequenceType;
+                    pItImp = new Detail::SequenceIteratorImp;
+                    pItImp->InitBegin(static_cast<Detail::SequenceImp*>(TYPE_IMP));
+                    break;
+                case Node::MapType:
+                    it.m_Type = Iterator::MapType;
+                    pItImp = new Detail::MapIteratorImp;
+                    pItImp->InitBegin(static_cast<Detail::MapImp*>(TYPE_IMP));
+                    break;
+                default:
+                    break;
+                }
+
+                it.m_pImp = pItImp;
+            }
+
+            return it;
+        }
+
+        inline ConstIterator Node::Begin() const
+        {
+            ConstIterator it;
+
+            if (TYPE_IMP != nullptr)
+            {
+                Detail::IteratorImp* pItImp = nullptr;
+
+                switch (NODE_IMP->m_Type)
+                {
+                case Node::SequenceType:
+                    it.m_Type = ConstIterator::SequenceType;
+                    pItImp = new Detail::SequenceConstIteratorImp;
+                    pItImp->InitBegin(static_cast<Detail::SequenceImp*>(TYPE_IMP));
+                    break;
+                case Node::MapType:
+                    it.m_Type = ConstIterator::MapType;
+                    pItImp = new Detail::MapConstIteratorImp;
+                    pItImp->InitBegin(static_cast<Detail::MapImp*>(TYPE_IMP));
+                    break;
+                default:
+                    break;
+                }
+
+                it.m_pImp = pItImp;
+            }
+
+            return it;
+        }
+
+        inline Iterator Node::End()
+        {
+            Iterator it;
+
+            if (TYPE_IMP != nullptr)
+            {
+                Detail::IteratorImp* pItImp = nullptr;
+
+                switch (NODE_IMP->m_Type)
+                {
+                case Node::SequenceType:
+                    it.m_Type = Iterator::SequenceType;
+                    pItImp = new Detail::SequenceIteratorImp;
+                    pItImp->InitEnd(static_cast<Detail::SequenceImp*>(TYPE_IMP));
+                    break;
+                case Node::MapType:
+                    it.m_Type = Iterator::MapType;
+                    pItImp = new Detail::MapIteratorImp;
+                    pItImp->InitEnd(static_cast<Detail::MapImp*>(TYPE_IMP));
+                    break;
+                default:
+                    break;
+                }
+
+                it.m_pImp = pItImp;
+            }
+
+            return it;
+        }
+
+        inline ConstIterator Node::End() const
+        {
+            ConstIterator it;
+
+            if (TYPE_IMP != nullptr)
+            {
+                Detail::IteratorImp* pItImp = nullptr;
+
+                switch (NODE_IMP->m_Type)
+                {
+                case Node::SequenceType:
+                    it.m_Type = ConstIterator::SequenceType;
+                    pItImp = new Detail::SequenceConstIteratorImp;
+                    pItImp->InitEnd(static_cast<Detail::SequenceImp*>(TYPE_IMP));
+                    break;
+                case Node::MapType:
+                    it.m_Type = ConstIterator::MapType;
+                    pItImp = new Detail::MapConstIteratorImp;
+                    pItImp->InitEnd(static_cast<Detail::MapImp*>(TYPE_IMP));
+                    break;
+                default:
+                    break;
+                }
+
+                it.m_pImp = pItImp;
+            }
+
+            return it;
+        }
+
+        inline const std::string& Node::AsString() const
+        {
+            if (TYPE_IMP == nullptr)
+                return Detail::EmptyString();
+
+            return TYPE_IMP->GetData();
+        }
+
+        //-----------------------------------------------------------------------------------------
+
+        class ReaderLine
+        {
+        public:
+            ReaderLine(const std::string& data = "",
+                const size_t no = 0,
+                const size_t offset = 0,
+                const Node::eType type = Node::None,
+                const unsigned char flags = 0) :
+                Data(data),
+                No(no),
+                Offset(offset),
+                Type(type),
+                Flags(flags),
+                NextLine(nullptr)
+            {
+            }
+
+            enum eFlag
+            {
+                LiteralScalarFlag,
+                FoldedScalarFlag,
+                ScalarNewlineFlag
+            };
+
+            void SetFlag(const eFlag flag)
+            {
+                Flags |= FlagMask(static_cast<size_t>(flag));
+            }
+
+            void SetFlags(const unsigned char flags)
+            {
+                Flags |= flags;
+            }
+
+            void UnsetFlag(const eFlag flag)
+            {
+                Flags &= ~FlagMask(static_cast<size_t>(flag));
+            }
+
+            void UnsetFlags(const unsigned char flags)
+            {
+                Flags &= ~flags;
+            }
+
+            bool GetFlag(const eFlag flag) const
+            {
+                return Flags & FlagMask(static_cast<size_t>(flag));
+            }
+
+            void CopyScalarFlags(ReaderLine* from)
+            {
+                if (from == nullptr)
+                {
+                    return;
+                }
+                unsigned char newFlags = from->Flags & (FlagMask(0) | FlagMask(1) | FlagMask(2));
+                Flags |= newFlags;
+            }
+
+            static CPL_INLINE const unsigned char FlagMask(size_t index)
+            {
+                static const unsigned char flagMask[3] = { 0x01, 0x02, 0x04 };
+                return flagMask[index];
+            }
+
+            std::string     Data;
+            size_t          No;
+            size_t          Offset;
+            Node::eType     Type;
+            unsigned char   Flags;
+            ReaderLine* NextLine;
+        };
+
+        //-----------------------------------------------------------------------------------------
+
+        class ParseImp
+        {
+        public:
+            ParseImp()
+            {
+            }
+
+            ~ParseImp()
+            {
+                ClearLines();
+            }
+
+            void Parse(Node& root, std::iostream& stream)
+            {
+                try
+                {
+                    root.Clear();
+                    ReadLines(stream);
+                    PostProcessLines();
+                    //Print();
+                    ParseRoot(root);
+                }
+                catch (Exception e)
+                {
+                    root.Clear();
+                    throw;
+                }
+            }
+
+        private:
+
+            ParseImp(const ParseImp& copy)
+            {
+
+            }
+
+            void ReadLines(std::iostream& stream)
+            {
+                std::string     line = "";
+                size_t          lineNo = 0;
+                bool            documentStartFound = false;
+                bool            foundFirstNotEmpty = false;
+                std::streampos  streamPos = 0;
+
+                // Read all lines, as long as the stream is ok.
+                while (!stream.eof() && !stream.fail())
+                {
+                    // Read line
+                    streamPos = stream.tellg();
+                    std::getline(stream, line);
+                    lineNo++;
+
+                    // Remove comment
+                    const size_t commentPos = FindNotCited(line, '#');
+                    if (commentPos != std::string::npos)
+                    {
+                        line.resize(commentPos);
+                    }
+
+                    // Start of document.
+                    if (documentStartFound == false && line == "---")
+                    {
+                        // Erase all lines before this line.
+                        ClearLines();
+                        documentStartFound = true;
+                        continue;
+                    }
+
+                    // End of document.
+                    if (line == "...")
+                    {
+                        break;
+                    }
+                    else if (line == "---")
+                    {
+                        stream.seekg(streamPos);
+                        break;
+                    }
+
+                    // Remove trailing return.
+                    if (line.size())
+                    {
+                        if (line[line.size() - 1] == '\r')
+                        {
+                            line.resize(line.size() - 1);
+                        }
+                    }
+
+                    // Validate characters.
+                    for (size_t i = 0; i < line.size(); i++)
+                    {
+                        if (line[i] != '\t' && (line[i] < 32 || line[i] > 125))
+                        {
+                            throw ParsingException(ExceptionMessage(Detail::ErrorInvalidCharacter(), lineNo, i + 1));
+                        }
+                    }
+
+                    // Validate tabs
+                    const size_t firstTabPos = line.find_first_of('\t');
+                    size_t       startOffset = line.find_first_not_of(" \t");
+
+                    // Make sure no tabs are in the very front.
+                    if (startOffset != std::string::npos)
+                    {
+                        if (firstTabPos < startOffset)
+                        {
+                            throw ParsingException(ExceptionMessage(Detail::ErrorTabInOffset(), lineNo, firstTabPos));
+                        }
+
+                        // Remove front spaces.
+                        line = line.substr(startOffset);
+                    }
+                    else
+                    {
+                        startOffset = 0;
+                        line = "";
+                    }
+
+                    // Add line.
+                    if (foundFirstNotEmpty == false)
+                    {
+                        if (line.size())
+                        {
+                            foundFirstNotEmpty = true;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+
+                    ReaderLine* pLine = new ReaderLine(line, lineNo, startOffset);
+                    m_Lines.push_back(pLine);
+                }
+            }
+
+            void PostProcessLines()
+            {
+                for (auto it = m_Lines.begin(); it != m_Lines.end();)
+                {
+                    if (PostProcessSequenceLine(it) == true)
+                    {
+                        continue;
+                    }
+
+                    if (PostProcessMappingLine(it) == true)
+                    {
+                        continue;
+                    }
+
+                    // Scalar.
+                    PostProcessScalarLine(it);
+                }
+
+                if (m_Lines.size())
+                {
+                    if (m_Lines.back()->Type != Node::ScalarType)
+                    {
+                        throw ParsingException(ExceptionMessage(Detail::ErrorUnexpectedDocumentEnd(), *m_Lines.back()));
+                    }
+
+                    if (m_Lines.size() > 1)
+                    {
+                        auto prevEnd = m_Lines.end();
+                        --prevEnd;
+
+                        for (auto it = m_Lines.begin(); it != prevEnd; it++)
+                        {
+                            auto nextIt = it;
+                            ++nextIt;
+
+                            (*it)->NextLine = *nextIt;
+                        }
+                    }
+                }
+            }
+
+            bool PostProcessSequenceLine(std::list<ReaderLine*>::iterator& it)
+            {
+                ReaderLine* pLine = *it;
+
+                // Sequence split
+                if (IsSequenceStart(pLine->Data) == false)
+                {
+                    return false;
+                }
+
+                pLine->Type = Node::SequenceType;
+
+                ClearTrailingEmptyLines(++it);
+
+                const size_t valueStart = pLine->Data.find_first_not_of(" \t", 1);
+                if (valueStart == std::string::npos)
+                {
+                    return true;
+                }
+
+                // Create new line and insert
+                std::string newLine = pLine->Data.substr(valueStart);
+                it = m_Lines.insert(it, new ReaderLine(newLine, pLine->No, pLine->Offset + valueStart));
+                pLine->Data = "";
+
+                return false;
+            }
+
+            bool PostProcessMappingLine(std::list<ReaderLine*>::iterator& it)
+            {
+                ReaderLine* pLine = *it;
+
+                // Find map key.
+                size_t preKeyQuotes = 0;
+                size_t tokenPos = FindNotCited(pLine->Data, ':', preKeyQuotes);
+                if (tokenPos == std::string::npos)
+                {
+                    return false;
+                }
+                if (preKeyQuotes > 1)
+                {
+                    throw ParsingException(ExceptionMessage(Detail::ErrorKeyIncorrect(), *pLine));
+                }
+
+                pLine->Type = Node::MapType;
+
+                // Get key
+                std::string key = pLine->Data.substr(0, tokenPos);
+                const size_t keyEnd = key.find_last_not_of(" \t");
+                if (keyEnd == std::string::npos)
+                {
+                    throw ParsingException(ExceptionMessage(Detail::ErrorKeyMissing(), *pLine));
+                }
+                key.resize(keyEnd + 1);
+
+                // Handle cited key.
+                if (preKeyQuotes == 1)
+                {
+                    if (key.front() != '"' || key.back() != '"')
+                    {
+                        throw ParsingException(ExceptionMessage(Detail::ErrorKeyIncorrect(), *pLine));
+                    }
+
+                    key = key.substr(1, key.size() - 2);
+                }
+                RemoveAllEscapeTokens(key);
+
+                // Get value
+                std::string value = "";
+                size_t valueStart = std::string::npos;
+                if (tokenPos + 1 != pLine->Data.size())
+                {
+                    valueStart = pLine->Data.find_first_not_of(" \t", tokenPos + 1);
+                    if (valueStart != std::string::npos)
+                    {
+                        value = pLine->Data.substr(valueStart);
+                    }
+                }
+
+                // Make sure the value is not a sequence start.
+                if (IsSequenceStart(value) == true)
+                {
+                    throw ParsingException(ExceptionMessage(Detail::ErrorBlockSequenceNotAllowed(), *pLine, valueStart));
+                }
+
+                pLine->Data = key;
+
+
+                // Remove all empty lines after map key.
+                ClearTrailingEmptyLines(++it);
+
+                // Add new empty line?
+                size_t newLineOffset = valueStart;
+                if (newLineOffset == std::string::npos)
+                {
+                    if (it != m_Lines.end() && (*it)->Offset > pLine->Offset)
+                    {
+                        return true;
+                    }
+
+                    newLineOffset = tokenPos + 2;
+                }
+                else
+                {
+                    newLineOffset += pLine->Offset;
+                }
+
+                // Add new line with value.
+                unsigned char dummyBlockFlags = 0;
+                if (IsBlockScalar(value, pLine->No, dummyBlockFlags) == true)
+                {
+                    newLineOffset = pLine->Offset;
+                }
+                ReaderLine* pNewLine = new ReaderLine(value, pLine->No, newLineOffset, Node::ScalarType);
+                it = m_Lines.insert(it, pNewLine);
+
+                // Return false in order to handle next line(scalar value).
+                return false;
+            }
+
+            void PostProcessScalarLine(std::list<ReaderLine*>::iterator& it)
+            {
+                ReaderLine* pLine = *it;
+                pLine->Type = Node::ScalarType;
+
+                size_t parentOffset = pLine->Offset;
+                if (pLine != m_Lines.front())
+                {
+                    std::list<ReaderLine*>::iterator lastIt = it;
+                    --lastIt;
+                    parentOffset = (*lastIt)->Offset;
+                }
+
+                std::list<ReaderLine*>::iterator lastNotEmpty = it++;
+
+                // Find last empty lines
+                while (it != m_Lines.end())
+                {
+                    pLine = *it;
+                    pLine->Type = Node::ScalarType;
+                    if (pLine->Data.size())
+                    {
+                        if (pLine->Offset <= parentOffset)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            lastNotEmpty = it;
+                        }
+                    }
+                    ++it;
+                }
+
+                ClearTrailingEmptyLines(++lastNotEmpty);
+            }
+
+            void ParseRoot(Node& root)
+            {
+                // Get first line and start type.
+                auto it = m_Lines.begin();
+                if (it == m_Lines.end())
+                {
+                    return;
+                }
+                Node::eType type = (*it)->Type;
+                ReaderLine* pLine = *it;
+
+                // Handle next line.
+                switch (type)
+                {
+                case Node::SequenceType:
+                    ParseSequence(root, it);
+                    break;
+                case Node::MapType:
+                    ParseMap(root, it);
+                    break;
+                case Node::ScalarType:
+                    ParseScalar(root, it);
+                    break;
+                default:
+                    break;
+                }
+
+                if (it != m_Lines.end())
+                {
+                    throw InternalException(ExceptionMessage(Detail::ErrorUnexpectedDocumentEnd(), *pLine));
+                }
+
+            }
+
+            void ParseSequence(Node& node, std::list<ReaderLine*>::iterator& it)
+            {
+                ReaderLine* pNextLine = nullptr;
+                while (it != m_Lines.end())
+                {
+                    ReaderLine* pLine = *it;
+                    Node& childNode = node.PushBack();
+
+                    // Move to next line, error check.
+                    ++it;
+                    if (it == m_Lines.end())
+                    {
+                        throw InternalException(ExceptionMessage(Detail::ErrorUnexpectedDocumentEnd(), *pLine));
+                    }
+
+                    // Handle value of map
+                    Node::eType valueType = (*it)->Type;
+                    switch (valueType)
+                    {
+                    case Node::SequenceType:
+                        ParseSequence(childNode, it);
+                        break;
+                    case Node::MapType:
+                        ParseMap(childNode, it);
+                        break;
+                    case Node::ScalarType:
+                        ParseScalar(childNode, it);
+                        break;
+                    default:
+                        break;
+                    }
+
+                    if (it == m_Lines.end() || ((pNextLine = *it)->Offset < pLine->Offset))
+                    {
+                        break;
+                    }
+                    if (pNextLine->Offset > pLine->Offset)
+                    {
+                        throw ParsingException(ExceptionMessage(Detail::ErrorIncorrectOffset(), *pNextLine));
+                    }
+                    if (pNextLine->Type != Node::SequenceType)
+                    {
+                        throw InternalException(ExceptionMessage(Detail::ErrorDiffEntryNotAllowed(), *pNextLine));
+                    }
+
+                }
+            }
+
+            void ParseMap(Node& node, std::list<ReaderLine*>::iterator& it)
+            {
+                ReaderLine* pNextLine = nullptr;
+                while (it != m_Lines.end())
+                {
+                    ReaderLine* pLine = *it;
+                    Node& childNode = node[pLine->Data];
+
+                    // Move to next line, error check.
+                    ++it;
+                    if (it == m_Lines.end())
+                    {
+                        throw InternalException(ExceptionMessage(Detail::ErrorUnexpectedDocumentEnd(), *pLine));
+                    }
+
+                    // Handle value of map
+                    Node::eType valueType = (*it)->Type;
+                    switch (valueType)
+                    {
+                    case Node::SequenceType:
+                        ParseSequence(childNode, it);
+                        break;
+                    case Node::MapType:
+                        ParseMap(childNode, it);
+                        break;
+                    case Node::ScalarType:
+                        ParseScalar(childNode, it);
+                        break;
+                    default:
+                        break;
+                    }
+
+                    if (it == m_Lines.end() || ((pNextLine = *it)->Offset < pLine->Offset))
+                    {
+                        break;
+                    }
+                    if (pNextLine->Offset > pLine->Offset)
+                    {
+                        throw ParsingException(ExceptionMessage(Detail::ErrorIncorrectOffset(), *pNextLine));
+                    }
+                    if (pNextLine->Type != pLine->Type)
+                    {
+                        throw InternalException(ExceptionMessage(Detail::ErrorDiffEntryNotAllowed(), *pNextLine));
+                    }
+
+                }
+            }
+
+            void ParseScalar(Node& node, std::list<ReaderLine*>::iterator& it)
+            {
+                std::string data = "";
+                ReaderLine* pFirstLine = *it;
+                ReaderLine* pLine = *it;
+
+                // Check if current line is a block scalar.
+                unsigned char blockFlags = 0;
+                bool isBlockScalar = IsBlockScalar(pLine->Data, pLine->No, blockFlags);
+                const bool newLineFlag = static_cast<bool>(blockFlags & ReaderLine::FlagMask(static_cast<size_t>(ReaderLine::ScalarNewlineFlag)));
+                const bool foldedFlag = static_cast<bool>(blockFlags & ReaderLine::FlagMask(static_cast<size_t>(ReaderLine::FoldedScalarFlag)));
+                const bool literalFlag = static_cast<bool>(blockFlags & ReaderLine::FlagMask(static_cast<size_t>(ReaderLine::LiteralScalarFlag)));
+                size_t parentOffset = 0;
+
+                // Find parent offset
+                if (it != m_Lines.begin())
+                {
+                    std::list<ReaderLine*>::iterator parentIt = it;
+                    --parentIt;
+                    parentOffset = (*parentIt)->Offset;
+                }
+
+                // Move to next iterator/line if current line is a block scalar.
+                if (isBlockScalar)
+                {
+                    ++it;
+                    if (it == m_Lines.end() || (pLine = *it)->Type != Node::ScalarType)
+                    {
+                        return;
+                    }
+                }
+
+                // Not a block scalar, cut end spaces/tabs
+                if (isBlockScalar == false)
+                {
+                    while (1)
+                    {
+                        pLine = *it;
+
+                        if (parentOffset != 0 && pLine->Offset <= parentOffset)
+                        {
+                            throw ParsingException(ExceptionMessage(Detail::ErrorIncorrectOffset(), *pLine));
+                        }
+
+                        const size_t endOffset = pLine->Data.find_last_not_of(" \t");
+                        if (endOffset == std::string::npos)
+                        {
+                            data += "\n";
+                        }
+                        else
+                        {
+                            data += pLine->Data.substr(0, endOffset + 1);
+                        }
+
+                        // Move to next line
+                        ++it;
+                        if (it == m_Lines.end() || (*it)->Type != Node::ScalarType)
+                        {
+                            break;
+                        }
+
+                        data += " ";
+                    }
+
+                    if (ValidateQuote(data) == false)
+                    {
+                        throw ParsingException(ExceptionMessage(Detail::ErrorInvalidQuote(), *pFirstLine));
+                    }
+                }
+                // Block scalar
+                else
+                {
+                    pLine = *it;
+                    size_t blockOffset = pLine->Offset;
+                    if (blockOffset <= parentOffset)
+                    {
+                        throw ParsingException(ExceptionMessage(Detail::ErrorIncorrectOffset(), *pLine));
+                    }
+
+                    bool addedSpace = false;
+                    while (it != m_Lines.end() && (*it)->Type == Node::ScalarType)
+                    {
+                        pLine = *it;
+
+                        const size_t endOffset = pLine->Data.find_last_not_of(" \t");
+                        if (endOffset != std::string::npos && pLine->Offset < blockOffset)
+                        {
+                            throw ParsingException(ExceptionMessage(Detail::ErrorIncorrectOffset(), *pLine));
+                        }
+
+                        if (endOffset == std::string::npos)
+                        {
+                            if (addedSpace)
+                            {
+                                data[data.size() - 1] = '\n';
+                                addedSpace = false;
+                            }
+                            else
+                            {
+                                data += "\n";
+                            }
+
+                            ++it;
+                            continue;
+                        }
+                        else
+                        {
+                            if (blockOffset != pLine->Offset && foldedFlag)
+                            {
+                                if (addedSpace)
+                                {
+                                    data[data.size() - 1] = '\n';
+                                    addedSpace = false;
+                                }
+                                else
+                                {
+                                    data += "\n";
+                                }
+                            }
+                            data += std::string(pLine->Offset - blockOffset, ' ');
+                            data += pLine->Data;
+                        }
+
+                        // Move to next line
+                        ++it;
+                        if (it == m_Lines.end() || (*it)->Type != Node::ScalarType)
+                        {
+                            if (newLineFlag)
+                            {
+                                data += "\n";
+                            }
+                            break;
+                        }
+
+                        if (foldedFlag)
+                        {
+                            data += " ";
+                            addedSpace = true;
+                        }
+                        else if (literalFlag && endOffset != std::string::npos)
+                        {
+                            data += "\n";
+                        }
+                    }
+                }
+
+                if (data.size() && (data[0] == '"' || data[0] == '\''))
+                {
+                    data = data.substr(1, data.size() - 2);
+                }
+
+                node = data;
+            }
+
+            void Print()
+            {
+                for (auto it = m_Lines.begin(); it != m_Lines.end(); it++)
+                {
+
+                    ReaderLine* pLine = *it;
+
+                    // Print type
+                    if (pLine->Type == Node::SequenceType)
+                    {
+                        std::cout << "seq ";
+                    }
+                    else if (pLine->Type == Node::MapType)
+                    {
+                        std::cout << "map ";
+                    }
+                    else if (pLine->Type == Node::ScalarType)
+                    {
+                        std::cout << "sca ";
+                    }
+                    else
+                    {
+                        std::cout << "    ";
+                    }
+
+                    // Print flags
+                    if (pLine->GetFlag(ReaderLine::FoldedScalarFlag))
+                    {
+                        std::cout << "f";
+                    }
+                    else
+                    {
+                        std::cout << "-";
+                    }
+                    if (pLine->GetFlag(ReaderLine::LiteralScalarFlag))
+                    {
+                        std::cout << "l";
+                    }
+                    else
+                    {
+                        std::cout << "-";
+                    }
+                    if (pLine->GetFlag(ReaderLine::ScalarNewlineFlag))
+                    {
+                        std::cout << "n";
+                    }
+                    else
+                    {
+                        std::cout << "-";
+                    }
+                    if (pLine->NextLine == nullptr)
+                    {
+                        std::cout << "e";
+                    }
+                    else
+                    {
+                        std::cout << "-";
+                    }
+
+
+                    std::cout << "| ";
+                    std::cout << pLine->No << " ";
+                    std::cout << std::string(pLine->Offset, ' ');
+
+                    if (pLine->Type == Node::ScalarType)
+                    {
+                        std::string scalarValue = pLine->Data;
+                        for (size_t i = 0; (i = scalarValue.find("\n", i)) != std::string::npos;)
+                        {
+                            scalarValue.replace(i, 1, "\\n");
+                            i += 2;
+                        }
+                        std::cout << scalarValue << std::endl;
+                    }
+                    else if (pLine->Type == Node::MapType)
+                    {
+                        std::cout << pLine->Data + ":" << std::endl;
+                    }
+                    else if (pLine->Type == Node::SequenceType)
+                    {
+                        std::cout << "-" << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "> UNKOWN TYPE <" << std::endl;
+                    }
+                }
+            }
+
+            void ClearLines()
+            {
+                for (auto it = m_Lines.begin(); it != m_Lines.end(); it++)
+                {
+                    delete* it;
+                }
+                m_Lines.clear();
+            }
+
+            void ClearTrailingEmptyLines(std::list<ReaderLine*>::iterator& it)
+            {
+                while (it != m_Lines.end())
+                {
+                    ReaderLine* pLine = *it;
+                    if (pLine->Data.size() == 0)
+                    {
+                        delete* it;
+                        it = m_Lines.erase(it);
+                    }
+                    else
+                    {
+                        return;
+                    }
+
+                }
+            }
+
+            static bool IsSequenceStart(const std::string& data)
+            {
+                if (data.size() == 0 || data[0] != '-')
+                {
+                    return false;
+                }
+
+                if (data.size() >= 2 && data[1] != ' ')
+                {
+                    return false;
+                }
+
+                return true;
+            }
+
+            static bool IsBlockScalar(const std::string& data, const size_t line, unsigned char& flags)
+            {
+                flags = 0;
+                if (data.size() == 0)
+                {
+                    return false;
+                }
+
+                if (data[0] == '|')
+                {
+                    if (data.size() >= 2)
+                    {
+                        if (data[1] != '-' && data[1] != ' ' && data[1] != '\t')
+                        {
+                            throw ParsingException(ExceptionMessage(Detail::ErrorInvalidBlockScalar(), line, data));
+                        }
+                    }
+                    else
+                    {
+                        flags |= ReaderLine::FlagMask(static_cast<size_t>(ReaderLine::ScalarNewlineFlag));
+                    }
+                    flags |= ReaderLine::FlagMask(static_cast<size_t>(ReaderLine::LiteralScalarFlag));
+                    return true;
+                }
+
+                if (data[0] == '>')
+                {
+                    if (data.size() >= 2)
+                    {
+                        if (data[1] != '-' && data[1] != ' ' && data[1] != '\t')
+                        {
+                            throw ParsingException(ExceptionMessage(Detail::ErrorInvalidBlockScalar(), line, data));
+                        }
+                    }
+                    else
+                    {
+                        flags |= ReaderLine::FlagMask(static_cast<size_t>(ReaderLine::ScalarNewlineFlag));
+                    }
+                    flags |= ReaderLine::FlagMask(static_cast<size_t>(ReaderLine::FoldedScalarFlag));
+                    return true;
+                }
+
+                return false;
+            }
+
+            std::list<ReaderLine*> m_Lines;    ///< List of lines.
+
+        };
+
+        //-----------------------------------------------------------------------------------------
+
+        inline std::string ExceptionMessage(const std::string& message, ReaderLine& line)
+        {
+            return message + std::string(" Line ") + std::to_string(line.No) + std::string(": ") + line.Data;
+        }
+
+        inline std::string ExceptionMessage(const std::string& message, ReaderLine& line, const size_t errorPos)
+        {
+            return message + std::string(" Line ") + std::to_string(line.No) + std::string(" column ") + std::to_string(errorPos + 1) + std::string(": ") + line.Data;
+        }
+
+        inline std::string ExceptionMessage(const std::string& message, const size_t errorLine, const size_t errorPos)
+        {
+            return message + std::string(" Line ") + std::to_string(errorLine) + std::string(" column ") + std::to_string(errorPos);
+        }
+
+        inline std::string ExceptionMessage(const std::string& message, const size_t errorLine, const std::string& data)
+        {
+            return message + std::string(" Line ") + std::to_string(errorLine) + std::string(": ") + data;
+        }
+
+        inline void CopyNode(const Node& from, Node& to)
+        {
+            const Node::eType type = from.Type();
+
+            switch (type)
+            {
+            case Node::SequenceType:
+                for (auto it = from.Begin(); it != from.End(); it++)
+                {
+                    const Node& currentNode = (*it).second;
+                    Node& newNode = to.PushBack();
+                    CopyNode(currentNode, newNode);
+                }
+                break;
+            case Node::MapType:
+                for (auto it = from.Begin(); it != from.End(); it++)
+                {
+                    const Node& currentNode = (*it).second;
+                    Node& newNode = to[(*it).first];
+                    CopyNode(currentNode, newNode);
+                }
+                break;
+            case Node::ScalarType:
+                to = from.As<std::string>();
+                break;
+            case Node::None:
+                break;
+            }
+        }
     }
 }
