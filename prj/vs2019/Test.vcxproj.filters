@@ -10,6 +10,9 @@
     <ClCompile Include="..\..\src\Test\TestPerformance.cpp">
       <Filter>Test</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\Test\TestYaml.cpp">
+      <Filter>Test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Test">
@@ -51,6 +54,9 @@
       <Filter>Test</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Cpl\Performance.h">
+      <Filter>Cpl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Cpl\Yaml.h">
       <Filter>Cpl</Filter>
     </ClInclude>
   </ItemGroup>
