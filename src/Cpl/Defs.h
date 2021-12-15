@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <limits.h>
 
+#include <algorithm>
 #include <iterator>
 #include <iostream>
 #include <sstream>

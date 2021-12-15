@@ -31,6 +31,7 @@
 namespace Cpl
 {
     template<typename> struct ParamValue;
+    template<typename> struct ParamLimited;
     template<typename> struct ParamStruct;
     template<typename> struct ParamVector;
     template<typename, typename> struct ParamMap;
@@ -151,6 +152,7 @@ namespace Cpl
 
         template<typename> friend struct Param;
         template<typename> friend struct ParamValue;
+        template<typename> friend struct ParamLimited;
         template<typename> friend struct ParamStruct;
         template<typename> friend struct ParamVector;
         template<typename, typename> friend struct ParamMap;
@@ -489,8 +491,8 @@ namespace Cpl
         }
 
         CPL_INLINE String ItemName() const { return "item"; }
-        CPL_INLINE String KeyName() const { return "key"; }
-        CPL_INLINE String ValueName() const { return "value"; }
+        CPL_INLINE String KeyName() const { return "first"; }
+        CPL_INLINE String ValueName() const { return "second"; }
 
         CPL_INLINE Unknown* ChildBeg(const T & value) const
         {

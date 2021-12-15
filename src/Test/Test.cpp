@@ -56,6 +56,7 @@ namespace Test
     TEST_ADD(ParamMap);
     TEST_ADD(ParamMapBug);
     TEST_ADD(ParamLimited);
+    TEST_ADD(ParamTemplate);
 
     struct Options : public Cpl::ArgsParser
     {

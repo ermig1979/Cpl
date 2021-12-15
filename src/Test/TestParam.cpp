@@ -313,3 +313,42 @@ namespace Test
 
 //---------------------------------------------------------------------------------------------
 
+namespace Test
+{
+    template <class T> struct PropParam
+    {
+        CPL_PARAM_VALUE(T, value, T());
+        CPL_PARAM_VALUE(String, desc, String());
+        CPL_PARAM_VALUE(T, value_min, std::numeric_limits<T>::min());
+        CPL_PARAM_VALUE(T, value_max, std::numeric_limits<T>::max());
+        CPL_PARAM_VALUE(T, value_default, T());
+    };
+        
+    bool ParamTemplateTest()
+    {
+        struct TestParam
+        {
+            CPL_PARAM_STRUCT(PropParam<int>, intProp);
+            CPL_PARAM_STRUCT(PropParam<String>, strProp);
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        TestParamHolder test, loaded;
+
+        test().intProp().value() = 4;
+        test().strProp().value() = "string";
+
+
+        test.Save("template_short.xml", false);
+        test.Save("template_full.xml", true);
+
+        if (!loaded.Load("template_full.xml"))
+            return false;
+
+        return loaded.Equal(test);
+    }
+}
+
+//---------------------------------------------------------------------------------------------
+
