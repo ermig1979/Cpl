@@ -30,6 +30,35 @@ namespace Test
 {
     bool YamlSimpleTest()
     {
+        const std::string data =
+            "data1: \n"
+            "  123\n"
+            "data2: Hello world\n"
+            "data3:\n"
+            "   - key1: 123\n"
+            "     key2: Test\n"
+            "   - Hello world\n"
+            "   - 123\n"
+            "   - 123.4\n";
+
+        Cpl::Yaml::Node root;
+        try
+        {
+            Cpl::Yaml::Parse(root, data);
+        }
+        catch (const Cpl::Yaml::Exception e)
+        {
+            std::cout << "Exception " << e.GetType() << ": " << e.what() << std::endl;
+            return false;
+        }
+
+        std::cout << root["data1"].As<int>(0) << std::endl;
+        std::cout << root["data2"].As<std::string>() << std::endl;
+        std::cout << root["data3"][0]["key1"].As<int>(0) << std::endl;
+        std::cout << root["data3"][0]["key2"].As<std::string>() << std::endl;
+        std::cout << root["data3"][1].As<std::string>() << std::endl;
+        std::cout << root["data3"][2].As<int>(0) << std::endl;
+        std::cout << root["data3"][3].As<float>(0.0f) << std::endl;
         return true;
     }
 }

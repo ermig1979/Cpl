@@ -2359,6 +2359,292 @@ namespace Cpl
 
         //-----------------------------------------------------------------------------------------
 
+        inline void Parse(Node& root, const char* filename)
+        {
+            std::ifstream f(filename, std::ifstream::binary);
+            if (f.is_open() == false)
+            {
+                throw OperationException(Detail::ErrorCannotOpenFile());
+            }
+
+            f.seekg(0, f.end);
+            size_t fileSize = static_cast<size_t>(f.tellg());
+            f.seekg(0, f.beg);
+
+            std::unique_ptr<char[]> data(new char[fileSize]);
+            f.read(data.get(), fileSize);
+            f.close();
+
+            Parse(root, data.get(), fileSize);
+        }
+
+        inline void Parse(Node& root, std::iostream& stream)
+        {
+            ParseImp* pImp = nullptr;
+
+            try
+            {
+                pImp = new ParseImp;
+                pImp->Parse(root, stream);
+                delete pImp;
+            }
+            catch (const Exception e)
+            {
+                delete pImp;
+                throw;
+            }
+        }
+
+        inline void Parse(Node& root, const std::string& string)
+        {
+            std::stringstream ss(string);
+            Parse(root, ss);
+        }
+
+        inline void Parse(Node& root, const char* buffer, const size_t size)
+        {
+            std::stringstream ss(std::string(buffer, size));
+            Parse(root, ss);
+        }
+
+        //-----------------------------------------------------------------------------------------
+
+        inline SerializeConfig::SerializeConfig(const size_t spaceIndentation, 
+            const size_t scalarMaxLength,
+            const bool sequenceMapNewline,
+            const bool mapScalarNewline) :
+            SpaceIndentation(spaceIndentation),
+            ScalarMaxLength(scalarMaxLength),
+            SequenceMapNewline(sequenceMapNewline),
+            MapScalarNewline(mapScalarNewline)
+        {
+        }
+
+        //-----------------------------------------------------------------------------------------
+
+        inline void Serialize(const Node& root, const char* filename, const SerializeConfig& config)
+        {
+            std::stringstream stream;
+            Serialize(root, stream, config);
+
+            std::ofstream f(filename);
+            if (f.is_open() == false)
+            {
+                throw OperationException(Detail::ErrorCannotOpenFile());
+            }
+
+            f.write(stream.str().c_str(), stream.str().size());
+            f.close();
+        }
+
+        inline size_t LineFolding(const std::string& input, std::vector<std::string>& folded, const size_t maxLength)
+        {
+            folded.clear();
+            if (input.size() == 0)
+            {
+                return 0;
+            }
+
+            size_t currentPos = 0;
+            size_t lastPos = 0;
+            size_t spacePos = std::string::npos;
+            while (currentPos < input.size())
+            {
+                currentPos = lastPos + maxLength;
+
+                if (currentPos < input.size())
+                {
+                    spacePos = input.find_first_of(' ', currentPos);
+                }
+
+                if (spacePos == std::string::npos || currentPos >= input.size())
+                {
+                    const std::string endLine = input.substr(lastPos);
+                    if (endLine.size())
+                    {
+                        folded.push_back(endLine);
+                    }
+
+                    return folded.size();
+                }
+
+                folded.push_back(input.substr(lastPos, spacePos - lastPos));
+
+                lastPos = spacePos + 1;
+            }
+
+            return folded.size();
+        }
+
+        inline void SerializeLoop(const Node& node, std::iostream& stream, bool useLevel, const size_t level, const SerializeConfig& config)
+        {
+            const size_t indention = config.SpaceIndentation;
+
+            switch (node.Type())
+            {
+            case Node::SequenceType:
+            {
+                for (auto it = node.Begin(); it != node.End(); it++)
+                {
+                    const Node& value = (*it).second;
+                    if (value.IsNone())
+                    {
+                        continue;
+                    }
+                    stream << std::string(level, ' ') << "- ";
+                    useLevel = false;
+                    if (value.IsSequence() || (value.IsMap() && config.SequenceMapNewline == true))
+                    {
+                        useLevel = true;
+                        stream << "\n";
+                    }
+
+                    SerializeLoop(value, stream, useLevel, level + 2, config);
+                }
+
+            }
+            break;
+            case Node::MapType:
+            {
+                size_t count = 0;
+                for (auto it = node.Begin(); it != node.End(); it++)
+                {
+                    const Node& value = (*it).second;
+                    if (value.IsNone())
+                    {
+                        continue;
+                    }
+
+                    if (useLevel || count > 0)
+                    {
+                        stream << std::string(level, ' ');
+                    }
+
+                    std::string key = (*it).first;
+                    AddEscapeTokens(key, "\\\"");
+                    if (ShouldBeCited(key))
+                    {
+                        stream << "\"" << key << "\"" << ": ";
+                    }
+                    else
+                    {
+                        stream << key << ": ";
+                    }
+
+
+                    useLevel = false;
+                    if (value.IsScalar() == false || (value.IsScalar() && config.MapScalarNewline))
+                    {
+                        useLevel = true;
+                        stream << "\n";
+                    }
+
+                    SerializeLoop(value, stream, useLevel, level + indention, config);
+
+                    useLevel = true;
+                    count++;
+                }
+
+            }
+            break;
+            case Node::ScalarType:
+            {
+                const std::string value = node.As<std::string>();
+
+                // Empty scalar
+                if (value.size() == 0)
+                {
+                    stream << "\n";
+                    break;
+                }
+
+                // Get lines of scalar.
+                std::string line = "";
+                std::vector<std::string> lines;
+                std::istringstream iss(value);
+                while (iss.eof() == false)
+                {
+                    std::getline(iss, line);
+                    lines.push_back(line);
+                }
+
+                // Block scalar
+                const std::string& lastLine = lines.back();
+                const bool endNewline = lastLine.size() == 0;
+                if (endNewline)
+                {
+                    lines.pop_back();
+                }
+
+                // Literal
+                if (lines.size() > 1)
+                {
+                    stream << "|";
+                }
+                // Folded/plain
+                else
+                {
+                    const std::string frontLine = lines.front();
+                    if (config.ScalarMaxLength == 0 || lines.front().size() <= config.ScalarMaxLength ||
+                        LineFolding(frontLine, lines, config.ScalarMaxLength) == 1)
+                    {
+                        if (useLevel)
+                        {
+                            stream << std::string(level, ' ');
+                        }
+
+                        if (ShouldBeCited(value))
+                        {
+                            stream << "\"" << value << "\"\n";
+                            break;
+                        }
+                        stream << value << "\n";
+                        break;
+                    }
+                    else
+                    {
+                        stream << ">";
+                    }
+                }
+
+                if (endNewline == false)
+                {
+                    stream << "-";
+                }
+                stream << "\n";
+
+
+                for (auto it = lines.begin(); it != lines.end(); it++)
+                {
+                    stream << std::string(level, ' ') << (*it) << "\n";
+                }
+            }
+            break;
+
+            default:
+                break;
+            }
+        }
+
+        inline void Serialize(const Node& root, std::iostream& stream, const SerializeConfig& config)
+        {
+            if (config.SpaceIndentation < 2)
+            {
+                throw OperationException(Detail::ErrorIndentation());
+            }
+
+            SerializeLoop(root, stream, false, 0, config);
+        }
+
+        inline void Serialize(const Node& root, std::string& string, const SerializeConfig& config)
+        {
+            std::stringstream stream;
+            Serialize(root, stream, config);
+            string = stream.str();
+        }
+
+        //-----------------------------------------------------------------------------------------
+
         inline std::string ExceptionMessage(const std::string& message, ReaderLine& line)
         {
             return message + std::string(" Line ") + std::to_string(line.No) + std::string(": ") + line.Data;
@@ -2377,6 +2663,180 @@ namespace Cpl
         inline std::string ExceptionMessage(const std::string& message, const size_t errorLine, const std::string& data)
         {
             return message + std::string(" Line ") + std::to_string(errorLine) + std::string(": ") + data;
+        }
+
+        inline bool FindQuote(const std::string& input, size_t& start, size_t& end, size_t searchPos)
+        {
+            start = end = std::string::npos;
+            size_t qPos = searchPos;
+            bool foundStart = false;
+
+            while (qPos != std::string::npos)
+            {
+                // Find first quote.
+                qPos = input.find_first_of("\"'", qPos);
+                if (qPos == std::string::npos)
+                {
+                    return false;
+                }
+
+                const char token = input[qPos];
+                if (token == '"' && (qPos == 0 || input[qPos - 1] != '\\'))
+                {
+                    // Found start quote.
+                    if (foundStart == false)
+                    {
+                        start = qPos;
+                        foundStart = true;
+                    }
+                    // Found end quote
+                    else
+                    {
+                        end = qPos;
+                        return true;
+                    }
+                }
+
+                // Check if it's possible for another loop.
+                if (qPos + 1 == input.size())
+                {
+                    return false;
+                }
+                qPos++;
+            }
+
+            return false;
+        }
+
+        inline size_t FindNotCited(const std::string& input, char token, size_t& preQuoteCount)
+        {
+            preQuoteCount = 0;
+            size_t tokenPos = input.find_first_of(token);
+            if (tokenPos == std::string::npos)
+            {
+                return std::string::npos;
+            }
+
+            // Find all quotes
+            std::vector<std::pair<size_t, size_t>> quotes;
+
+            size_t quoteStart = 0;
+            size_t quoteEnd = 0;
+            while (FindQuote(input, quoteStart, quoteEnd, quoteEnd))
+            {
+                quotes.push_back({ quoteStart, quoteEnd });
+
+                if (quoteEnd + 1 == input.size())
+                {
+                    break;
+                }
+                quoteEnd++;
+            }
+
+            if (quotes.size() == 0)
+            {
+                return tokenPos;
+            }
+
+            size_t currentQuoteIndex = 0;
+            std::pair<size_t, size_t> currentQuote = { 0, 0 };
+
+            while (currentQuoteIndex < quotes.size())
+            {
+                currentQuote = quotes[currentQuoteIndex];
+
+                if (tokenPos < currentQuote.first)
+                {
+                    return tokenPos;
+                }
+                preQuoteCount++;
+                if (tokenPos <= currentQuote.second)
+                {
+                    // Find next token
+                    if (tokenPos + 1 == input.size())
+                    {
+                        return std::string::npos;
+                    }
+                    tokenPos = input.find_first_of(token, tokenPos + 1);
+                    if (tokenPos == std::string::npos)
+                    {
+                        return std::string::npos;
+                    }
+                }
+
+                currentQuoteIndex++;
+            }
+
+            return tokenPos;
+        }
+
+        inline size_t FindNotCited(const std::string& input, char token)
+        {
+            size_t dummy = 0;
+            return FindNotCited(input, token, dummy);
+        }
+
+        inline bool ValidateQuote(const std::string& input)
+        {
+            if (input.size() == 0)
+            {
+                return true;
+            }
+
+            char token = 0;
+            size_t searchPos = 0;
+            if (input[0] == '\"' || input[0] == '\'')
+            {
+                if (input.size() == 1)
+                {
+                    return false;
+                }
+                token = input[0];
+                searchPos = 1;
+            }
+
+            while (searchPos != std::string::npos && searchPos < input.size() - 1)
+            {
+                searchPos = input.find_first_of("\"'", searchPos + 1);
+                if (searchPos == std::string::npos)
+                {
+                    break;
+                }
+
+                const char foundToken = input[searchPos];
+
+                if (input[searchPos] == '\"' || input[searchPos] == '\'')
+                {
+                    if (token == 0 && input[searchPos - 1] != '\\')
+                    {
+                        return false;
+                    }
+                    //if(foundToken == token)
+                    //{
+
+                        /*if(foundToken == token && searchPos == input.size() - 1 && input[searchPos-1] != '\\')
+                        {
+                            return true;
+                            if(searchPos == input.size() - 1)
+                            {
+                                return true;
+                            }
+                            return false;
+                        }
+                        else */
+                    if (foundToken == token && input[searchPos - 1] != '\\')
+                    {
+                        if (searchPos == input.size() - 1)
+                        {
+                            return true;
+                        }
+                        return false;
+                    }
+                    //}
+                }
+            }
+
+            return token == 0;
         }
 
         inline void CopyNode(const Node& from, Node& to)
@@ -2406,6 +2866,42 @@ namespace Cpl
                 break;
             case Node::None:
                 break;
+            }
+        }
+
+        inline bool ShouldBeCited(const std::string& key)
+        {
+            return key.find_first_of("\":{}[],&*#?|-<>=!%@") != std::string::npos;
+        }
+
+        inline void AddEscapeTokens(std::string& input, const std::string& tokens)
+        {
+            for (auto it = tokens.begin(); it != tokens.end(); it++)
+            {
+                const char token = *it;
+                const std::string replace = std::string("\\") + std::string(1, token);
+                size_t found = input.find_first_of(token);
+                while (found != std::string::npos)
+                {
+                    input.replace(found, 1, replace);
+                    found = input.find_first_of(token, found + 2);
+                }
+            }
+        }
+
+        inline void RemoveAllEscapeTokens(std::string& input)
+        {
+            size_t found = input.find_first_of("\\");
+            while (found != std::string::npos)
+            {
+                if (found + 1 == input.size())
+                {
+                    return;
+                }
+
+                std::string replace(1, input[found + 1]);
+                input.replace(found, 2, replace);
+                found = input.find_first_of("\\", found + 1);
             }
         }
     }

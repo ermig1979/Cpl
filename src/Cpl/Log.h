@@ -55,7 +55,8 @@ namespace Cpl
             WritePrefix = 1 << 1,
             PrettyThreadId = 1 << 2,
             ColorezedPrefix = 1 << 3,
-            DefaultFlags = WriteThreadId | WritePrefix | PrettyThreadId
+            DefaultFlags = WriteThreadId | WritePrefix | PrettyThreadId,
+            BashFlags = WriteThreadId | WritePrefix | PrettyThreadId | ColorezedPrefix,
         };
 
         typedef void(*Callback)(const char* msg, void* userData);

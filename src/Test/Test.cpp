@@ -133,6 +133,7 @@ int main(int argc, char* argv[])
         return Test::PrintHelp();
 
     Cpl::Log::s_log.SetStd();
+    Cpl::Log::s_log.SetFlags(Cpl::Log::BashFlags);
     Cpl::Log::s_log.SetLevel(options.logLevel);
 
     Test::Groups groups;
