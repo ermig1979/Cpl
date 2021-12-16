@@ -25,6 +25,7 @@
 #include "Test/Test.h"
 
 #include "Cpl/Yaml.h"
+#include "Cpl/Param.h"
 
 namespace Test
 {
@@ -59,6 +60,42 @@ namespace Test
         std::cout << root["data3"][1].As<std::string>() << std::endl;
         std::cout << root["data3"][2].As<int>(0) << std::endl;
         std::cout << root["data3"][3].As<float>(0.0f) << std::endl;
+        return true;
+    }
+
+    //---------------------------------------------------------------------------------------------
+
+    bool YamlParamTest()
+    {
+        struct SubParam
+        {
+            CPL_PARAM_VALUE(Int, id, 1);
+            CPL_PARAM_VALUE(String, desc, "no");
+        };
+
+        struct TestParam
+        {
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VALUE(Int, value, 0);
+            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+            CPL_PARAM_STRUCT(SubParam, sub);
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        TestParamHolder test, loaded;
+
+        test().name() = "Changed";
+        test().sub().desc() = "description";
+
+        test.Save("yaml_short.yml", false, Cpl::ParamFormatYaml);
+        test.Save("yaml_full.yml", true, Cpl::ParamFormatYaml);
+
+        if (!loaded.Load("yaml_full.yml", Cpl::ParamFormatYaml))
+            return false;
+
+        return loaded.Equal(test);
+
         return true;
     }
 }

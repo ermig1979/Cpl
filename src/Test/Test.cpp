@@ -63,6 +63,7 @@ namespace Test
     TEST_ADD(PerformanceSimple);
 
     TEST_ADD(YamlSimple);
+    TEST_ADD(YamlParam);
 
     struct Options : public Cpl::ArgsParser
     {

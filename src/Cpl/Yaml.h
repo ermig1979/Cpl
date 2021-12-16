@@ -232,18 +232,7 @@ namespace Cpl
 
         class Node
         {
-            Node(bool)
-                : m_pImp(nullptr)
-            {
-            }
         public:
-
-            inline static Node & Empty()
-            {
-                static Node empty = Node(true);
-                return empty;
-            }
-
             friend class Iterator;
 
             enum eType
@@ -254,7 +243,7 @@ namespace Cpl
                 ScalarType
             };
 
-            Node();
+            Node(bool none = false);
 
             Node(const Node& node);
 
@@ -312,7 +301,7 @@ namespace Cpl
         };
 
         void Parse(Node& root, const char* filename);
-        void Parse(Node& root, std::iostream& stream);
+        void Parse(Node& root, std::istream& stream);
         void Parse(Node& root, const std::string& string);
         void Parse(Node& root, const char* buffer, const size_t size);
 
@@ -330,7 +319,7 @@ namespace Cpl
         };
 
         void Serialize(const Node& root, const char* filename, const SerializeConfig& config = { 2, 64, false, false });
-        void Serialize(const Node& root, std::iostream& stream, const SerializeConfig& config = { 2, 64, false, false });
+        void Serialize(const Node& root, std::ostream& stream, const SerializeConfig& config = { 2, 64, false, false });
         void Serialize(const Node& root, std::string& string, const SerializeConfig& config = { 2, 64, false, false });
 
         namespace Detail
@@ -338,6 +327,12 @@ namespace Cpl
             CPL_INLINE String & EmptyString()
             {
                 static String empty = String();
+                return empty;
+            }
+
+            CPL_INLINE Node& EmptyNode()
+            {
+                static Node empty = Node(true);
                 return empty;
             }
 
@@ -994,7 +989,7 @@ namespace Cpl
                 break;
             }
 
-            return { String(), Node::Empty() };
+            return { Detail::EmptyString(), Detail::EmptyNode() };
         }
 
         inline Iterator& Iterator::operator ++ (int dummy)
@@ -1146,7 +1141,7 @@ namespace Cpl
                 break;
             }
 
-            return { String(), Node::Empty() };
+            return { Detail::EmptyString(), Detail::EmptyNode() };
         }
 
         inline ConstIterator& ConstIterator::operator ++ (int dummy)
@@ -1210,14 +1205,11 @@ namespace Cpl
 
         //-----------------------------------------------------------------------------------------
 
-#define NODE_IMP static_cast<Detail::NodeImp*>(m_pImp)
-#define NODE_IMP_EXT(node) static_cast<Detail::NodeImp*>(node.m_pImp)
-#define TYPE_IMP static_cast<Detail::NodeImp*>(m_pImp)->m_pImp
-#define IT_IMP static_cast<Detail::IteratorImp*>(m_pImp)
-
-        inline Node::Node() 
+        inline Node::Node(bool none) 
             : m_pImp(new Detail::NodeImp())
         {
+            if (none)
+                Clear();
         }
 
         inline Node::Node(const Node& node)
@@ -1240,234 +1232,214 @@ namespace Cpl
 
         inline Node::~Node()
         {
-            delete static_cast<Detail::NodeImp*>(m_pImp);
+            delete ((Detail::NodeImp*)m_pImp);
         }
 
         inline Node::eType Node::Type() const
         {
-            return NODE_IMP->m_Type;
+            return ((Detail::NodeImp*)m_pImp)->m_Type;
         }
 
         inline bool Node::IsNone() const
         {
-            return NODE_IMP->m_Type == Node::None;
+            return ((Detail::NodeImp*)m_pImp)->m_Type == Node::None;
         }
 
         inline bool Node::IsSequence() const
         {
-            return NODE_IMP->m_Type == Node::SequenceType;
+            return ((Detail::NodeImp*)m_pImp)->m_Type == Node::SequenceType;
         }
 
         inline bool Node::IsMap() const
         {
-            return NODE_IMP->m_Type == Node::MapType;
+            return ((Detail::NodeImp*)m_pImp)->m_Type == Node::MapType;
         }
 
         inline bool Node::IsScalar() const
         {
-            return NODE_IMP->m_Type == Node::ScalarType;
+            return ((Detail::NodeImp*)m_pImp)->m_Type == Node::ScalarType;
         }
 
         inline void Node::Clear()
         {
-            NODE_IMP->Clear();
+            ((Detail::NodeImp*)m_pImp)->Clear();
         }
 
         inline size_t Node::Size() const
         {
-            if (TYPE_IMP == nullptr)
-            {
+            if (((Detail::NodeImp*)m_pImp)->m_pImp == nullptr)
                 return 0;
-            }
-
-            return TYPE_IMP->GetSize();
+            return ((Detail::NodeImp*)m_pImp)->m_pImp->GetSize();
         }
 
         inline Node& Node::Insert(const size_t index)
         {
-            NODE_IMP->InitSequence();
-            return *TYPE_IMP->Insert(index);
+            ((Detail::NodeImp*)m_pImp)->InitSequence();
+            return *((Detail::NodeImp*)m_pImp)->m_pImp->Insert(index);
         }
 
         inline Node& Node::PushFront()
         {
-            NODE_IMP->InitSequence();
-            return *TYPE_IMP->PushFront();
+            ((Detail::NodeImp*)m_pImp)->InitSequence();
+            return *((Detail::NodeImp*)m_pImp)->m_pImp->PushFront();
         }
 
         inline Node& Node::PushBack()
         {
-            NODE_IMP->InitSequence();
-            return *TYPE_IMP->PushBack();
+            ((Detail::NodeImp*)m_pImp)->InitSequence();
+            return *((Detail::NodeImp*)m_pImp)->m_pImp->PushBack();
         }
 
         inline Node& Node::operator[](const size_t index)
         {
-            NODE_IMP->InitSequence();
-            Node* pNode = TYPE_IMP->GetNode(index);
+            ((Detail::NodeImp*)m_pImp)->InitSequence();
+            Node* pNode = ((Detail::NodeImp*)m_pImp)->m_pImp->GetNode(index);
             if (pNode == nullptr)
-                return Node::Empty();
+                return Detail::EmptyNode();
             return *pNode;
         }
 
         inline Node& Node::operator[](const std::string& key)
         {
-            NODE_IMP->InitMap();
-            return *TYPE_IMP->GetNode(key);
+            ((Detail::NodeImp*)m_pImp)->InitMap();
+            return *((Detail::NodeImp*)m_pImp)->m_pImp->GetNode(key);
         }
 
         inline void Node::Erase(const size_t index)
         {
-            if (TYPE_IMP == nullptr || NODE_IMP->m_Type != Node::SequenceType)
+            if (((Detail::NodeImp*)m_pImp)->m_pImp == nullptr || ((Detail::NodeImp*)m_pImp)->m_Type != Node::SequenceType)
                 return;
-            return TYPE_IMP->Erase(index);
+            return ((Detail::NodeImp*)m_pImp)->m_pImp->Erase(index);
         }
 
         inline void Node::Erase(const std::string& key)
         {
-            if (TYPE_IMP == nullptr || NODE_IMP->m_Type != Node::MapType)
-            {
+            if (((Detail::NodeImp*)m_pImp)->m_pImp == nullptr || ((Detail::NodeImp*)m_pImp)->m_Type != Node::MapType)
                 return;
-            }
-
-            return TYPE_IMP->Erase(key);
+            return ((Detail::NodeImp*)m_pImp)->m_pImp->Erase(key);
         }
 
         inline Node& Node::operator = (const Node& node)
         {
-            NODE_IMP->Clear();
+            ((Detail::NodeImp*)m_pImp)->Clear();
             CopyNode(node, *this);
             return *this;
         }
 
         inline Node& Node::operator = (const std::string& value)
         {
-            NODE_IMP->InitScalar();
-            TYPE_IMP->SetData(value);
+            ((Detail::NodeImp*)m_pImp)->InitScalar();
+            ((Detail::NodeImp*)m_pImp)->m_pImp->SetData(value);
             return *this;
         }
 
         inline Node& Node::operator = (const char* value)
         {
-            NODE_IMP->InitScalar();
-            TYPE_IMP->SetData(value ? std::string(value) : "");
+            ((Detail::NodeImp*)m_pImp)->InitScalar();
+            ((Detail::NodeImp*)m_pImp)->m_pImp->SetData(value ? std::string(value) : "");
             return *this;
         }
 
         inline Iterator Node::Begin()
         {
             Iterator it;
-
-            if (TYPE_IMP != nullptr)
+            if (((Detail::NodeImp*)m_pImp)->m_pImp != nullptr)
             {
                 Detail::IteratorImp* pItImp = nullptr;
-
-                switch (NODE_IMP->m_Type)
+                switch (((Detail::NodeImp*)m_pImp)->m_Type)
                 {
                 case Node::SequenceType:
                     it.m_Type = Iterator::SequenceType;
                     pItImp = new Detail::SequenceIteratorImp;
-                    pItImp->InitBegin(static_cast<Detail::SequenceImp*>(TYPE_IMP));
+                    pItImp->InitBegin(static_cast<Detail::SequenceImp*>(((Detail::NodeImp*)m_pImp)->m_pImp));
                     break;
                 case Node::MapType:
                     it.m_Type = Iterator::MapType;
                     pItImp = new Detail::MapIteratorImp;
-                    pItImp->InitBegin(static_cast<Detail::MapImp*>(TYPE_IMP));
+                    pItImp->InitBegin(static_cast<Detail::MapImp*>(((Detail::NodeImp*)m_pImp)->m_pImp));
                     break;
                 default:
                     break;
                 }
-
                 it.m_pImp = pItImp;
             }
-
             return it;
         }
 
         inline ConstIterator Node::Begin() const
         {
             ConstIterator it;
-
-            if (TYPE_IMP != nullptr)
+            if (((Detail::NodeImp*)m_pImp)->m_pImp != nullptr)
             {
                 Detail::IteratorImp* pItImp = nullptr;
-
-                switch (NODE_IMP->m_Type)
+                switch (((Detail::NodeImp*)m_pImp)->m_Type)
                 {
                 case Node::SequenceType:
                     it.m_Type = ConstIterator::SequenceType;
                     pItImp = new Detail::SequenceConstIteratorImp;
-                    pItImp->InitBegin(static_cast<Detail::SequenceImp*>(TYPE_IMP));
+                    pItImp->InitBegin(static_cast<Detail::SequenceImp*>(((Detail::NodeImp*)m_pImp)->m_pImp));
                     break;
                 case Node::MapType:
                     it.m_Type = ConstIterator::MapType;
                     pItImp = new Detail::MapConstIteratorImp;
-                    pItImp->InitBegin(static_cast<Detail::MapImp*>(TYPE_IMP));
+                    pItImp->InitBegin(static_cast<Detail::MapImp*>(((Detail::NodeImp*)m_pImp)->m_pImp));
                     break;
                 default:
                     break;
                 }
-
                 it.m_pImp = pItImp;
             }
-
             return it;
         }
 
         inline Iterator Node::End()
         {
             Iterator it;
-
-            if (TYPE_IMP != nullptr)
+            if (((Detail::NodeImp*)m_pImp)->m_pImp != nullptr)
             {
                 Detail::IteratorImp* pItImp = nullptr;
-
-                switch (NODE_IMP->m_Type)
+                switch (((Detail::NodeImp*)m_pImp)->m_Type)
                 {
                 case Node::SequenceType:
                     it.m_Type = Iterator::SequenceType;
                     pItImp = new Detail::SequenceIteratorImp;
-                    pItImp->InitEnd(static_cast<Detail::SequenceImp*>(TYPE_IMP));
+                    pItImp->InitEnd(static_cast<Detail::SequenceImp*>(((Detail::NodeImp*)m_pImp)->m_pImp));
                     break;
                 case Node::MapType:
                     it.m_Type = Iterator::MapType;
                     pItImp = new Detail::MapIteratorImp;
-                    pItImp->InitEnd(static_cast<Detail::MapImp*>(TYPE_IMP));
+                    pItImp->InitEnd(static_cast<Detail::MapImp*>(((Detail::NodeImp*)m_pImp)->m_pImp));
                     break;
                 default:
                     break;
                 }
-
                 it.m_pImp = pItImp;
             }
-
             return it;
         }
 
         inline ConstIterator Node::End() const
         {
             ConstIterator it;
-
-            if (TYPE_IMP != nullptr)
+            if (((Detail::NodeImp*)m_pImp)->m_pImp != nullptr)
             {
                 Detail::IteratorImp* pItImp = nullptr;
 
-                switch (NODE_IMP->m_Type)
+                switch (((Detail::NodeImp*)m_pImp)->m_Type)
                 {
                 case Node::SequenceType:
                     it.m_Type = ConstIterator::SequenceType;
                     pItImp = new Detail::SequenceConstIteratorImp;
-                    pItImp->InitEnd(static_cast<Detail::SequenceImp*>(TYPE_IMP));
+                    pItImp->InitEnd(static_cast<Detail::SequenceImp*>(((Detail::NodeImp*)m_pImp)->m_pImp));
                     break;
                 case Node::MapType:
                     it.m_Type = ConstIterator::MapType;
                     pItImp = new Detail::MapConstIteratorImp;
-                    pItImp->InitEnd(static_cast<Detail::MapImp*>(TYPE_IMP));
+                    pItImp->InitEnd(static_cast<Detail::MapImp*>(((Detail::NodeImp*)m_pImp)->m_pImp));
                     break;
                 default:
                     break;
                 }
-
                 it.m_pImp = pItImp;
             }
 
@@ -1476,10 +1448,9 @@ namespace Cpl
 
         inline const std::string& Node::AsString() const
         {
-            if (TYPE_IMP == nullptr)
+            if (((Detail::NodeImp*)m_pImp)->m_pImp == nullptr)
                 return Detail::EmptyString();
-
-            return TYPE_IMP->GetData();
+            return ((Detail::NodeImp*)m_pImp)->m_pImp->GetData();
         }
 
         //-----------------------------------------------------------------------------------------
@@ -1487,17 +1458,15 @@ namespace Cpl
         class ReaderLine
         {
         public:
-            ReaderLine(const std::string& data = "",
-                const size_t no = 0,
-                const size_t offset = 0,
-                const Node::eType type = Node::None,
-                const unsigned char flags = 0) :
-                Data(data),
-                No(no),
-                Offset(offset),
-                Type(type),
-                Flags(flags),
-                NextLine(nullptr)
+            ReaderLine(const std::string& data = "", const size_t no = 0, 
+                const size_t offset = 0, const Node::eType type = Node::None,
+                const unsigned char flags = 0) 
+                : Data(data)
+                , No(no)
+                , Offset(offset)
+                , Type(type)
+                , Flags(flags)
+                , NextLine(nullptr)
             {
             }
 
@@ -1549,11 +1518,11 @@ namespace Cpl
                 return flagMask[index];
             }
 
-            std::string     Data;
-            size_t          No;
-            size_t          Offset;
-            Node::eType     Type;
-            unsigned char   Flags;
+            std::string Data;
+            size_t No;
+            size_t Offset;
+            Node::eType Type;
+            unsigned char Flags;
             ReaderLine* NextLine;
         };
 
@@ -1571,7 +1540,7 @@ namespace Cpl
                 ClearLines();
             }
 
-            void Parse(Node& root, std::iostream& stream)
+            void Parse(Node& root, std::istream& stream)
             {
                 try
                 {
@@ -1592,10 +1561,9 @@ namespace Cpl
 
             ParseImp(const ParseImp& copy)
             {
-
             }
 
-            void ReadLines(std::iostream& stream)
+            void ReadLines(std::istream& stream)
             {
                 std::string     line = "";
                 size_t          lineNo = 0;
@@ -1699,27 +1667,17 @@ namespace Cpl
             {
                 for (auto it = m_Lines.begin(); it != m_Lines.end();)
                 {
-                    if (PostProcessSequenceLine(it) == true)
-                    {
+                    if (PostProcessSequenceLine(it))
                         continue;
-                    }
-
-                    if (PostProcessMappingLine(it) == true)
-                    {
+                    if (PostProcessMappingLine(it))
                         continue;
-                    }
-
-                    // Scalar.
                     PostProcessScalarLine(it);
                 }
 
                 if (m_Lines.size())
                 {
                     if (m_Lines.back()->Type != Node::ScalarType)
-                    {
                         throw ParsingException(ExceptionMessage(Detail::ErrorUnexpectedDocumentEnd(), *m_Lines.back()));
-                    }
-
                     if (m_Lines.size() > 1)
                     {
                         auto prevEnd = m_Lines.end();
@@ -1971,7 +1929,6 @@ namespace Cpl
                     {
                         throw InternalException(ExceptionMessage(Detail::ErrorDiffEntryNotAllowed(), *pNextLine));
                     }
-
                 }
             }
 
@@ -2019,7 +1976,6 @@ namespace Cpl
                     {
                         throw InternalException(ExceptionMessage(Detail::ErrorDiffEntryNotAllowed(), *pNextLine));
                     }
-
                 }
             }
 
@@ -2378,7 +2334,7 @@ namespace Cpl
             Parse(root, data.get(), fileSize);
         }
 
-        inline void Parse(Node& root, std::iostream& stream)
+        inline void Parse(Node& root, std::istream& stream)
         {
             ParseImp* pImp = nullptr;
 
@@ -2476,7 +2432,7 @@ namespace Cpl
             return folded.size();
         }
 
-        inline void SerializeLoop(const Node& node, std::iostream& stream, bool useLevel, const size_t level, const SerializeConfig& config)
+        inline void SerializeLoop(const Node& node, std::ostream& stream, bool useLevel, const size_t level, const SerializeConfig& config)
         {
             const size_t indention = config.SpaceIndentation;
 
@@ -2626,7 +2582,7 @@ namespace Cpl
             }
         }
 
-        inline void Serialize(const Node& root, std::iostream& stream, const SerializeConfig& config)
+        inline void Serialize(const Node& root, std::ostream& stream, const SerializeConfig& config)
         {
             if (config.SpaceIndentation < 2)
             {
@@ -2713,60 +2669,37 @@ namespace Cpl
             preQuoteCount = 0;
             size_t tokenPos = input.find_first_of(token);
             if (tokenPos == std::string::npos)
-            {
                 return std::string::npos;
-            }
-
-            // Find all quotes
             std::vector<std::pair<size_t, size_t>> quotes;
-
             size_t quoteStart = 0;
             size_t quoteEnd = 0;
             while (FindQuote(input, quoteStart, quoteEnd, quoteEnd))
             {
                 quotes.push_back({ quoteStart, quoteEnd });
-
                 if (quoteEnd + 1 == input.size())
-                {
                     break;
-                }
                 quoteEnd++;
             }
-
             if (quotes.size() == 0)
-            {
                 return tokenPos;
-            }
-
             size_t currentQuoteIndex = 0;
             std::pair<size_t, size_t> currentQuote = { 0, 0 };
-
             while (currentQuoteIndex < quotes.size())
             {
                 currentQuote = quotes[currentQuoteIndex];
-
                 if (tokenPos < currentQuote.first)
-                {
                     return tokenPos;
-                }
                 preQuoteCount++;
                 if (tokenPos <= currentQuote.second)
                 {
-                    // Find next token
                     if (tokenPos + 1 == input.size())
-                    {
                         return std::string::npos;
-                    }
                     tokenPos = input.find_first_of(token, tokenPos + 1);
                     if (tokenPos == std::string::npos)
-                    {
                         return std::string::npos;
-                    }
                 }
-
                 currentQuoteIndex++;
             }
-
             return tokenPos;
         }
 
@@ -2779,70 +2712,40 @@ namespace Cpl
         inline bool ValidateQuote(const std::string& input)
         {
             if (input.size() == 0)
-            {
                 return true;
-            }
-
             char token = 0;
             size_t searchPos = 0;
             if (input[0] == '\"' || input[0] == '\'')
             {
                 if (input.size() == 1)
-                {
                     return false;
-                }
                 token = input[0];
                 searchPos = 1;
             }
-
             while (searchPos != std::string::npos && searchPos < input.size() - 1)
             {
                 searchPos = input.find_first_of("\"'", searchPos + 1);
                 if (searchPos == std::string::npos)
-                {
                     break;
-                }
-
                 const char foundToken = input[searchPos];
-
                 if (input[searchPos] == '\"' || input[searchPos] == '\'')
                 {
                     if (token == 0 && input[searchPos - 1] != '\\')
-                    {
                         return false;
-                    }
-                    //if(foundToken == token)
-                    //{
-
-                        /*if(foundToken == token && searchPos == input.size() - 1 && input[searchPos-1] != '\\')
-                        {
-                            return true;
-                            if(searchPos == input.size() - 1)
-                            {
-                                return true;
-                            }
-                            return false;
-                        }
-                        else */
                     if (foundToken == token && input[searchPos - 1] != '\\')
                     {
                         if (searchPos == input.size() - 1)
-                        {
                             return true;
-                        }
                         return false;
                     }
-                    //}
                 }
             }
-
             return token == 0;
         }
 
         inline void CopyNode(const Node& from, Node& to)
         {
             const Node::eType type = from.Type();
-
             switch (type)
             {
             case Node::SequenceType:
@@ -2895,10 +2798,7 @@ namespace Cpl
             while (found != std::string::npos)
             {
                 if (found + 1 == input.size())
-                {
                     return;
-                }
-
                 std::string replace(1, input[found + 1]);
                 input.replace(found, 2, replace);
                 found = input.find_first_of("\\", found + 1);

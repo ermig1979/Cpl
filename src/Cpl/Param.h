@@ -24,12 +24,27 @@
 
 #pragma once
 
-#include "Cpl/Xml.h"
 #include "Cpl/String.h"
 #include "Cpl/Log.h"
+#include "Cpl/Xml.h"
+#include "Cpl/Yaml.h"
 
 namespace Cpl
 {
+    enum ParamFormat
+    {
+        ParamFormatXml,
+        ParamFormatYaml,
+    };
+
+    CPL_INLINE String ToStr(ParamFormat format)
+    {
+        static const char* names[] = { "XML", "YAML"};
+        return format >= ParamFormatXml && format <= ParamFormatYaml ? names[format] : "";
+    }
+
+    //---------------------------------------------------------------------------------------------
+
     template<typename> struct ParamValue;
     template<typename> struct ParamLimited;
     template<typename> struct ParamStruct;
@@ -57,25 +72,47 @@ namespace Cpl
             CloneNode((Unknown*)&other);
         }
 
-        bool Save(std::ostream& os, bool full) const
+        bool Save(std::ostream& os, bool full, ParamFormat format = ParamFormatXml) const
         {
-            Xml::XmlDocument<char> doc;
-            Cpl::Xml::XmlNode<char>* xmlDeclaration = doc.AllocateNode(Cpl::Xml::NodeDeclaration);
-            xmlDeclaration->AppendAttribute(doc.AllocateAttribute("version", "1.0"));
-            xmlDeclaration->AppendAttribute(doc.AllocateAttribute("encoding", "utf-8"));
-            doc.AppendNode(xmlDeclaration);
-            this->SaveNode(doc, &doc, full);
-            Xml::Print(os, doc);
+            if (format == ParamFormatXml)
+            {
+                Xml::XmlDocument<char> doc;
+                Cpl::Xml::XmlNode<char>* xmlDeclaration = doc.AllocateNode(Cpl::Xml::NodeDeclaration);
+                xmlDeclaration->AppendAttribute(doc.AllocateAttribute("version", "1.0"));
+                xmlDeclaration->AppendAttribute(doc.AllocateAttribute("encoding", "utf-8"));
+                doc.AppendNode(xmlDeclaration);
+                this->SaveNodeXml(doc, &doc, full);
+                Xml::Print(os, doc);
+            }
+            else if (format == ParamFormatYaml)
+            {
+                Yaml::Node root;
+                this->SaveNodeYaml(root, full);
+                try
+                {
+                    Yaml::Serialize(root, os);
+                }
+                catch (const Yaml::Exception e)
+                {
+                    CPL_LOG_SS(Error, "Exception " << e.GetType() << ": " << e.what());
+                    return false;
+                }
+            }
+            else
+            {
+                CPL_LOG_SS(Error, "Can't save Param in " << ToStr(format) << " format !");
+                return false;
+            }
             return true;
         }
 
-        bool Save(const String& path, bool full) const
+        bool Save(const String& path, bool full, ParamFormat format = ParamFormatXml) const
         {
             bool result = false;
             std::ofstream ofs(path.c_str());
             if (ofs.is_open())
             {
-                result = this->Save(ofs, full);
+                result = this->Save(ofs, full, format);
                 ofs.close();
             }
             else
@@ -85,25 +122,69 @@ namespace Cpl
             return result;
         }
 
-        bool Load(const char* data, size_t size)
+        bool Load(const char* data, size_t size, ParamFormat format)
         {
-            Xml::File<char> file(data, size);
-            return Load(file);
+            if (format == ParamFormatXml)
+            {
+                Xml::File<char> file(data, size);
+                return LoadXml(file);
+            }
+            else if (format == ParamFormatYaml)
+            {
+                Yaml::Node root;
+                try
+                {
+                    Yaml::Parse(root, data, size);
+                }
+                catch (const Yaml::Exception e)
+                {
+                    CPL_LOG_SS(Error, "Exception " << e.GetType() << ": " << e.what());
+                    return false;
+                }
+                return LoadNodeYaml(root);
+            }
+            else
+            {
+                CPL_LOG_SS(Error, "Can't load Param in " << ToStr(format) << " format !");
+                return false;
+            }
         }
 
-        bool Load(std::istream& is)
+        bool Load(std::istream& is, ParamFormat format = ParamFormatXml)
         {
-            Xml::File<char> file(is);
-            return Load(file);
+            if (format == ParamFormatXml)
+            {
+                Xml::File<char> file(is);
+                return LoadXml(file);
+            }
+            else if (format == ParamFormatYaml)
+            {
+                Yaml::Node root;
+                try
+                {
+                    Yaml::Parse(root, is);
+                }
+                catch (const Yaml::Exception e)
+                {
+                    CPL_LOG_SS(Error, "Exception " << e.GetType() << ": " << e.what());
+                    return false;
+                }
+                return LoadNodeYaml(root);
+            }
+            else
+            {
+                CPL_LOG_SS(Error, "Can't load Param in " << ToStr(format) << " format !");
+                return false;
+            }
         }
 
-        bool Load(const String& path)
+        bool Load(const String& path, ParamFormat format = ParamFormatXml)
         {
             bool result = false;
             std::ifstream ifs(path.c_str());
             if (ifs.is_open())
             {
-                result = this->Load(ifs);
+                result = this->Load(ifs, format);
                 ifs.close();
             }
             else
@@ -123,7 +204,7 @@ namespace Cpl
         {
         }
 
-        bool Load(Xml::File<char>& file)
+        bool LoadXml(Xml::File<char>& file)
         {
             Xml::XmlDocument<char> doc;
             try
@@ -135,7 +216,7 @@ namespace Cpl
                 CPL_LOG_SS(Error, "Can't parse xml! There is an exception: " << e.what());
                 return false;
             }
-            return this->LoadNode(&doc);
+            return this->LoadNodeXml(&doc);
         }
 
         typedef Param<int> Unknown;
@@ -146,9 +227,13 @@ namespace Cpl
 
         virtual void CloneNode(const Unknown* other) = 0;
 
-        virtual bool LoadNode(Xml::XmlNode<char>* xmlParent) = 0;
+        virtual bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) = 0;
 
-        virtual void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const = 0;
+        virtual void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const = 0;
+
+        virtual bool LoadNodeYaml(Yaml::Node& node) = 0;
+
+        virtual void SaveNodeYaml(Yaml::Node & node, bool full) const = 0;
 
         template<typename> friend struct Param;
         template<typename> friend struct ParamValue;
@@ -195,7 +280,7 @@ namespace Cpl
             this->_value = ((ParamValue*)other)->_value;
         }
 
-        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
             if (xmlCurrent)
@@ -203,11 +288,25 @@ namespace Cpl
             return true;
         }
 
-        void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
             xmlCurrent->Value(xmlDoc.AllocateString(Cpl::ToStr(this->_value).c_str()));
             xmlParent->AppendNode(xmlCurrent);
+        }
+
+        bool LoadNodeYaml(Yaml::Node& node) override
+        {
+            Yaml::Node & value = node[this->Name()];
+            if (value.Type() != Yaml::Node::ScalarType)
+                return false;
+            Cpl::ToVal(value.As<String>(), this->_value);
+            return true;
+        }
+
+        void SaveNodeYaml(Yaml::Node& node, bool full) const override
+        {
+            node[this->Name()] = Cpl::ToStr(this->_value);
         }
     };
 
@@ -248,7 +347,6 @@ namespace Cpl
         Type _def, _min, _max;
     };
 
-
     template<class T> struct ParamLimited : public Cpl::ParamValue<T>
     {
         typedef T Type;
@@ -267,7 +365,7 @@ namespace Cpl
         {
         }
 
-        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
             if (xmlCurrent)
@@ -278,8 +376,12 @@ namespace Cpl
             }
             return true;
         }
-    };
 
+        bool LoadNodeYaml(Yaml::Node& node) override
+        {
+            return true;
+        }
+    };
 
     //---------------------------------------------------------------------------------------------
 
@@ -336,29 +438,50 @@ namespace Cpl
                 tc->CloneNode(oc);
         }
 
-        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
             if (xmlCurrent)
             {
                 for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
                 {
-                    if (!paramChild->LoadNode(xmlCurrent))
+                    if (!paramChild->LoadNodeXml(xmlCurrent))
                         return true;
                 }
             }
             return true;
         }
 
-        void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
             for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
             {
                 if (full || paramChild->Changed())
-                    paramChild->SaveNode(xmlDoc, xmlCurrent, full);
+                    paramChild->SaveNodeXml(xmlDoc, xmlCurrent, full);
             }
             xmlParent->AppendNode(xmlCurrent);
+        }
+
+        bool LoadNodeYaml(Yaml::Node& node) override
+        {
+            Yaml::Node & currentNode = node[this->Name()];
+            for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+            {
+                if (!paramChild->LoadNodeYaml(currentNode))
+                    return true;
+            }
+            return true;
+        }
+
+        void SaveNodeYaml(Yaml::Node& node, bool full) const override
+        {
+            Yaml::Node& currentNode = node[this->Name()];
+            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+            {
+                if (full || paramChild->Changed())
+                    paramChild->SaveNodeYaml(currentNode, full);
+            }
         }
     };
 
@@ -423,7 +546,7 @@ namespace Cpl
                 tc->CloneNode(oc);
         }
 
-        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
             if (xmlCurrent)
@@ -438,7 +561,7 @@ namespace Cpl
                     const Unknown* paramChildEnd = this->ChildBeg(i + 1);
                     for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                     {
-                        if (!paramChild->LoadNode(xmlItem))
+                        if (!paramChild->LoadNodeXml(xmlItem))
                             return true;
                     }
                     xmlItem = xmlItem->NextSibling();
@@ -447,7 +570,7 @@ namespace Cpl
             return true;
         }
 
-        void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
             for (size_t i = 0; i < Size(); ++i)
@@ -458,11 +581,20 @@ namespace Cpl
                 for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                 {
                     if (full || paramChild->Changed())
-                        paramChild->SaveNode(xmlDoc, xmlItem, full);
+                        paramChild->SaveNodeXml(xmlDoc, xmlItem, full);
                 }
                 xmlCurrent->AppendNode(xmlItem);
             }
             xmlParent->AppendNode(xmlCurrent);
+        }
+
+        bool LoadNodeYaml(Yaml::Node& node) override
+        {
+            return true;
+        }
+
+        void SaveNodeYaml(Yaml::Node& node, bool full) const override
+        {
         }
     };
 
@@ -545,7 +677,7 @@ namespace Cpl
             }
         }
 
-        bool LoadNode(Xml::XmlNode<char>* xmlParent) override
+        bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
             if (xmlCurrent)
@@ -569,7 +701,7 @@ namespace Cpl
                             Unknown* paramChildEnd = ChildEnd(value);
                             for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                             {
-                                if (!paramChild->LoadNode(xmlValue))
+                                if (!paramChild->LoadNodeXml(xmlValue))
                                     return true;
                             }
                         }
@@ -580,7 +712,7 @@ namespace Cpl
             return true;
         }
 
-        void SaveNode(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
             for (typename Map::const_iterator it = this->_value.begin(); it != this->_value.end(); ++it)
@@ -597,13 +729,22 @@ namespace Cpl
                 for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                 {
                     if (full || paramChild->Changed())
-                        paramChild->SaveNode(xmlDoc, xmlValue, full);
+                        paramChild->SaveNodeXml(xmlDoc, xmlValue, full);
                 }
                 xmlItem->AppendNode(xmlValue);
 
                 xmlCurrent->AppendNode(xmlItem);
             }
             xmlParent->AppendNode(xmlCurrent);
+        }
+
+        bool LoadNodeYaml(Yaml::Node& node) override
+        {
+            return true;
+        }
+
+        void SaveNodeYaml(Yaml::Node& node, bool full) const override
+        {
         }
     };
 
