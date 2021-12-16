@@ -96,13 +96,14 @@ namespace Cpl
         return a + (a[a.size() - 1] == s[0] ? "" : s) + b;
     }
 
-    CPL_INLINE bool FileExists(const String& name)
+    CPL_INLINE bool FileExists(const String& path)
     {
-        if (access(name.c_str(), F_OK) == -1)
-        {
-            return false;
-        }
-        return true;
+#ifdef _MSC_VER
+        DWORD fileAttribute = ::GetFileAttributes(path.c_str());
+        return (fileAttribute != INVALID_FILE_ATTRIBUTES);
+#else
+        return (::access(path.c_str(), F_OK) != -1);
+#endif	//_MSC_VER
     }
 
     CPL_INLINE bool DirectoryExists(const String& path)
@@ -204,5 +205,14 @@ namespace Cpl
             return path.find(".") == 0 ? String("") : path;
         else
             return path.substr(0, pos);
+    }
+
+    inline String ExtensionByPath(const String& path)
+    {
+        size_t pos = path.find_last_of(".");
+        if (pos == std::string::npos)
+            return String();
+        else
+            return path.substr(pos + 1);
     }
 }

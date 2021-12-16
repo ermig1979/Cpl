@@ -28,6 +28,7 @@
 #include "Cpl/Log.h"
 #include "Cpl/Xml.h"
 #include "Cpl/Yaml.h"
+#include "Cpl/File.h"
 
 namespace Cpl
 {
@@ -35,12 +36,13 @@ namespace Cpl
     {
         ParamFormatXml,
         ParamFormatYaml,
+        ParamFormatByExt,
     };
 
     CPL_INLINE String ToStr(ParamFormat format)
     {
-        static const char* names[] = { "XML", "YAML"};
-        return format >= ParamFormatXml && format <= ParamFormatYaml ? names[format] : "";
+        static const char* names[] = { "XML", "YAML", "Auto detection by file extension" };
+        return format >= ParamFormatXml && format <= ParamFormatByExt ? names[format] : "";
     }
 
     //---------------------------------------------------------------------------------------------
@@ -72,7 +74,7 @@ namespace Cpl
             CloneNode((Unknown*)&other);
         }
 
-        bool Save(std::ostream& os, bool full, ParamFormat format = ParamFormatXml) const
+        bool Save(std::ostream& os, bool full, ParamFormat format) const
         {
             if (format == ParamFormatXml)
             {
@@ -100,14 +102,16 @@ namespace Cpl
             }
             else
             {
-                CPL_LOG_SS(Error, "Can't save Param in " << ToStr(format) << " format !");
+                CPL_LOG_SS(Error, "Can't save Param in '" << ToStr(format) << "' format !");
                 return false;
             }
             return true;
         }
 
-        bool Save(const String& path, bool full, ParamFormat format = ParamFormatXml) const
+        bool Save(const String& path, bool full, ParamFormat format = ParamFormatByExt) const
         {
+            if (!DetectFormat(path, format))
+                return false;
             bool result = false;
             std::ofstream ofs(path.c_str());
             if (ofs.is_open())
@@ -145,12 +149,12 @@ namespace Cpl
             }
             else
             {
-                CPL_LOG_SS(Error, "Can't load Param in " << ToStr(format) << " format !");
+                CPL_LOG_SS(Error, "Can't load Param in '" << ToStr(format) << "' format !");
                 return false;
             }
         }
 
-        bool Load(std::istream& is, ParamFormat format = ParamFormatXml)
+        bool Load(std::istream& is, ParamFormat format)
         {
             if (format == ParamFormatXml)
             {
@@ -173,13 +177,15 @@ namespace Cpl
             }
             else
             {
-                CPL_LOG_SS(Error, "Can't load Param in " << ToStr(format) << " format !");
+                CPL_LOG_SS(Error, "Can't load Param in '" << ToStr(format) << "' format !");
                 return false;
             }
         }
 
-        bool Load(const String& path, ParamFormat format = ParamFormatXml)
+        bool Load(const String& path, ParamFormat format = ParamFormatByExt)
         {
+            if (!DetectFormat(path, format))
+                return false;
             bool result = false;
             std::ifstream ifs(path.c_str());
             if (ifs.is_open())
@@ -202,6 +208,23 @@ namespace Cpl
             : _name(name)
             , _value()
         {
+        }
+
+        bool DetectFormat(const String & path, ParamFormat &format) const
+        {
+            if (format != ParamFormatByExt)
+                return true;
+            String ext = ToLowerCase(ExtensionByPath(path));
+            if (ext == "xml")
+                format = ParamFormatXml;
+            else if (ext == "yaml" || ext == "yml")
+                format = ParamFormatYaml;
+            else
+            {
+                CPL_LOG_SS(Error, "This file extension '" << ext << "' is not recognized! ");
+                return false;
+            }
+            return true;
         }
 
         bool LoadXml(Xml::File<char>& file)
@@ -297,10 +320,15 @@ namespace Cpl
 
         bool LoadNodeYaml(Yaml::Node& node) override
         {
-            Yaml::Node & value = node[this->Name()];
-            if (value.Type() != Yaml::Node::ScalarType)
-                return false;
-            Cpl::ToVal(value.As<String>(), this->_value);
+            Yaml::Node & current = node[this->Name()];
+            if (current.Type() != Yaml::Node::None)
+            {
+                if (current.Type() != Yaml::Node::ScalarType)
+                    return false;
+                String string = current.As<String>();
+                if(string != "\n")
+                    Cpl::ToVal(current.As<String>(), this->_value);
+            }
             return true;
         }
 
@@ -336,8 +364,8 @@ namespace Cpl
             else
             {
                 this->_value = this->_def;
-                CPL_LOG_SS(Warning, "Value " << value << " is lied out of valid range [ " << this->_min 
-                    << " .. " << this->_max << " ]! Default value " << this->_def << " will be used.");
+                CPL_LOG_SS(Warning, "Value " << value << " is out of valid range [" << this->_min 
+                    << " .. " << this->_max << "], default value " << this->_def << " will be used!");
             }
             return *this;
         }
@@ -379,6 +407,15 @@ namespace Cpl
 
         bool LoadNodeYaml(Yaml::Node& node) override
         {
+            Yaml::Node& current = node[this->Name()];
+            if (current.Type() != Yaml::Node::None)
+            {
+                if (current.Type() != Yaml::Node::ScalarType)
+                    return false;
+                T value;
+                Cpl::ToVal(current.As<String>(), value);
+                (*this)() = value;
+            }
             return true;
         }
     };
@@ -465,22 +502,27 @@ namespace Cpl
 
         bool LoadNodeYaml(Yaml::Node& node) override
         {
-            Yaml::Node & currentNode = node[this->Name()];
-            for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+            Yaml::Node & current = node[this->Name()];
+            if (current.Type() != Yaml::Node::None)
             {
-                if (!paramChild->LoadNodeYaml(currentNode))
-                    return true;
+                if (current.Type() != Yaml::Node::MapType)
+                    return false;
+                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+                {
+                    if (!paramChild->LoadNodeYaml(current))
+                        return true;
+                }
             }
             return true;
         }
 
         void SaveNodeYaml(Yaml::Node& node, bool full) const override
         {
-            Yaml::Node& currentNode = node[this->Name()];
+            Yaml::Node& current = node[this->Name()];
             for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
             {
                 if (full || paramChild->Changed())
-                    paramChild->SaveNodeYaml(currentNode, full);
+                    paramChild->SaveNodeYaml(current, full);
             }
         }
     };
@@ -590,11 +632,46 @@ namespace Cpl
 
         bool LoadNodeYaml(Yaml::Node& node) override
         {
+            Yaml::Node& current = node[this->Name()];
+            if (current.Type() != Yaml::Node::None)
+            {
+                if (current.Type() != Yaml::Node::SequenceType)
+                    return false;
+                Resize(current.Size());
+                for (size_t i = 0; i < Size(); ++i)
+                {
+                    Unknown* paramChild = this->ChildBeg(i);
+                    const Unknown* paramChildEnd = this->ChildBeg(i + 1);
+                    for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                    {
+                        if (!paramChild->LoadNodeYaml(current[i]))
+                            return true;
+                    }
+                }
+            }
             return true;
         }
 
         void SaveNodeYaml(Yaml::Node& node, bool full) const override
         {
+            Yaml::Node& current = node[this->Name()];
+            for (size_t i = 0; i < Size(); ++i)
+            {
+                Yaml::Node& childNode = current.PushBack();
+                const Unknown* paramChild = this->ChildBeg(i);
+                const Unknown* paramChildEnd = this->ChildBeg(i + 1);
+                bool saved = false;
+                for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                {
+                    if (full || paramChild->Changed())
+                    {
+                        paramChild->SaveNodeYaml(childNode, full);
+                        saved = true;
+                    }
+                }
+                if(!saved)
+                    this->ChildBeg(i)->SaveNodeYaml(childNode, full);
+            }
         }
     };
 
@@ -740,11 +817,51 @@ namespace Cpl
 
         bool LoadNodeYaml(Yaml::Node& node) override
         {
+            Yaml::Node& current = node[this->Name()];
+            if (current.Type() != Yaml::Node::None)
+            {
+                if (current.Type() != Yaml::Node::MapType)
+                    return false;
+                for (Yaml::Iterator it = current.Begin(), end = current.End(); it != end; it++)
+                {
+                    K key;
+                    Cpl::ToVal((*it).first, key);
+                    T& value = this->_value[key];
+                    if ((*it).second.Type() != Yaml::Node::None)
+                    {
+                        Unknown* paramChild = ChildBeg(value);
+                        Unknown* paramChildEnd = ChildEnd(value);
+                        for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                        {
+                            if (!paramChild->LoadNodeYaml((*it).second))
+                                return true;
+                        }
+                    }
+                }
+            }
             return true;
         }
 
         void SaveNodeYaml(Yaml::Node& node, bool full) const override
         {
+            Yaml::Node& current = node[this->Name()];
+            for (typename Map::const_iterator it = this->_value.begin(); it != this->_value.end(); ++it)
+            {
+                Yaml::Node& childNode = current[Cpl::ToStr(it->first)];
+                const Unknown* paramChild = this->ChildBeg(it->second);
+                const Unknown* paramChildEnd = this->ChildEnd(it->second);
+                bool saved = false;
+                for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                {
+                    if (full || paramChild->Changed())
+                    {
+                        paramChild->SaveNodeYaml(childNode, full);
+                        saved = true;
+                    }
+                }
+                if (!saved)
+                    this->ChildBeg(it->second)->SaveNodeYaml(childNode, full);
+            }
         }
     };
 

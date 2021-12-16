@@ -105,13 +105,13 @@ namespace Test
 
         TestParamHolder test, loaded;
 
-        test().children().push_back(ChildParam());
+        test().children().resize(2);
         test().children()[0].value() = 5;
 
         test.Save("vector_short.xml", false);
         test.Save("vector_full.xml", true);
 
-        if (!loaded.Load("vector_full.xml"))
+        if (!loaded.Load("vector_short.xml"))
             return false;
 
         return loaded.Equal(test);
@@ -340,13 +340,21 @@ namespace Test
         test().strProp().value() = "string";
 
 
-        test.Save("template_short.xml", false);
-        test.Save("template_full.xml", true);
+        test.Save("template_short.yml", false);
+        test.Save("template_full.yml", true);
 
-        if (!loaded.Load("template_full.xml"))
+        if (!loaded.Load("template_full.yml"))
             return false;
 
-        return loaded.Equal(test);
+        if (!loaded.Equal(test))
+        {
+            CPL_LOG_SS(Error, "loaded full != original");
+            loaded.Save("template_short_loaded.yml", false);
+            loaded.Save("template_full_loaded.yml", true);
+            return false;
+        }
+
+        return true;
     }
 }
 
