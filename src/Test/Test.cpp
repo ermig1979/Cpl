@@ -133,9 +133,9 @@ int main(int argc, char* argv[])
     if (options.help)
         return Test::PrintHelp();
 
-    Cpl::Log::s_log.SetStd();
-    Cpl::Log::s_log.SetFlags(Cpl::Log::BashFlags);
-    Cpl::Log::s_log.SetLevel(options.logLevel);
+    Cpl::Log::Global().SetStd();
+    Cpl::Log::Global().SetFlags(Cpl::Log::BashFlags);
+    Cpl::Log::Global().SetLevel(options.logLevel);
 
     Test::Groups groups;
     for (const Test::Group& group : Test::g_groups)

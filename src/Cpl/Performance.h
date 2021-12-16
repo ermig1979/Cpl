@@ -284,6 +284,18 @@ namespace Cpl
             return merged;
         }
 
+        void Clear()
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            _map.clear();
+        }
+
+        static PerformanceStorage& Global()
+        {
+            static PerformanceStorage storage;
+            return storage;
+        }
+
     private:
         typedef std::map<std::thread::id, FunctionMap> ThreadMap;
 
@@ -302,20 +314,16 @@ namespace Cpl
             return *thread;
         }
     };
-
-#if defined(CPL_IMPLEMENT)
-    PerformanceStorage PerformanceStorage::s_storage;
-#endif
 }
 
-#define CPL_PERF_FUNCF(flop) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)(Cpl::PerformanceStorage::s_storage.Get(CPL_FUNCTION, (int64_t)(flop)))
+#define CPL_PERF_FUNCF(flop) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)(Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, (int64_t)(flop)))
 #define CPL_PERF_FUNC() CPL_PERF_FUNCF(0)
-#define CPL_PERF_BEGF(desc, flop) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)(Cpl::PerformanceStorage::s_storage.Get(CPL_FUNCTION, desc, (int64_t)(flop)))
+#define CPL_PERF_BEGF(desc, flop) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)(Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc, (int64_t)(flop)))
 #define CPL_PERF_BEG(desc) CPL_PERF_BEGF(desc, 0)
-#define CPL_PERF_IFF(cond, desc, flop) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)((cond) ? Cpl::PerformanceStorage::s_storage.Get(CPL_FUNCTION, desc, (int64_t)(flop)) : NULL)
+#define CPL_PERF_IFF(cond, desc, flop) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)((cond) ? Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc, (int64_t)(flop)) : NULL)
 #define CPL_PERF_IF(cond, desc) CPL_PERF_IFF(cond, desc, 0)
-#define CPL_PERF_END(desc) Cpl::PerformanceStorage::s_storage.Get(CPL_FUNCTION, desc)->Leave();
-#define CPL_PERF_INITF(name, desc, flop) Cpl::PerformanceHolder name(Cpl::PerformanceStorage::s_storage.Get(CPL_FUNCTION, desc, (int64_t)(flop)), false);
+#define CPL_PERF_END(desc) Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc)->Leave();
+#define CPL_PERF_INITF(name, desc, flop) Cpl::PerformanceHolder name(Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc, (int64_t)(flop)), false);
 #define CPL_PERF_INIT(name, desc)  CPL_PERF_INITF(name, desc, 0);
 #define CPL_PERF_START(name) name.Enter(); 
 #define CPL_PERF_PAUSE(name) name.Leave(true);

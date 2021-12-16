@@ -37,7 +37,6 @@ namespace Cpl
 {
     class Log
     {
-
     public:
         enum Level
         {
@@ -145,7 +144,11 @@ namespace Cpl
                 _callback(ss.str().c_str(), _userData);
         }
 
-        static Log s_log;
+        static Log& Global()
+        {
+            static Log log;
+            return log;
+        }
 
     private:
         Callback _callback;
@@ -160,20 +163,16 @@ namespace Cpl
             std::cout << msg << std::flush;
         }
     };
-
-#if defined(CPL_IMPLEMENT)
-    Log Log::s_log;
-#endif
 }
 
 #define CPL_LOG(level, msg) \
-    Cpl::Log::s_log.Write(Cpl::Log::level, msg);
+    Cpl::Log::Global().Write(Cpl::Log::level, msg);
 
 #define CPL_LOG_SS(level, msg) \
     { \
         std::stringstream __ss; \
         __ss << msg; \
-        Cpl::Log::s_log.Write(Cpl::Log::level, __ss.str()); \
+        Cpl::Log::Global().Write(Cpl::Log::level, __ss.str()); \
     }
 
 #define CPL_IF_LOG_SS(cond, level, msg) \
@@ -181,7 +180,7 @@ namespace Cpl
     { \
         std::stringstream __ss; \
         __ss << msg; \
-        Cpl::Log::s_log.Write(Cpl::Log::level, __ss.str()); \
+        Cpl::Log::Global().Write(Cpl::Log::level, __ss.str()); \
     }
 
 #else

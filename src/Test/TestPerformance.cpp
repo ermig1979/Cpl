@@ -57,8 +57,9 @@ namespace Test
         for (size_t i = 0; i < 15; ++i)
             TestFuncV2();
 
+#if defined(CPL_PERF_ENABLE)
         typedef Cpl::PerformanceStorage::FunctionMap FunctionMap;
-        FunctionMap merged = Cpl::PerformanceStorage::s_storage.Merged();
+        FunctionMap merged = Cpl::PerformanceStorage::Global().Merged();
         for (FunctionMap::const_iterator function = merged.begin(); function != merged.end(); ++function)
         {
             const Cpl::PerformanceMeasurer& pm = *function->second;
@@ -68,6 +69,7 @@ namespace Test
             std::cout << std::setprecision(3) << std::fixed << pm.Average() << " ms";
             std::cout << std::setprecision(3) << " {min=" << pm.Min() << "; max=" << pm.Max() << "}" << std::endl;
         }
+#endif
 
         return true;
     }
