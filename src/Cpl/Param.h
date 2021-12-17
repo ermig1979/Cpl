@@ -277,7 +277,10 @@ namespace Cpl
             return this->Default() != this->_value;
         }
 
-        virtual CPL_INLINE Type Default() const = 0;
+        virtual CPL_INLINE Type Default() const
+        {
+            return Type();
+        }
 
     protected:
         typedef Cpl::Param<T> Base;
@@ -379,10 +382,20 @@ namespace Cpl
     {
         typedef T Type;
 
-        CPL_INLINE ParamValidator<Type> operator () () { return ParamValidator<Type>(this->_value, this->Default(), this->Min(), this->Max()); }
+        CPL_INLINE ParamValidator<Type> operator () () 
+        { 
+            return ParamValidator<Type>(this->_value, this->Default(), this->Min(), this->Max()); 
+        }
 
-        virtual CPL_INLINE Type Min() const = 0;
-        virtual CPL_INLINE Type Max() const = 0;
+        virtual CPL_INLINE Type Min() const
+        {
+            return std::numeric_limits<Type>::min();
+        }
+
+        virtual CPL_INLINE Type Max() const
+        {
+            return std::numeric_limits<Type>::max();
+        }
 
     protected:
         typedef Cpl::ParamValue<T> Base;
