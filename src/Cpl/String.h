@@ -66,7 +66,7 @@ namespace Cpl
         return ss.str();
     }
 
-    CPL_INLINE String ToStr(double value, int precision, bool zero)
+    CPL_INLINE String ToStr(double value, int precision, bool zero = true)
     {
         std::stringstream ss;
         if (value || zero)

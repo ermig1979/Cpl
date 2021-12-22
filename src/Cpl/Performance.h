@@ -290,6 +290,26 @@ namespace Cpl
             _map.clear();
         }
 
+        String Report() const
+        {
+            FunctionMap merged = Merged();
+            std::stringstream report;
+            for (FunctionMap::const_iterator function = merged.begin(); function != merged.end(); ++function)
+            {
+                const PerformanceMeasurer& pm = *function->second;
+                if (pm.Count())
+                {
+                    report << function->first << ": ";
+                    report << ToStr(pm.Total(), 0) << " ms" << " / " << pm.Count() << " = " << ToStr(pm.Average(), 3) << " ms";
+                    report << " {min=" << ToStr(pm.Min(), 3) << "; max=" << ToStr(pm.Max(), 3) << "}";
+                    if (pm.GFlops())
+                        report << " " << ToStr(pm.GFlops(), 1) << " GFlops";
+                    report << std::endl;
+                }
+            }
+            return report.str();
+        }
+
         static PerformanceStorage& Global()
         {
             static PerformanceStorage storage;

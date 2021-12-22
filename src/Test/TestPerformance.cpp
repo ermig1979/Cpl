@@ -42,8 +42,23 @@ namespace Test
 
     static void TestFuncV2()
     {
-        CPL_PERF_FUNC();
+        CPL_PERF_FUNCF(1000 * 1000 * 1000);
         std::this_thread::sleep_for(std::chrono::milliseconds(15));
+    }
+
+    static void TestFuncV3()
+    {
+        CPL_PERF_INIT(pm, "1 & 3");
+
+        CPL_PERF_START(pm);
+        std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        CPL_PERF_PAUSE(pm);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(15));
+
+        CPL_PERF_START(pm);
+        std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        CPL_PERF_PAUSE(pm);
     }
 
     bool PerformanceSimpleTest()
@@ -57,18 +72,11 @@ namespace Test
         for (size_t i = 0; i < 15; ++i)
             TestFuncV2();
 
+        for (size_t i = 0; i < 5; ++i)
+            TestFuncV3();
+
 #if defined(CPL_PERF_ENABLE)
-        typedef Cpl::PerformanceStorage::FunctionMap FunctionMap;
-        FunctionMap merged = Cpl::PerformanceStorage::Global().Merged();
-        for (FunctionMap::const_iterator function = merged.begin(); function != merged.end(); ++function)
-        {
-            const Cpl::PerformanceMeasurer& pm = *function->second;
-            std::cout << function->first << ": ";
-            std::cout << std::setprecision(0) << std::fixed << pm.Total() << " ms";
-            std::cout << " / " << pm.Count() << " = ";
-            std::cout << std::setprecision(3) << std::fixed << pm.Average() << " ms";
-            std::cout << std::setprecision(3) << " {min=" << pm.Min() << "; max=" << pm.Max() << "}" << std::endl;
-        }
+        std::cout << Cpl::PerformanceStorage::Global().Report();
 #endif
 
         return true;
