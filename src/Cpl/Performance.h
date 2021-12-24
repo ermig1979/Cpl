@@ -197,6 +197,21 @@ namespace Cpl
         {
             return (size_t)_count;
         }
+
+        CPL_INLINE String Name() const
+        {
+            return _name;
+        }
+
+        CPL_INLINE String ToStr() const
+        {
+            std::stringstream ss;
+            ss << Cpl::ToStr(Total(), 0) << " ms" << " / " << Count() << " = " << Cpl::ToStr(Average(), 3) << " ms";
+            ss << " {min=" << Cpl::ToStr(Min(), 3) << "; max=" << Cpl::ToStr(Max(), 3) << "}";
+            if (_flop)
+                ss << " " << Cpl::ToStr(GFlops(), 1) << " GFlops";
+            return ss.str();
+        }
     };
 
     //---------------------------------------------------------------------------------------------
@@ -284,6 +299,24 @@ namespace Cpl
             return merged;
         }
 
+        PerformanceMeasurer Merged(const String & name) const
+        {
+            PerformanceMeasurer merged(name);
+            std::lock_guard<std::mutex> lock(_mutex);
+            for (ThreadMap::const_iterator thread = _map.begin(); thread != _map.end(); ++thread)
+            {
+                FunctionMap::const_iterator function = thread->second.find(name);
+                if (function != thread->second.end() && function->second->Average() != 0)
+                {
+                    if (merged.Average() == 0)
+                        merged = *function->second;
+                    else
+                        merged.Merge(*function->second);
+                }
+            }
+            return merged;
+        }
+
         void Clear()
         {
             std::lock_guard<std::mutex> lock(_mutex);
@@ -298,14 +331,7 @@ namespace Cpl
             {
                 const PerformanceMeasurer& pm = *function->second;
                 if (pm.Count())
-                {
-                    report << function->first << ": ";
-                    report << ToStr(pm.Total(), 0) << " ms" << " / " << pm.Count() << " = " << ToStr(pm.Average(), 3) << " ms";
-                    report << " {min=" << ToStr(pm.Min(), 3) << "; max=" << ToStr(pm.Max(), 3) << "}";
-                    if (pm.GFlops())
-                        report << " " << ToStr(pm.GFlops(), 1) << " GFlops";
-                    report << std::endl;
-                }
+                    report << function->first << ": " << pm.ToStr() << std::endl;
             }
             return report.str();
         }
