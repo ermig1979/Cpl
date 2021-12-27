@@ -66,6 +66,13 @@ namespace Cpl
         return ss.str();
     }
 
+    CPL_INLINE String ToStr(size_t value, int width)
+    {
+        std::stringstream ss;
+        ss << std::setfill('0') << std::setw(width) << value;
+        return ss.str();
+    }
+
     CPL_INLINE String ToStr(double value, int precision, bool zero = true)
     {
         std::stringstream ss;
