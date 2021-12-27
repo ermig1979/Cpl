@@ -61,23 +61,28 @@ namespace Cpl
         typedef void(*Callback)(const char* msg, void* userData);
 
         Log()
-            : _callback(0)
-            , _userData(NULL)
-            , _level(Verbose)
+            : _levelMax(None)
             , _flags(DefaultFlags)
         {
         }
 
-        void SetLevel(Level level)
-        {
-            _level = level;
-        }
-
-        void SetCallback(Callback callback, void* userData)
+        void AddWriter(Level level, Callback callback, void* userData)
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            _callback = callback;
-            _userData = userData;
+            _writers.emplace_back(Writer(level, callback, userData));
+            _levelMax = std::max(_levelMax, level);
+        }
+
+        void AddStdWriter(Level level)
+        {
+            AddWriter(level, StdWrite, NULL);
+        }
+
+        void AddFileWriter(Level level, const String& fileName)
+        {
+            _files.emplace_back(std::ofstream(fileName));
+            if(_files.back().is_open())
+                AddWriter(level, FileWrite, &_files.back());
         }
 
         void SetFlags(Flags flags)
@@ -85,15 +90,9 @@ namespace Cpl
             _flags = flags;
         }
 
-        void SetStd()
+        CPL_INLINE bool Enable(Level level) const
         {
-            std::lock_guard<std::mutex> lock(_mutex);
-            _callback = StdWrite;
-        }
-
-        bool Enable(Level level) const
-        {
-            return _callback && _level >= level;
+            return level != None && _levelMax >= level;
         }
 
         void Write(Level level, const String& message) const
@@ -140,8 +139,11 @@ namespace Cpl
             ss << std::endl;
 
             std::lock_guard<std::mutex> lock(_mutex);
-            if (_callback != 0)
-                _callback(ss.str().c_str(), _userData);
+            for (size_t i = 0; i < _writers.size(); ++i)
+            {
+                if (level <= _writers[i].level)
+                    _writers[i].callback(ss.str().c_str(), _writers[i].userData);
+            }
         }
 
         static Log& Global()
@@ -151,16 +153,38 @@ namespace Cpl
         }
 
     private:
-        Callback _callback;
-        void* _userData;
+        struct Writer
+        {
+            Level level;
+            Callback callback;
+            void* userData;
+
+            Writer(Level l = None, Callback c = NULL, void* ud = NULL)
+                : level(l)
+                , callback(c)
+                , userData(ud)
+            {
+            }
+        };
+        typedef std::vector<Writer> Writers;
+        Writers _writers;
+
         mutable std::mutex _mutex;
         mutable std::map<std::thread::id, String> _prettyThreadNames;
-        Level _level;
+        mutable std::vector<std::ofstream> _files;
+        Level _levelMax;
         Flags _flags;
 
         static void StdWrite(const char* msg, void*)
         {
             std::cout << msg << std::flush;
+        }
+
+        static void FileWrite(const char* msg, void* userData)
+        {
+            std::ofstream& ofs = *(std::ofstream*)userData;
+            if(ofs.is_open())
+                ofs << msg << std::flush;
         }
     };
 }

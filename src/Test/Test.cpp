@@ -69,13 +69,15 @@ namespace Test
     {
         bool help;
         Log::Level logLevel;
+        String logFile;
         Strings include, exclude;
 
         Options(int argc, char* argv[])
             : Cpl::ArgsParser(argc, argv, true)
         {
             help = HasArg("-h", "-?");
-            logLevel = (Log::Level)Cpl::ToVal<Int>(GetArg2("-ll", "--logLevel", "3", false));
+            logLevel = (Log::Level)Cpl::ToVal<Int>(GetArg2("-ll", "--logLevel", "4", false));
+            logFile = GetArg2("-lf", "--logFile", "", false);
             include = GetArgs("-i", Strings(), false);
             exclude = GetArgs("-e", Strings(), false);
         }
@@ -133,9 +135,10 @@ int main(int argc, char* argv[])
     if (options.help)
         return Test::PrintHelp();
 
-    Cpl::Log::Global().SetStd();
+    Cpl::Log::Global().AddStdWriter(options.logLevel);
+    if(!options.logFile.empty())
+        Cpl::Log::Global().AddFileWriter(options.logLevel, options.logFile);
     Cpl::Log::Global().SetFlags(Cpl::Log::BashFlags);
-    Cpl::Log::Global().SetLevel(options.logLevel);
 
     Test::Groups groups;
     for (const Test::Group& group : Test::g_groups)

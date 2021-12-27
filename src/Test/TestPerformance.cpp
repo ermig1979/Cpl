@@ -76,7 +76,14 @@ namespace Test
             TestFuncV3();
 
 #if defined(CPL_PERF_ENABLE)
-        std::cout << Cpl::PerformanceStorage::Global().Report();
+        typedef Cpl::PerformanceStorage::FunctionMap FunctionMap;
+        Cpl::PerformanceStorage::FunctionMap merged = Cpl::PerformanceStorage::Global().Merged();
+        for (FunctionMap::const_iterator function = merged.begin(); function != merged.end(); ++function)
+        {
+            const Cpl::PerformanceMeasurer& pm = *function->second;
+            if (pm.Count())
+                CPL_LOG_SS(Verbose, function->first << ": " << pm.ToStr());
+        }
 #endif
 
         return true;
