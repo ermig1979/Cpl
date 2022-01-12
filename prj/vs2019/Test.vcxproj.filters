@@ -59,5 +59,8 @@
     <ClInclude Include="..\..\src\Cpl\Yaml.h">
       <Filter>Cpl</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Cpl\Html.h">
+      <Filter>Cpl</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

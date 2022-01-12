@@ -35,6 +35,7 @@
     <ClInclude Include="..\..\src\Cpl\Console.h" />
     <ClInclude Include="..\..\src\Cpl\Defs.h" />
     <ClInclude Include="..\..\src\Cpl\File.h" />
+    <ClInclude Include="..\..\src\Cpl\Html.h" />
     <ClInclude Include="..\..\src\Cpl\Log.h" />
     <ClInclude Include="..\..\src\Cpl\Param.h" />
     <ClInclude Include="..\..\src\Cpl\Performance.h" />
