@@ -925,6 +925,13 @@ struct Param_##name : public Cpl::ParamStruct<type> \
     Param_##name() : Base(#name) {} \
 } name;
 
+#define CPL_PARAM_STRUCT_MOD(type, name, value) \
+struct Param_##name : public Cpl::ParamStruct<type> \
+{ \
+    typedef Cpl::ParamStruct<type> Base; \
+    Param_##name() : Base(#name) { this->_value = value; } \
+} name;
+
 #define CPL_PARAM_VECTOR(type, name) \
 struct Param_##name : public Cpl::ParamVector<type> \
 { \

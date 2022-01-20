@@ -86,6 +86,51 @@ namespace Test
 
     //---------------------------------------------------------------------------------------------
 
+    struct OrigChildParam
+    {
+        CPL_PARAM_VALUE(Int, value, 0);
+        CPL_PARAM_VALUE(String, name, "");
+    };
+
+    OrigChildParam ChildParamA()
+    {
+        OrigChildParam param;
+        param.value() = 1;
+        param.name() = "A";
+        return param;
+    }
+
+    OrigChildParam ChildParamB()
+    {
+        OrigChildParam param;
+        param.value() = 2;
+        param.name() = "B";
+        return param;
+    }
+
+    bool ParamStructModTest()
+    {
+        struct TestParam
+        {
+            CPL_PARAM_STRUCT_MOD(OrigChildParam, childA, ChildParamA());
+            CPL_PARAM_STRUCT_MOD(OrigChildParam, childB, ChildParamB());
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        TestParamHolder test, loaded;
+
+        test.Save("struct_mod_short.xml", false);
+        test.Save("struct_mod_full.xml", true);
+
+        if (!loaded.Load("struct_mod_full.xml"))
+            return false;
+
+        return loaded.Equal(test);
+    }
+
+    //---------------------------------------------------------------------------------------------
+
     bool ParamVectorTest()
     {
         struct ChildParam
@@ -357,5 +402,6 @@ namespace Test
         return true;
     }
 }
+
 
 
