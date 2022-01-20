@@ -87,27 +87,27 @@ namespace Cpl
             for (size_t i = 0; i < indent_; ++i)
                 indent << " ";
             header << "| ";
-            for (ptrdiff_t col = 0; col < _width; ++col)
+            for (size_t col = 0; col < _width; ++col)
             {
                 header << ExpandText(_headers[col].name, _headers[col]) << " ";
                 if (_headers[col].separator)
-                    header << "|" << (col < _width - 1 ? " " : "");
+                    header << "|" << (col == _width - 1 ? "" : " ");
             }
             for (size_t i = 0; i < header.str().size(); ++i)
                 separator << "-";
             table << indent.str() << separator.str() << std::endl;
             table << indent.str() << header.str() << std::endl;
             table << indent.str() << separator.str() << std::endl;
-            for (ptrdiff_t row = 0; row < _height; ++row)
+            for (size_t row = 0; row < _height; ++row)
             {
                 table << indent.str() << "| ";
-                for (ptrdiff_t col = 0; col < _width; ++col)
+                for (size_t col = 0; col < _width; ++col)
                 {
                     const Cell& cell = _cells[row * _width + col];
                     table << ExpandText(cell.value, _headers[col]);
                     table << (cell.color == Black ? " " : "*");
                     if (_headers[col].separator)
-                        table << "|" << (col < _width - 1 ? " " : "");
+                        table << "|" << (col == _width - 1 ? "" : " ");
                 }
                 table << std::endl;
                 if (_rows[row].separator)
@@ -142,17 +142,17 @@ namespace Cpl
             html.WriteBegin("table", attributes, true, true);
 
             html.WriteBegin("tr", Html::Attr("style", "background-color:#e0e0e0; font-weight:bold;"), true, false);
-            for (ptrdiff_t col = 0; col < _width; ++col)
+            for (size_t col = 0; col < _width; ++col)
                 html.WriteValue("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator)), _headers[col].name, false);
             html.WriteEnd("tr", true, true);
 
-            for (ptrdiff_t row = 0; row < _height; ++row)
+            for (size_t row = 0; row < _height; ++row)
             {
                 std::stringstream style;
                 if (_rows[row].bold)
                     style << "font-weight: bold; background-color:#f0f0f0";
                 html.WriteBegin("tr", Html::Attr("align", "center", "style", style.str()), true, false);
-                for (ptrdiff_t col = 0; col < _width; ++col)
+                for (size_t col = 0; col < _width; ++col)
                 {
                     const Cell& cell = _cells[row * _width + col];
                     html.WriteBegin("td", Html::Attr("class", String("td") + Cpl::ToStr(_headers[col].separator) + ToStr(cell.color)), false, false);
