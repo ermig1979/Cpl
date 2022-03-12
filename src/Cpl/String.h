@@ -173,7 +173,9 @@ namespace Cpl
         while (current != String::npos)
         {
             size_t next = str.find(delimeter, current);
-            result.push_back(str.substr(current, next - current));
+            String value = str.substr(current, next - current);
+            if(!value.empty())
+                result.push_back(value);
             current = next;
             if (current != String::npos)
                 current += delimeter.size();
