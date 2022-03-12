@@ -96,6 +96,16 @@ namespace Cpl
         return a + (a[a.size() - 1] == s[0] ? "" : s) + b;
     }
 
+    CPL_INLINE String MakePath(const String& a, const String& b, const String& c)
+    {
+        return MakePath(MakePath(a, b), c);
+    }
+
+    CPL_INLINE String MakePath(const String& a, const String& b, const String& c, const String& d)
+    {
+        return MakePath(MakePath(MakePath(a, b), c), d);
+    }
+
     CPL_INLINE bool FileExists(const String& path)
     {
 #ifdef _MSC_VER
@@ -174,6 +184,15 @@ namespace Cpl
             std::cout << "There is an error during (" << errno << ") opening '" << directory << "' !" << std::endl;
 #endif
         return names;
+    }
+
+    CPL_INLINE Strings ToSortedVector(const StringList& list)
+    {
+        Strings vector;
+        for (StringList::const_iterator it = list.begin(); it != list.end(); ++it)
+            vector.push_back(*it);
+        std::sort(vector.begin(), vector.end());
+        return vector;
     }
 
     CPL_INLINE String GetNameByPath(const String& path_)
