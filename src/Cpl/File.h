@@ -226,12 +226,33 @@ namespace Cpl
             return path.substr(0, pos);
     }
 
-    inline String ExtensionByPath(const String& path)
+    CPL_INLINE String ExtensionByPath(const String& path)
     {
         size_t pos = path.find_last_of(".");
         if (pos == std::string::npos)
             return String();
         else
             return path.substr(pos + 1);
+    }
+
+    CPL_INLINE bool CopyDirectory(const String& src, const String& dst)
+    {
+#if defined(_MSC_VER)
+        try
+        {
+            typedef std::filesystem::copy_options opt;
+            std::filesystem::copy(src, dst, opt::overwrite_existing | opt::recursive);
+        }
+        catch (...)
+        {
+            return false;
+        }
+        return true;
+#elif defined (__linux__)
+        String com = String("cp -R ") + src + " " + dst;
+        return std::system(com.c_str()) == 0;
+#else
+        return false;
+#endif
     }
 }
