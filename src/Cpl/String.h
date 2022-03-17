@@ -235,4 +235,26 @@ namespace Cpl
         ReplaceAllInplace(res, pattern, repl);
         return res;
     }
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+    CPL_INLINE String CurrentDateTimeString()
+    {
+        std::time_t t;
+        std::time(&t);
+        std::tm* tm = ::localtime(&t);
+        std::stringstream ss;
+        ss << ToStr(tm->tm_year + 1900, 4) << "."
+            << ToStr(tm->tm_mon + 1, 2) << "."
+            << ToStr(tm->tm_mday, 2) << " "
+            << ToStr(tm->tm_hour, 2) << ":"
+            << ToStr(tm->tm_min, 2) << ":"
+            << ToStr(tm->tm_sec, 2);
+        return ss.str();
+    }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 }
