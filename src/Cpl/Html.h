@@ -131,11 +131,14 @@ namespace Cpl
             WriteEnd(name, false, line);
         }
 
-        void WriteText(const String& text, bool indent, bool line)
+        void WriteText(const String& text, bool indent, bool line, bool shielding = true)
         {
             if (indent && _line)
                 WriteIndent();
-            WriteWithShielding(text);
+            if (shielding)
+                WriteWithShielding(text);
+            else
+                _stream << text;
             if (line)
                 _stream << std::endl;
             _line = line;

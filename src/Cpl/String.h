@@ -257,4 +257,14 @@ namespace Cpl
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
+
+    CPL_INLINE String TimeToStr(double time)
+    {
+        std::stringstream ss;
+        ss << ToStr(int(time) / 60 / 60, 2)
+            << ":" << ToStr(int(time) / 60 % 60, 2)
+            << ":" << ToStr(int(time) % 60, 2)
+            << "." << ToStr(int(time * 1000) % 1000, 3);
+        return ss.str();
+    }
 }
