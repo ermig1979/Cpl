@@ -255,4 +255,16 @@ namespace Cpl
         return false;
 #endif
     }
+
+    CPL_INLINE bool DeleteDirectory(const String& dir)
+    {
+#if defined(_MSC_VER)
+        return false;
+#elif defined (__linux__)
+        String com = String("rm -rf ") + dir;
+        return std::system(com.c_str()) == 0;
+#else
+        return false;
+#endif
+    }
 }
