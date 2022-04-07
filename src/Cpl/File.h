@@ -237,7 +237,7 @@ namespace Cpl
 
     CPL_INLINE bool CopyDirectory(const String& src, const String& dst)
     {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && (MSC_VER > 1900)
         try
         {
             typedef std::filesystem::copy_options opt;
