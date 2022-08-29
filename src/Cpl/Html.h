@@ -1,7 +1,8 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar.
+* Copyright (c) 2021-2022 Yermalayeu Ihar,
+*               2021-2022 Andrey Drogolyub.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -124,10 +125,13 @@ namespace Cpl
             _line = line;
         }
 
-        void WriteValue(const String& name, const Attributes& attributes, const String& value, bool line)
+        void WriteValue(const String& name, const Attributes& attributes, const String& value, bool line, bool shielding = true)
         {
             WriteBegin(name, attributes, false, false);
-            WriteWithShielding(value);
+            if (shielding)
+                WriteWithShielding(value);
+            else
+                _stream << value;
             WriteEnd(name, false, line);
         }
 

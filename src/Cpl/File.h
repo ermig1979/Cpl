@@ -1,8 +1,8 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2021 Yermalayeu Ihar,
-*               2021-2021 Andrey Drogolyub.
+* Copyright (c) 2021-2022 Yermalayeu Ihar,
+*               2021-2022 Andrey Drogolyub.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -37,8 +37,10 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#include <filesystem>
 #endif
+
+#include <filesystem>
+namespace fs = std::filesystem;
 
 namespace
 {
@@ -88,22 +90,26 @@ namespace Cpl
 #endif
     }
 
-    CPL_INLINE String MakePath(const String& a, const String& b)
-    {
-        if (a.empty())
-            return b;
-        String s = FolderSeparator();
-        return a + (a[a.size() - 1] == s[0] ? "" : s) + b;
+    namespace {
+        CPL_INLINE Cpl::String MakePathImpl(const Cpl::String& a, const Cpl::String& b)
+        {
+            if (a.empty())
+                return b;
+            auto sep = Cpl::FolderSeparator();
+            return a + (a[a.size() - 1] == sep[0] ? "" : sep) + b;
+        }
     }
 
-    CPL_INLINE String MakePath(const String& a, const String& b, const String& c)
+    template<typename T, typename S>
+    CPL_INLINE String MakePath(const T& a, const S& b)
     {
-        return MakePath(MakePath(a, b), c);
+        return MakePathImpl(a, b);
     }
 
-    CPL_INLINE String MakePath(const String& a, const String& b, const String& c, const String& d)
+    template<typename T, typename S, typename... Ts>
+    CPL_INLINE String MakePath(const T& a, const S& b, const Ts&... args)
     {
-        return MakePath(MakePath(MakePath(a, b), c), d);
+        return MakePath(MakePath(a, b), args...);
     }
 
     CPL_INLINE bool FileExists(const String& path)
@@ -114,6 +120,26 @@ namespace Cpl
 #else
         return (::access(path.c_str(), F_OK) != -1);
 #endif	//_MSC_VER
+    }
+
+    // only $USER is currently supported
+    CPL_INLINE String SubstituteEnv(const String& path)
+    { 
+#ifdef _MSC_VER
+# pragma warning(push)
+# pragma warning(disable: 4996)
+#endif
+        static String user = getenv("USER"); // see https://community.hpe.com/t5/HP-UX-General/Impact-on-performance-by-excessive-getenv/m-p/4600627/highlight/true#M144885
+#ifdef _MSC_VER
+# pragma warning(pop)
+#endif
+        if (!user.empty())
+        {
+            String newPath = path;
+            Cpl::ReplaceAllInplace(newPath, "$USER", user);
+            return newPath;
+        }
+        return path;
     }
 
     CPL_INLINE bool DirectoryExists(const String& path)
@@ -235,9 +261,26 @@ namespace Cpl
             return path.substr(pos + 1);
     }
 
+    // path is absolute or relative to basePath, path and basePath must exist
+    // returns empty string if path is empty
+    CPL_INLINE String GetAbsolutePath(const String& path, const String& basePath)
+    {
+        if (path.empty())
+            return path;
+        if (fs::path(path).is_absolute())
+            return path;
+        fs::path p;
+        if (fs::is_directory(basePath))
+            p = fs::path(basePath) / path;
+        else
+            p = fs::path(basePath).parent_path() / path;
+        p = fs::canonical(p);
+        return fs::absolute(p).string();
+    }
+
     CPL_INLINE bool CopyDirectory(const String& src, const String& dst)
     {
-#if defined(_MSC_VER) && (MSC_VER > 1900)
+#if defined(_MSC_VER) && (_MSC_VER > 1900)
         try
         {
             typedef std::filesystem::copy_options opt;

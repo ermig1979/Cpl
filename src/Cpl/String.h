@@ -1,8 +1,8 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2021 Yermalayeu Ihar,
-*               2021-2021 Andrey Drogolyub.
+* Copyright (c) 2021-2022 Yermalayeu Ihar,
+*               2021-2022 Andrey Drogolyub.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -151,6 +151,22 @@ namespace Cpl
                 dst[i] = dst[i] - ('Z' - 'z');
         }
         return dst;
+    }
+
+    CPL_INLINE bool EndsWith(const String& str, const String& suffix)
+    {
+        return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
+    }
+
+    template<typename ... Args>
+    CPL_INLINE String Format(const std::string& format, Args ... args)
+    {
+        int size_s = std::snprintf(nullptr, 0, format.c_str(), args ...) + 1; // Extra space for '\0'
+        if (size_s <= 0) { throw std::runtime_error("Error during formatting."); }
+        auto size = static_cast<size_t>(size_s);
+        std::unique_ptr<char[]> buf(new char[size]);
+        std::snprintf(buf.get(), size, format.c_str(), args ...);
+        return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
     }
 
     template<typename Enum, int Size> CPL_INLINE Enum ToEnum(const String& string)
