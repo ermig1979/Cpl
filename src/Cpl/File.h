@@ -40,7 +40,11 @@
 #endif
 
 #include <filesystem>
+#if defined(_MSC_VER) && _MSC_VER <= 1900
+namespace fs = std::tr2::sys;
+#else
 namespace fs = std::filesystem;
+#endif
 
 namespace
 {
@@ -162,8 +166,8 @@ namespace Cpl
 
     CPL_INLINE bool CreatePath(const String& path)
     {
-#if defined(_MSC_VER) && _MSC_VER <= 1900
-        return std::tr2::sys::create_directories(std::tr2::sys::path(path));
+#if defined(_MSC_VER)
+        return fs::create_directories(fs::path(path));
 #else
         return std::system((String("mkdir -p ") + path).c_str()) == 0;
 #endif
@@ -224,13 +228,8 @@ namespace Cpl
     CPL_INLINE String GetNameByPath(const String& path_)
     {
 #ifdef _MSC_VER
-#if _MSC_VER <= 1900
-        std::tr2::sys::path path(path_);
+        fs::path path(path_);
         return path.filename().string();
-#else
-        std::filesystem::path path(path_);
-        return path.filename().string();
-#endif
 #elif defined(__unix__)
         size_t pos = path_.find_last_of("/");
         if (pos == std::string::npos)
@@ -280,11 +279,11 @@ namespace Cpl
 
     CPL_INLINE bool CopyDirectory(const String& src, const String& dst)
     {
-#if defined(_MSC_VER) && (_MSC_VER > 1900)
+#if defined(_MSC_VER)
         try
         {
-            typedef std::filesystem::copy_options opt;
-            std::filesystem::copy(src, dst, opt::overwrite_existing | opt::recursive);
+            typedef fs::copy_options opt;
+            fs::copy(src, dst, opt::overwrite_existing | opt::recursive);
         }
         catch (...)
         {
