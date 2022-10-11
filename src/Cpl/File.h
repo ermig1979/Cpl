@@ -39,7 +39,7 @@
 #include <windows.h>
 #endif
 
-#if defined(__GNUC__) && __GNUC__ <= 7
+#if defined(__GNUC__) && __GNUC__ <= 10
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 #elif defined(_MSC_VER) && _MSC_VER <= 1900

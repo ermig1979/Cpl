@@ -30,6 +30,7 @@
 #include <mutex>
 #include <map>
 #include <thread>
+#include <memory>
 
 #if defined(_MSC_VER)
 #ifndef NOMINMAX
