@@ -161,6 +161,37 @@ namespace Test
 
         return loaded.Equal(test);
     }
+
+    bool ParamVectorExTest()
+    {
+        struct ChildParam
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+        };
+
+        struct TestParam
+        {
+            CPL_PARAM_VALUE(String, name, "Name");
+            CPL_PARAM_VECTOR_EX(ChildParam, children);
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        TestParamHolder test, loaded;
+
+        test().children().resize(2);
+        test().children()[0].value() = 5;
+
+        test.Save("vector_short.xml", false);
+        test.Save("vector_full.xml", true);
+
+        if (!loaded.Load("vector_short.xml"))
+            return false;
+
+        return loaded.Equal(test);
+    }
 }
 
 //-------------------------------------------------------------------------------------------------

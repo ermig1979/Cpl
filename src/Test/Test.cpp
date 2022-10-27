@@ -55,6 +55,7 @@ namespace Test
     TEST_ADD(ParamStruct);
     TEST_ADD(ParamStructMod);
     TEST_ADD(ParamVector);
+    TEST_ADD(ParamVectorEx);
     TEST_ADD(ParamEnum);
     TEST_ADD(ParamMap);
     TEST_ADD(ParamMapBug);

@@ -263,6 +263,7 @@ namespace Cpl
         template<typename> friend struct ParamLimited;
         template<typename> friend struct ParamStruct;
         template<typename> friend struct ParamVector;
+        template<typename> friend struct ParamVectorEx;
         template<typename, typename> friend struct ParamMap;
     };
 
@@ -690,6 +691,89 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
+    template<class T> struct ParamVectorEx : public Cpl::ParamVector<T>
+    {
+    protected:
+        typedef Cpl::Param<int> Unknown;
+
+        ParamVectorEx(const String& name)
+            : ParamVector<T>(name)
+        {
+        }
+
+        CPL_INLINE String CountName() const { return "count"; }
+
+        bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
+            if (xmlCurrent)
+            {
+                auto countName = CountName();
+                auto itemName = Cpl::ParamVector<T>::ItemName();
+                size_t itemCount = Xml::CountChildren(xmlCurrent, itemName.c_str(), itemName.size());
+                size_t childrenCount = Xml::CountChildren(xmlCurrent);
+
+                auto* countNode = xmlCurrent->FirstNode(countName.c_str(), countName.size());
+                // 0 or 1 'count' node allowed
+                if (countNode)
+                {
+                    if (itemCount != childrenCount - 1)
+                        return false;
+
+                    int count = 0;
+                    Cpl::ToVal(countNode->Value(), count);
+                    if (count != itemCount)
+                        return false;
+                }
+                else if (itemCount != childrenCount)
+                    return false;
+                Cpl::ParamVector<T>::Resize(itemCount);
+                Xml::XmlNode<char>* xmlItem = xmlCurrent->FirstNode(itemName.c_str(), itemName.size());
+                auto firstName = xmlItem->Name();
+
+                size_t size = Cpl::ParamVector<T>::Size();
+                for (size_t i = 0; i < itemCount; )
+                {
+                    Unknown* paramChild = Cpl::ParamVector<T>::ChildBeg(i);
+                    const Unknown* paramChildEnd = Cpl::ParamVector<T>::ChildBeg(i + 1);
+                    for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                    {
+                        if (!paramChild->LoadNodeXml(xmlItem))
+                            return true;
+                    }
+                    ++i;
+
+                    xmlItem = xmlItem->NextSibling(itemName.c_str(), itemName.size());
+                }
+            }
+            return true;
+        }
+
+        void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        {
+            Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
+            
+            Xml::XmlNode<char>* xmlCount = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(CountName().c_str()));
+            xmlCount->Value(xmlDoc.AllocateString(Cpl::ToStr(Cpl::ParamVector<T>::Size()).c_str()));
+            xmlCurrent->AppendNode(xmlCount);
+
+            for (size_t i = 0; i < Cpl::ParamVector<T>::Size(); ++i)
+            {
+                const Unknown* paramChild = Cpl::ParamVector<T>::ChildBeg(i);
+                const Unknown* paramChildEnd = Cpl::ParamVector<T>::ChildBeg(i + 1);
+                Xml::XmlNode<char>* xmlItem = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(Cpl::ParamVector<T>::ItemName().c_str()));
+                for (; paramChild < paramChildEnd; paramChild = paramChild->End())
+                {
+                    if (full || paramChild->Changed())
+                        paramChild->SaveNodeXml(xmlDoc, xmlItem, full);
+                }
+                xmlCurrent->AppendNode(xmlItem);
+            }
+            xmlParent->AppendNode(xmlCurrent);
+        }
+    };
+
+    //---------------------------------------------------------------------------------------------
     template<class K, class T> struct ParamMap : public Cpl::Param<std::map<K, T>>
     {
         bool Changed() const override
@@ -936,6 +1020,13 @@ struct Param_##name : public Cpl::ParamStruct<type> \
 struct Param_##name : public Cpl::ParamVector<type> \
 { \
     typedef Cpl::ParamVector<type> Base; \
+    Param_##name() : Base(#name) {} \
+} name;
+
+#define CPL_PARAM_VECTOR_EX(type, name) \
+struct Param_##name : public Cpl::ParamVectorEx<type> \
+{ \
+    typedef Cpl::ParamVectorEx<type> Base; \
     Param_##name() : Base(#name) {} \
 } name;
 

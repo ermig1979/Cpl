@@ -2205,14 +2205,14 @@ namespace Cpl
             std::vector<Ch> _data;
         };
 
-        template<class Ch> inline size_t CountChildren(XmlNode<Ch> * node)
+        template<class Ch> inline size_t CountChildren(XmlNode<Ch>* node, const Ch* name = 0, size_t nameSize = 0, bool caseSensitive = true)
         {
-            XmlNode<Ch> *child = node->FirstNode();
+            XmlNode<Ch>* child = node->FirstNode(name, nameSize, caseSensitive);
             size_t count = 0;
             while (child)
             {
                 ++count;
-                child = child->NextSibling();
+                child = child->NextSibling(name, nameSize, caseSensitive);
             }
             return count;
         }
