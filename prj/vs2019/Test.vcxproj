@@ -25,6 +25,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\Test\Test.cpp" />
+    <ClCompile Include="..\..\src\Test\TestGeometryUtils.cpp" />
     <ClCompile Include="..\..\src\Test\TestParam.cpp" />
     <ClCompile Include="..\..\src\Test\TestPerformance.cpp" />
     <ClCompile Include="..\..\src\Test\TestTable.cpp" />
@@ -36,6 +37,7 @@
     <ClInclude Include="..\..\src\Cpl\Console.h" />
     <ClInclude Include="..\..\src\Cpl\Defs.h" />
     <ClInclude Include="..\..\src\Cpl\File.h" />
+    <ClInclude Include="..\..\src\Cpl\GeometryUtils.h" />
     <ClInclude Include="..\..\src\Cpl\Html.h" />
     <ClInclude Include="..\..\src\Cpl\Log.h" />
     <ClInclude Include="..\..\src\Cpl\Param.h" />

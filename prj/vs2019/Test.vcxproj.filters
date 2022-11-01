@@ -16,6 +16,9 @@
     <ClCompile Include="..\..\src\Test\TestTable.cpp">
       <Filter>Test</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\Test\TestGeometryUtils.cpp">
+      <Filter>Test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Test">
@@ -66,6 +69,9 @@
       <Filter>Cpl</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Cpl\Table.h">
+      <Filter>Cpl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Cpl\GeometryUtils.h">
       <Filter>Cpl</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,7 +1,8 @@
 /*
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2021 Yermalayeu Ihar.
+* Copyright (c) 2021-2022 Yermalayeu Ihar,
+*               2021-2022 Andrey Drogolyub.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +51,8 @@ namespace Test
     bool name##Test(); \
     bool name##AddToList(){ g_groups.push_back(Group(#name, name##Test)); return true; } \
     bool name##AtList = name##AddToList();
+
+    TEST_ADD(PolygonHasPoint);
 
     TEST_ADD(ParamSimple);
     TEST_ADD(ParamStruct);

@@ -1,7 +1,8 @@
 /*
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2021 Yermalayeu Ihar.
+* Copyright (c) 2021-2022 Yermalayeu Ihar,
+*               2021-2022 Andrey Drogolyub.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -184,10 +185,10 @@ namespace Test
         test().children().resize(2);
         test().children()[0].value() = 5;
 
-        test.Save("vector_short.xml", false);
-        test.Save("vector_full.xml", true);
+        test.Save("vector_ex_short.xml", false);
+        test.Save("vector_ex_full.xml", true);
 
-        if (!loaded.Load("vector_short.xml"))
+        if (!loaded.Load("vector_ex_short.xml"))
             return false;
 
         return loaded.Equal(test);
@@ -309,10 +310,10 @@ namespace Test
 
         copy.Clone(test);
 
-        test.Save("map_short.xml", false);
-        copy.Save("map_copy_full.xml", true);
+        test.Save("map_ex_short.xml", false);
+        copy.Save("map_ex_copy_full.xml", true);
 
-        if (!loaded.Load("map_copy_full.xml"))
+        if (!loaded.Load("map_ex_copy_full.xml"))
             return false;
 
         return loaded.Equal(test);
