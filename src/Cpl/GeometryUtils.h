@@ -197,6 +197,16 @@ namespace Cpl
         return (p1.x * p2.y - p1.y * p2.x);
     }
 
+    template <typename T> CPL_INLINE Point<T> Max(const Point<T>& p1, const Point<T>& p2)
+    {
+        return Point<T>(std::max(p1.x, p2.x), std::max(p1.y, p2.y));
+    }
+
+    template <typename T> CPL_INLINE Point<T> Min(const Point<T>& p1, const Point<T>& p2)
+    {
+        return Point<T>(std::min(p1.x, p2.x), std::min(p1.y, p2.y));
+    }
+
     //---------------------------------------------------------------------------------------------
 
     template <typename T> struct Rectangle
@@ -296,7 +306,7 @@ namespace Cpl
 
         template <typename TX, typename TY> CPL_INLINE bool Contains(TX x_, TY y_) const
         {
-            return Contains(Point(x_, y_));
+            return Contains(Point<T>(x_, y_));
         }
 
         template <typename TR> CPL_INLINE bool Contains(const Rectangle <TR>& r) const
@@ -326,6 +336,11 @@ namespace Cpl
             bool tb = y < r.Bottom();
             bool bt = Bottom() > r.y;
             return (lr == rl) && (tb == bt);
+        }
+
+        CPL_INLINE std::vector<Point<T> > Polygon() const
+        {
+            return std::vector<Point<T> >( { Point<T>(x, y), Point<T>(x, y + h), Point<T>(x + w, y + h), Point<T>(x + w, y) } );
         }
     };
 
@@ -399,23 +414,63 @@ namespace Cpl
         return CrossScore(a1, a2, b1, b2) != 0;
     }
 
-    template<class T> CPL_INLINE T Outside()
-    {
-        return -1000;
-    }
-
-    template<> CPL_INLINE double Outside<double>()
-    {
-        return -1000000.0;
-    }
-
-    template <class TPolygon, class T, template<class> class TPoint>
-    CPL_INLINE bool PolygonHasPoint(const TPolygon & polygon, const TPoint<T> & point, const TPoint<T>& outside = TPoint<T>(Outside<T>(), Outside<T>()))
+    template <class T, template<class> class TPoint> CPL_INLINE Point<T> OutsidePoint(const std::vector<Point<T> >& polygon)
     {
         size_t size = polygon.size();
+        Point<T> outside = polygon[0];
+        for (size_t i = 1; i < size; ++i)
+            outside = Max<T>(outside, polygon[i]);
+        return outside + Point<T>(1, 1);
+    }
+
+    template <class T, template<class> class TPoint> CPL_INLINE Rectangle<T> BoundingBox(const std::vector<TPoint<T> >& polygon)
+    {
+        size_t size = polygon.size();
+        Point<T> min = polygon[0], max = polygon[0];
+        for (size_t i = 1; i < size; ++i)
+            min = Min<T>(min, polygon[i]), max = Max<T>(max, polygon[i]);
+        return Rectangle<T>(min, max - min);
+    }
+
+    template <class T, template<class> class TPoint>
+    CPL_INLINE bool PolygonHasPoint(const std::vector<TPoint<T> >& polygon, const TPoint<T> & point, TPoint<T> outside = TPoint<T>())
+    {
+        if (outside == Point<T>())
+            outside = OutsidePoint<T, TPoint>(polygon);
+        size_t size = polygon.size();
         int crossScore = CrossScore(point, outside, polygon[size - 1], polygon[0]);
-        for(size_t i = 1; i < size; ++i)
+        for (size_t i = 1; i < size; ++i)
+        {
+            if (point == polygon[i])
+                return true;
             crossScore += CrossScore(point, outside, polygon[i - 1], polygon[i]);
-        return crossScore != 0;
+        }
+        return crossScore != 0 || point == polygon[0];
+    }
+
+    template <class T, template<class> class TPoint>
+    CPL_INLINE bool PolygonOverlapsRectangle(const std::vector<TPoint<T> >& polygon, const Rectangle<T>& rect)
+    {
+        Rectangle<T> bbox = BoundingBox(polygon);
+        Point<T> outside = Point<T>(bbox.x - 1, bbox.y - 1);
+        if (!bbox.Overlaps(rect))
+            return false;
+        if (rect.Contains(bbox))
+            return true;
+        std::vector<Point<T> > points = rect.Polygon();
+        for(int i = 0; i < 4; ++i)
+            if (bbox.Contains(points[i]) && PolygonHasPoint(polygon, points[i], outside))
+                return true;
+        size_t size = polygon.size();
+        for (size_t c = 0; c < size; ++c)
+        {
+            size_t p = c ? c - 1 : size - 1;
+            if (rect.Contains(polygon[c]))
+                return true;
+            for (int i = 0; i < 4; ++i)
+                if (CrossScore(polygon[c], polygon[p], points[i], points[(i + 1) & 3]))
+                    return true;
+        }
+        return false;
     }
 }

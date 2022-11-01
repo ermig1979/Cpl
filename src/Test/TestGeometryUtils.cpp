@@ -28,11 +28,12 @@
 
 namespace Test
 {
-    bool PolygonHasPointTest()
-    {
-        typedef Cpl::Point<int> Point;
-        typedef std::vector<Point> Polygon;
+    typedef Cpl::Point<int> Point;
+    typedef std::vector<Point> Polygon;
+    typedef Cpl::Rectangle<int> Rect;
 
+    Polygon CreatePolygon()
+    {
         Polygon polygon;
         polygon.push_back(Point(2, 2));
         polygon.push_back(Point(4, -2));
@@ -41,6 +42,12 @@ namespace Test
         polygon.push_back(Point(9, 4));
         polygon.push_back(Point(-1, 6));
         polygon.push_back(Point(-1, 2));
+        return polygon;
+    }
+
+    bool PolygonHasPointTest()
+    {
+        Polygon polygon = CreatePolygon();
 
         if (Cpl::PolygonHasPoint(polygon, Point(0, 0)) == true)
             return false;
@@ -58,6 +65,31 @@ namespace Test
             return false;
 
         if (Cpl::PolygonHasPoint(polygon, Point(2, 2)) == false)
+            return false;
+
+        return true;
+    }
+
+    bool PolygonOverlapsRectangleTest()
+    {
+        Polygon polygon = CreatePolygon();
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, Rect(-1, -1, 2, 2)) == true)
+            return false;
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, Rect(6, 6, 9, 9)) == true)
+            return false;
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, Rect(4, 0, 3, 3)) == false)
+            return false;
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, Rect(8, 3, 3, 3)) == false)
+            return false;
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, Rect(1, -8, 5, 3)) == false)
+            return false;
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, Rect(-10, -10, 20, 20)) == false)
             return false;
 
         return true;

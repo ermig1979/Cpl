@@ -53,6 +53,7 @@ namespace Test
     bool name##AtList = name##AddToList();
 
     TEST_ADD(PolygonHasPoint);
+    TEST_ADD(PolygonOverlapsRectangle);
 
     TEST_ADD(ParamSimple);
     TEST_ADD(ParamStruct);
