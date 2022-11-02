@@ -54,6 +54,7 @@ namespace Test
 
     TEST_ADD(PolygonHasPoint);
     TEST_ADD(PolygonOverlapsRectangle);
+    TEST_ADD(PolygonOverlapsRectangleFloat);
 
     TEST_ADD(ParamSimple);
     TEST_ADD(ParamStruct);

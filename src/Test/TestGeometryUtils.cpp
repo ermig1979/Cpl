@@ -32,6 +32,10 @@ namespace Test
     typedef std::vector<Point> Polygon;
     typedef Cpl::Rectangle<int> Rect;
 
+    typedef Cpl::Point<float> PointF;
+    typedef std::vector<PointF> PolygonF;
+    typedef Cpl::Rectangle<float> RectF;
+
     Polygon CreatePolygon()
     {
         Polygon polygon;
@@ -90,6 +94,32 @@ namespace Test
             return false;
 
         if (Cpl::PolygonOverlapsRectangle(polygon, Rect(-10, -10, 20, 20)) == false)
+            return false;
+
+        return true;
+    }
+
+    bool PolygonOverlapsRectangleFloatTest()
+    {
+        PolygonF polygon = {
+            {0, 0},
+            {1, 0.5f},
+            {2, 0},
+            {2, 2},
+            {1, 1.5f},
+            {0, 2}
+        };
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, RectF(0.75f, 0.f, 0.5f, 0.25f)) == true)
+            return false;
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, RectF(0.75f, 0.f, 0.5f, 0.5f)) == false)
+            return false;
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, RectF(0.f, 0.f, 0.5f, 0.5f)) == false)
+            return false;
+
+        if (Cpl::PolygonOverlapsRectangle(polygon, RectF(0.f, 0.5f, 0.5f, 0.5f)) == false)
             return false;
 
         return true;
