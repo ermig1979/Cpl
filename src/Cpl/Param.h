@@ -52,9 +52,9 @@ namespace Cpl
     template<typename> struct ParamLimited;
     template<typename> struct ParamStruct;
     template<typename> struct ParamVector;
-    template<typename> struct ParamVectorEx;
+    template<typename> struct ParamVectorV2;
     template<typename, typename> struct ParamMap;
-    template<typename, typename> struct ParamMapEx;
+    template<typename, typename> struct ParamMapV2;
 
     template<class T> struct Param
     {
@@ -266,9 +266,9 @@ namespace Cpl
         template<typename> friend struct ParamLimited;
         template<typename> friend struct ParamStruct;
         template<typename> friend struct ParamVector;
-        template<typename> friend struct ParamVectorEx;
+        template<typename> friend struct ParamVectorV2;
         template<typename, typename> friend struct ParamMap;
-        template<typename, typename> friend struct ParamMapEx;
+        template<typename, typename> friend struct ParamMapV2;
     };
 
     //---------------------------------------------------------------------------------------------
@@ -695,12 +695,12 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
-    template<class T> struct ParamVectorEx : public Cpl::ParamVector<T>
+    template<class T> struct ParamVectorV2 : public Cpl::ParamVector<T>
     {
     protected:
         typedef Cpl::Param<int> Unknown;
 
-        ParamVectorEx(const String& name)
+        ParamVectorV2(const String& name)
             : ParamVector<T>(name)
         {
         }
@@ -965,12 +965,12 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
-    template<class K, class T> struct ParamMapEx : public Cpl::ParamMap<K, T>
+    template<class K, class T> struct ParamMapV2 : public Cpl::ParamMap<K, T>
     {
     protected:
         typedef Cpl::Param<int> Unknown;
 
-        ParamMapEx(const String& name)
+        ParamMapV2(const String& name)
             : ParamMap<K, T>(name)
         {
         }
@@ -1121,10 +1121,10 @@ struct Param_##name : public Cpl::ParamVector<type> \
     Param_##name() : Base(#name) {} \
 } name;
 
-#define CPL_PARAM_VECTOR_EX(type, name) \
-struct Param_##name : public Cpl::ParamVectorEx<type> \
+#define CPL_PARAM_VECTOR_V2(type, name) \
+struct Param_##name : public Cpl::ParamVectorV2<type> \
 { \
-    typedef Cpl::ParamVectorEx<type> Base; \
+    typedef Cpl::ParamVectorV2<type> Base; \
     Param_##name() : Base(#name) {} \
 } name;
 
@@ -1135,10 +1135,10 @@ struct Param_##name : public Cpl::ParamMap<key, type> \
     Param_##name() : Base(#name) {} \
 } name;
 
-#define CPL_PARAM_MAP_EX(key, type, name) \
-struct Param_##name : public Cpl::ParamMapEx<key, type> \
+#define CPL_PARAM_MAP_V2(key, type, name) \
+struct Param_##name : public Cpl::ParamMapV2<key, type> \
 { \
-    typedef Cpl::ParamMapEx<key, type> Base; \
+    typedef Cpl::ParamMapV2<key, type> Base; \
     Param_##name() : Base(#name) {} \
 } name;
 

@@ -163,7 +163,7 @@ namespace Test
         return loaded.Equal(test);
     }
 
-    bool ParamVectorExTest()
+    bool ParamVectorV2Test()
     {
         struct ChildParam
         {
@@ -175,7 +175,7 @@ namespace Test
         struct TestParam
         {
             CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_VECTOR_EX(ChildParam, children);
+            CPL_PARAM_VECTOR_V2(ChildParam, children);
         };
 
         CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
@@ -185,10 +185,10 @@ namespace Test
         test().children().resize(2);
         test().children()[0].value() = 5;
 
-        test.Save("vector_ex_short.xml", false);
-        test.Save("vector_ex_full.xml", true);
+        test.Save("vector_v2_short.xml", false);
+        test.Save("vector_v2_full.xml", true);
 
-        if (!loaded.Load("vector_ex_short.xml"))
+        if (!loaded.Load("vector_v2_short.xml"))
             return false;
 
         return loaded.Equal(test);
@@ -286,7 +286,7 @@ namespace Test
         return loaded.Equal(test);
     }
 
-    bool ParamMapExTest()
+    bool ParamMapV2Test()
     {
         struct ValueParam
         {
@@ -298,7 +298,7 @@ namespace Test
         struct TestParam
         {
             CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_MAP_EX(String, ValueParam, map);
+            CPL_PARAM_MAP_V2(String, ValueParam, map);
         };
 
         CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
@@ -310,10 +310,10 @@ namespace Test
 
         copy.Clone(test);
 
-        test.Save("map_ex_short.xml", false);
-        copy.Save("map_ex_copy_full.xml", true);
+        test.Save("map_v2_short.xml", false);
+        copy.Save("map_v2_copy_full.xml", true);
 
-        if (!loaded.Load("map_ex_copy_full.xml"))
+        if (!loaded.Load("map_v2_copy_full.xml"))
             return false;
 
         return loaded.Equal(test);
