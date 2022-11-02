@@ -319,9 +319,9 @@ namespace Cpl
             return Contains(Rectangle<T>(x_, y_, w_, h_));
         }
 
-        template <typename TR> CPL_INLINE Rectangle<T> Intersection(const Rectangle<TR>& r) const
+        template <typename TR> CPL_INLINE Rectangle<T> Intersection(const Rectangle<TR>& rect) const
         {
-            Rectangle<T> _r(r);
+            Rectangle<T> _r(rect);
             T l = std::max(x, _r.x);
             T t = std::max(y, _r.y);
             T r = std::max(l, std::min(Right(), _r.Right()));
