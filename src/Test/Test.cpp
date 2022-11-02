@@ -54,15 +54,16 @@ namespace Test
 
     TEST_ADD(PolygonHasPoint);
     TEST_ADD(PolygonOverlapsRectangle);
+    TEST_ADD(PolygonOverlapsRectangleFloat);
 
     TEST_ADD(ParamSimple);
     TEST_ADD(ParamStruct);
     TEST_ADD(ParamStructMod);
     TEST_ADD(ParamVector);
-    TEST_ADD(ParamVectorEx);
+    TEST_ADD(ParamVectorV2);
     TEST_ADD(ParamEnum);
     TEST_ADD(ParamMap);
-    TEST_ADD(ParamMapEx);
+    TEST_ADD(ParamMapV2);
     TEST_ADD(ParamMapBug);
     TEST_ADD(ParamLimited);
     TEST_ADD(ParamTemplate);
