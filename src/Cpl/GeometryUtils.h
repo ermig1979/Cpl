@@ -1,7 +1,8 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar.
+* Copyright (c) 2021-2022 Yermalayeu Ihar,
+*               2021-2022 Andrey Drogolyub.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +26,8 @@
 #pragma once
 
 #include "Cpl/Defs.h"
+
+#include <math.h>
 
 namespace Cpl
 {

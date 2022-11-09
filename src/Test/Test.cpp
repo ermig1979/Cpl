@@ -69,6 +69,10 @@ namespace Test
     TEST_ADD(ParamTemplate);
 
     TEST_ADD(PerformanceSimple);
+    TEST_ADD(PerformanceStdThread);
+#if defined(__linux__)
+    TEST_ADD(PerformancePthread);
+#endif
 
     TEST_ADD(TableSimple);
 

@@ -1,7 +1,7 @@
 /*
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2021 Yermalayeu Ihar.
+* Copyright (c) 2021-2022 Yermalayeu Ihar.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -63,6 +63,10 @@ namespace Test
 
     bool PerformanceSimpleTest()
     {
+#if defined(CPL_PERF_ENABLE)
+        Cpl::PerformanceStorage::Global().Clear();
+#endif
+
         for (size_t i = 0; i < 5; ++i)
             TestFuncV0();
 
@@ -76,16 +80,77 @@ namespace Test
             TestFuncV3();
 
 #if defined(CPL_PERF_ENABLE)
-        typedef Cpl::PerformanceStorage::FunctionMap FunctionMap;
-        Cpl::PerformanceStorage::FunctionMap merged = Cpl::PerformanceStorage::Global().Merged();
-        for (FunctionMap::const_iterator function = merged.begin(); function != merged.end(); ++function)
+        CPL_LOG_SS(Verbose, std::endl << Cpl::PerformanceStorage::Global().Report());
+#endif
+
+        return true;
+    }
+
+    static void TestFuncV4()
+    {
+        std::stringstream ss;
+        ss << std::this_thread::get_id();
+        CPL_PERF_BEG(ss.str());
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    bool PerformanceStdThreadTest()
+    {
+#if defined(CPL_PERF_ENABLE)
+        Cpl::PerformanceStorage::Global().Clear();
+#endif
+
+        const size_t n = 10, t = 10;
+        typedef std::thread Thread;
+        typedef std::vector<Thread> Threads;
+        Threads threads;
+
+        for (size_t j = 0; j < t; ++j)
         {
-            const Cpl::PerformanceMeasurer& pm = *function->second;
-            if (pm.Count())
-                CPL_LOG_SS(Verbose, function->first << ": " << pm.ToStr());
+            for (size_t i = 0; i < n; ++i)
+                threads.push_back(Thread(&TestFuncV4));
+
+            for (size_t i = 0; i < threads.size(); ++i)
+                if (threads[i].joinable())
+                    threads[i].join();
         }
+
+#if defined(CPL_PERF_ENABLE)
+        CPL_LOG_SS(Verbose, std::endl << Cpl::PerformanceStorage::Global().Report());
 #endif
 
         return true;
     }
 }
+
+#if defined(__linux__)
+#include <pthread.h>
+
+namespace Test
+{
+    static void* TestFuncV5(void*)
+    {
+        CPL_PERF_FUNC();
+        return 0;
+    }  
+
+    bool PerformancePthreadTest()
+    {
+#if defined(CPL_PERF_ENABLE)
+        Cpl::PerformanceStorage::Global().Clear();
+#endif
+        for (int i = 0; i < 2; ++i)
+        {
+            pthread_t thread_run;
+            pthread_create(&thread_run, NULL, TestFuncV5, NULL);
+            pthread_join(thread_run, NULL);
+        }
+
+#if defined(CPL_PERF_ENABLE)
+        CPL_LOG_SS(Verbose, std::endl << Cpl::PerformanceStorage::Global().Report());
+#endif
+
+        return true;
+    }
+}
+#endif

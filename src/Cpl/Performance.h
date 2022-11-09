@@ -348,7 +348,6 @@ namespace Cpl
 
         ThreadMap _map;
         mutable std::mutex _mutex;
-        String _report;
 
         CPL_INLINE FunctionMap& ThisThread()
         {
