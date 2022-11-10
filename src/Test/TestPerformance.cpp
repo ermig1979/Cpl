@@ -66,7 +66,6 @@ namespace Test
 #if defined(CPL_PERF_ENABLE)
         Cpl::PerformanceStorage::Global().Clear();
 #endif
-
         for (size_t i = 0; i < 5; ++i)
             TestFuncV0();
 
@@ -78,11 +77,9 @@ namespace Test
 
         for (size_t i = 0; i < 5; ++i)
             TestFuncV3();
-
 #if defined(CPL_PERF_ENABLE)
         CPL_LOG_SS(Verbose, std::endl << Cpl::PerformanceStorage::Global().Report());
 #endif
-
         return true;
     }
 
@@ -99,7 +96,6 @@ namespace Test
 #if defined(CPL_PERF_ENABLE)
         Cpl::PerformanceStorage::Global().Clear();
 #endif
-
         const size_t n = 10, t = 10;
         typedef std::thread Thread;
         typedef std::vector<Thread> Threads;
@@ -114,13 +110,24 @@ namespace Test
                 if (threads[i].joinable())
                     threads[i].join();
         }
-
 #if defined(CPL_PERF_ENABLE)
         CPL_LOG_SS(Verbose, std::endl << Cpl::PerformanceStorage::Global().Report());
 #endif
+        return true;
+    }
+
+#if defined(CPL_TEST_NORETURN)
+    static void* TestFuncV5(void*)
+    {
+    }
+
+    bool PerformanceNoReturnTest()
+    {
+        TestFuncV5(NULL);
 
         return true;
     }
+#endif
 }
 
 #if defined(__linux__)
@@ -128,7 +135,7 @@ namespace Test
 
 namespace Test
 {
-    static void* TestFuncV5(void*)
+    static void* TestFuncV6(void*)
     {
         CPL_PERF_FUNC();
         return 0;
@@ -139,17 +146,15 @@ namespace Test
 #if defined(CPL_PERF_ENABLE)
         Cpl::PerformanceStorage::Global().Clear();
 #endif
-        for (int i = 0; i < 2; ++i)
+        for (int i = 0; i < 1; ++i)
         {
             pthread_t thread_run;
-            pthread_create(&thread_run, NULL, TestFuncV5, NULL);
+            pthread_create(&thread_run, NULL, TestFuncV6, NULL);
             pthread_join(thread_run, NULL);
         }
-
 #if defined(CPL_PERF_ENABLE)
         CPL_LOG_SS(Verbose, std::endl << Cpl::PerformanceStorage::Global().Report());
 #endif
-
         return true;
     }
 }

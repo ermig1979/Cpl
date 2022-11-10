@@ -70,6 +70,9 @@ namespace Test
 
     TEST_ADD(PerformanceSimple);
     TEST_ADD(PerformanceStdThread);
+#if defined(CPL_TEST_NORETURN)
+    TEST_ADD(PerformanceNoReturn);
+#endif
 #if defined(__linux__)
     TEST_ADD(PerformancePthread);
 #endif

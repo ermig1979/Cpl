@@ -23,6 +23,8 @@
 */
 #pragma once
 
+//#define CPL_TEST_NORETURN
+
 #include "Cpl/Defs.h"
 #include "Cpl/Args.h"
 #include "Cpl/Log.h"
