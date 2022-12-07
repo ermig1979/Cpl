@@ -132,20 +132,24 @@ namespace Cpl
 
     // only $USER is currently supported
     CPL_INLINE String SubstituteEnv(const String& path)
-    { 
+    {
 #ifdef _MSC_VER
 # pragma warning(push)
 # pragma warning(disable: 4996)
 #endif
-        static String user = getenv("USER"); // see https://community.hpe.com/t5/HP-UX-General/Impact-on-performance-by-excessive-getenv/m-p/4600627/highlight/true#M144885
+        static char* userPtr = getenv("USER"); // see https://community.hpe.com/t5/HP-UX-General/Impact-on-performance-by-excessive-getenv/m-p/4600627/highlight/true#M144885
 #ifdef _MSC_VER
 # pragma warning(pop)
 #endif
-        if (!user.empty())
+        if (userPtr)
         {
-            String newPath = path;
-            Cpl::ReplaceAllInplace(newPath, "$USER", user);
-            return newPath;
+            String user = userPtr;
+            if (!user.empty())
+            {
+                String newPath = path;
+                Cpl::ReplaceAllInplace(newPath, "$USER", user);
+                return newPath;
+            }
         }
         return path;
     }
