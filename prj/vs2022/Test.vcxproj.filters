@@ -16,6 +16,9 @@
     <ClCompile Include="..\..\src\Test\TestTable.cpp">
       <Filter>Test</Filter>
     </ClCompile>
+	<ClCompile Include="..\..\src\Test\TestString.cpp">
+      <Filter>Test</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\Test\TestGeometryUtils.cpp">
       <Filter>Test</Filter>
     </ClCompile>

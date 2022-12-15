@@ -28,6 +28,7 @@
     <ClCompile Include="..\..\src\Test\TestGeometryUtils.cpp" />
     <ClCompile Include="..\..\src\Test\TestParam.cpp" />
     <ClCompile Include="..\..\src\Test\TestPerformance.cpp" />
+    <ClCompile Include="..\..\src\Test\TestString.cpp" />
     <ClCompile Include="..\..\src\Test\TestTable.cpp" />
     <ClCompile Include="..\..\src\Test\TestYaml.cpp" />
   </ItemGroup>

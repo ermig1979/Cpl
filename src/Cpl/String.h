@@ -27,6 +27,8 @@
 
 #include "Cpl/Defs.h"
 
+#include <array>
+
 namespace Cpl
 {
     template<class T> CPL_INLINE  String ToStr(const T& value)
@@ -282,5 +284,40 @@ namespace Cpl
             << ":" << ToStr(int(time) % 60, 2)
             << "." << ToStr(int(time * 1000) % 1000, 3);
         return ss.str();
+    }
+
+    // prefix, login, password, path
+    CPL_INLINE std::array<String, 4> ParseUri(const String& uri)
+    {
+        std::array<String, 4> res;
+        auto& [prefix, login, password, path] = res;
+
+        auto prefixPos = uri.find("://");
+        size_t prefixSize = 0;
+        if (prefixPos != String::npos)
+        {
+            prefix = uri.substr(0, prefixPos);
+            prefixSize = prefixPos + 3;
+        }
+
+        bool hasCredentials = false;
+        auto atPos = uri.find('@');
+        if (atPos != std::string::npos)
+        {
+            if (atPos != uri.size() - 1)
+                path = uri.substr(atPos + 1);
+            auto dotsPos = uri.find(':', prefixSize);
+            if (dotsPos != std::string::npos)
+            {
+                login = uri.substr(prefixSize, dotsPos - prefixSize);
+                password = uri.substr(dotsPos + 1, atPos - dotsPos - 1);
+            }
+            else
+                login = uri.substr(prefixSize, atPos - prefixSize);
+        }
+        else
+            path = uri.substr(prefixSize);
+
+        return res;
     }
 }
