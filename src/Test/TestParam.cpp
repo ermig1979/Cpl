@@ -162,37 +162,6 @@ namespace Test
 
         return loaded.Equal(test);
     }
-
-    bool ParamVectorV2Test()
-    {
-        struct ChildParam
-        {
-            CPL_PARAM_VALUE(Int, value, 0);
-            CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
-        };
-
-        struct TestParam
-        {
-            CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_VECTOR_V2(ChildParam, children);
-        };
-
-        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
-
-        TestParamHolder test, loaded;
-
-        test().children().resize(2);
-        test().children()[0].value() = 5;
-
-        test.Save("vector_v2_short.xml", false);
-        test.Save("vector_v2_full.xml", true);
-
-        if (!loaded.Load("vector_v2_short.xml"))
-            return false;
-
-        return loaded.Equal(test);
-    }
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -281,39 +250,6 @@ namespace Test
         copy.Save("map_copy_full.xml", true);
 
         if (!loaded.Load("map_copy_full.xml"))
-            return false;
-
-        return loaded.Equal(test);
-    }
-
-    bool ParamMapV2Test()
-    {
-        struct ValueParam
-        {
-            CPL_PARAM_VALUE(Int, value, 0);
-            CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
-        };
-
-        struct TestParam
-        {
-            CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_MAP_V2(String, ValueParam, map);
-        };
-
-        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
-
-        TestParamHolder test, loaded, copy;
-
-        test().map()["new"].value() = 42;
-        test().map()["old"];
-
-        copy.Clone(test);
-
-        test.Save("map_v2_short.xml", false);
-        copy.Save("map_v2_copy_full.xml", true);
-
-        if (!loaded.Load("map_v2_copy_full.xml"))
             return false;
 
         return loaded.Equal(test);
@@ -452,6 +388,9 @@ namespace Test
 
         test.Save("template_short.yml", false);
         test.Save("template_full.yml", true);
+
+        test.Save("template_short.xml", false);
+        test.Save("template_full.xml", true);
 
         if (!loaded.Load("template_full.yml"))
             return false;

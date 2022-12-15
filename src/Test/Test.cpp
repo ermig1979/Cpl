@@ -60,13 +60,15 @@ namespace Test
     TEST_ADD(ParamStruct);
     TEST_ADD(ParamStructMod);
     TEST_ADD(ParamVector);
-    TEST_ADD(ParamVectorV2);
     TEST_ADD(ParamEnum);
     TEST_ADD(ParamMap);
-    TEST_ADD(ParamMapV2);
     TEST_ADD(ParamMapBug);
     TEST_ADD(ParamLimited);
     TEST_ADD(ParamTemplate);
+
+    TEST_ADD(ParamVectorV2);
+    TEST_ADD(ParamMapV2);
+    TEST_ADD(ParamPropGroupMap);
 
     TEST_ADD(PerformanceSimple);
     TEST_ADD(PerformanceStdThread);
