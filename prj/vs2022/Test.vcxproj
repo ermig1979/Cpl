@@ -29,6 +29,7 @@
     <ClCompile Include="..\..\src\Test\TestParam.cpp" />
     <ClCompile Include="..\..\src\Test\TestParamV2.cpp" />
     <ClCompile Include="..\..\src\Test\TestPerformance.cpp" />
+    <ClCompile Include="..\..\src\Test\TestProp.cpp" />
     <ClCompile Include="..\..\src\Test\TestString.cpp" />
     <ClCompile Include="..\..\src\Test\TestTable.cpp" />
     <ClCompile Include="..\..\src\Test\TestYaml.cpp" />
@@ -45,6 +46,7 @@
     <ClInclude Include="..\..\src\Cpl\Param.h" />
     <ClInclude Include="..\..\src\Cpl\ParamV2.h" />
     <ClInclude Include="..\..\src\Cpl\Performance.h" />
+    <ClInclude Include="..\..\src\Cpl\Prop.h" />
     <ClInclude Include="..\..\src\Cpl\String.h" />
     <ClInclude Include="..\..\src\Cpl\Table.h" />
     <ClInclude Include="..\..\src\Cpl\Xml.h" />

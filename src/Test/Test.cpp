@@ -70,7 +70,8 @@ namespace Test
 
     TEST_ADD(ParamVectorV2);
     TEST_ADD(ParamMapV2);
-    TEST_ADD(ParamPropGroupMap);
+
+    TEST_ADD(Prop);
 
     TEST_ADD(PerformanceSimple);
     TEST_ADD(PerformanceStdThread);

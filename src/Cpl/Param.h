@@ -53,6 +53,8 @@ namespace Cpl
     template<typename> struct ParamStruct;
     template<typename> struct ParamVector;
     template<typename> struct ParamVectorV2;
+    template<typename> struct ParamProp;
+    template<typename> struct ParamStorage;
     template<typename, typename> struct ParamMap;
     template<typename, typename> struct ParamMapV2;
 
@@ -267,6 +269,8 @@ namespace Cpl
         template<typename> friend struct ParamStruct;
         template<typename> friend struct ParamVector;
         template<typename> friend struct ParamVectorV2;
+        template<typename> friend struct ParamProp;
+        template<typename> friend struct ParamStorage;
         template<typename, typename> friend struct ParamMap;
         template<typename, typename> friend struct ParamMapV2;
     };
@@ -543,6 +547,8 @@ namespace Cpl
                     paramChild->SaveNodeYaml(current, full);
             }
         }
+
+        template<typename> friend struct ParamStorage;
     };
 
     //---------------------------------------------------------------------------------------------

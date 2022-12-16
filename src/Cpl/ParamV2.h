@@ -204,76 +204,6 @@ namespace Cpl
             xmlParent->AppendNode(xmlCurrent);
         }
     };
-
-    //---------------------------------------------------------------------------------------------
-
-    template<class T> struct ParamProp: public Cpl::ParamLimited<T>
-    {
-        typedef T Type;
-
-        virtual CPL_INLINE String Description() const
-        {
-            return String();
-        }
-
-        virtual CPL_INLINE bool Limited() const
-        {
-            return false;
-        }
-
-    protected:
-        typedef Cpl::ParamLimited<T> Base;
-        typedef Cpl::Param<int> Unknown;
-
-        ParamProp(const String& name)
-            : Base(name)
-        {
-        }
-
-        bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
-        {
-            Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
-            if (xmlCurrent)
-            {
-                Xml::XmlNode<char>* xmlValue = xmlCurrent->FirstNode("value");
-                if(xmlValue)
-                    Cpl::ToVal(xmlValue->Value(), this->_value);
-            }
-            return true;
-        }
-
-        static CPL_INLINE const char * NotEmpty(const String& value)
-        {
-            return value.empty() ? " " : value.c_str();
-        }
-
-        void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
-        {
-            Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
-
-            Xml::XmlNode<char>* xmlValue = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString("value"));
-            xmlValue->Value(xmlDoc.AllocateString(NotEmpty(Cpl::ToStr(this->_value))));
-            xmlCurrent->AppendNode(xmlValue);
-
-            Xml::XmlNode<char>* xmlDescr = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString("desc"));
-            xmlDescr->Value(xmlDoc.AllocateString(NotEmpty(this->Description())));
-            xmlCurrent->AppendNode(xmlDescr);
-
-            Xml::XmlNode<char>* xmlMin = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString("value_min"));
-            xmlMin->Value(xmlDoc.AllocateString(this->Limited() ? NotEmpty(Cpl::ToStr(this->Min())) : " "));
-            xmlCurrent->AppendNode(xmlMin);
-
-            Xml::XmlNode<char>* xmlMax = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString("value_max"));
-            xmlMax->Value(xmlDoc.AllocateString(this->Limited() ? NotEmpty(Cpl::ToStr(this->Max())) : " "));
-            xmlCurrent->AppendNode(xmlMax);
-
-            Xml::XmlNode<char>* xmlDefault = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString("value_default"));
-            xmlDefault->Value(xmlDoc.AllocateString(NotEmpty(Cpl::ToStr(this->Default()))));
-            xmlCurrent->AppendNode(xmlDefault);
-
-            xmlParent->AppendNode(xmlCurrent);
-        }
-    };
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -291,25 +221,3 @@ struct Param_##name : public Cpl::ParamMapV2<key, type> \
     typedef Cpl::ParamMapV2<key, type> Base; \
     Param_##name() : Base(#name) {} \
 } name;
-
-#define CPL_PARAM_PROP(type, name, value, descr) \
-struct Param_##name : public Cpl::ParamProp<type> \
-{ \
-    typedef Cpl::ParamProp<type> Base; \
-    Param_##name() : Base(#name) { this->_value = this->Default(); } \
-    type Default() const override { return value; } \
-    String Description() const override { return descr; } \
-} name;
-
-#define CPL_PARAM_PROP_EX(type, name, value, min, max, descr) \
-struct Param_##name : public Cpl::ParamProp<type> \
-{ \
-    typedef Cpl::ParamProp<type> Base; \
-    Param_##name() : Base(#name) { assert(min <= value && value <= max); this->_value = this->Default(); } \
-    type Default() const override { return value; } \
-    type Min() const override { return min; } \
-    type Max() const override { return max; } \
-    String Description() const override { return descr; } \
-    bool Limited() const override { return true; } \
-} name;
-
