@@ -289,8 +289,7 @@ namespace Cpl
     // prefix, login, password, path
     CPL_INLINE std::array<String, 4> ParseUri(const String& uri)
     {
-        std::array<String, 4> res;
-        auto& [prefix, login, password, path] = res;
+        String prefix, login, password, path;
 
         auto prefixPos = uri.find("://");
         size_t prefixSize = 0;
@@ -318,6 +317,6 @@ namespace Cpl
         else
             path = uri.substr(prefixSize);
 
-        return res;
+        return std::array<String, 4> { prefix, login, password, path };
     }
 }

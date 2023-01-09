@@ -1499,7 +1499,7 @@ namespace Cpl
 
             bool GetFlag(const eFlag flag) const
             {
-                return Flags & FlagMask(static_cast<size_t>(flag));
+                return (Flags & FlagMask(static_cast<size_t>(flag))) != 0;
             }
 
             void CopyScalarFlags(ReaderLine* from)
