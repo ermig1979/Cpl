@@ -391,9 +391,9 @@ namespace Cpl
     {
         typedef T Type;
 
-        CPL_INLINE ParamValidator<Type> operator () () 
+        CPL_INLINE ParamValidator<Type> operator () () const
         { 
-            return ParamValidator<Type>(this->_value, this->Default(), this->Min(), this->Max()); 
+            return ParamValidator<Type>((Type&) this->_value, this->Default(), this->Min(), this->Max()); 
         }
 
         virtual CPL_INLINE Type Min() const
