@@ -1,8 +1,9 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar,
-*               2021-2022 Andrey Drogolyub.
+* Copyright (c) 2021-2023 Yermalayeu Ihar,
+*               2021-2022 Andrey Drogolyub,
+*               2023-2023 Daniil Germanenko.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -391,9 +392,9 @@ namespace Cpl
     {
         typedef T Type;
 
-        CPL_INLINE ParamValidator<Type> operator () () 
+        CPL_INLINE ParamValidator<Type> operator () () const
         { 
-            return ParamValidator<Type>(this->_value, this->Default(), this->Min(), this->Max()); 
+            return ParamValidator<Type>((Type&) this->_value, this->Default(), this->Min(), this->Max()); 
         }
 
         virtual CPL_INLINE Type Min() const

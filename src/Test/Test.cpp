@@ -1,7 +1,7 @@
 /*
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar,
+* Copyright (c) 2021-2023 Yermalayeu Ihar,
 *               2021-2022 Andrey Drogolyub.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -121,10 +121,11 @@ namespace Test
     {
         std::cout << "Test framework of Common Purpose Library." << std::endl << std::endl;
         std::cout << "Test application parameters:" << std::endl << std::endl;
-        std::cout << " -i=test  - include test filter." << std::endl << std::endl;
-        std::cout << " -e=test  - exclude test filter." << std::endl << std::endl;
-        std::cout << " -ll=1    - a log level." << std::endl << std::endl;
-        std::cout << " -h or -? - to print this help message." << std::endl << std::endl;
+        std::cout << " -i=test      - include test filter." << std::endl << std::endl;
+        std::cout << " -e=test      - exclude test filter." << std::endl << std::endl;
+        std::cout << " -ll=1        - a log level." << std::endl << std::endl;
+        std::cout << " -lf=test.log - a log file name." << std::endl << std::endl;
+        std::cout << " -h or -?     - to print this help message." << std::endl << std::endl;
         return 0;
     }
 
