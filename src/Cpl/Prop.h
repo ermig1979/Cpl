@@ -225,7 +225,7 @@ struct Param_##name : public Cpl::ParamProp<type> \
     typedef Cpl::ParamProp<type> Base; \
     Param_##name() : Base(#name) { this->_value = this->Default(); } \
     type Default() const override { return value; } \
-    String Description() const override { return descr; } \
+    Cpl::String Description() const override { return descr; } \
 } name;
 
 #define CPL_PROP_EX(type, name, value, min, max, descr) \
@@ -236,7 +236,7 @@ struct Param_##name : public Cpl::ParamProp<type> \
     type Default() const override { return value; } \
     type Min() const override { return min; } \
     type Max() const override { return max; } \
-    String Description() const override { return descr; } \
+    Cpl::String Description() const override { return descr; } \
     bool Limited() const override { return true; } \
 } name;
 

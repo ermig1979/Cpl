@@ -369,6 +369,11 @@ namespace Cpl
         { 
             return _value; 
         }
+        
+        const T& operator () () const
+        { 
+            return _value; 
+        }
 
         ParamValidator<Type>& operator = (const Type& value)
         {
