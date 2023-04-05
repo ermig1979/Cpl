@@ -132,8 +132,10 @@ namespace Cpl
 
     CPL_INLINE bool FileIsReadable(const String& path)
     {
-#ifdef _MSC_VER
-        return (::_access(path.c_str(), 4) != -1);
+#if defined(_MSC_VER)
+        DWORD fileAttribute = GetFileAttributes(path.c_str());
+        return (fileAttribute != INVALID_FILE_ATTRIBUTES);
+        //return (::_access(path.c_str(), 4) != -1);
 #else
         return (::access(path.c_str(), R_OK) != -1);
 #endif	//_MSC_VER
