@@ -26,28 +26,29 @@
 #pragma once
 
 #include "Cpl/Log.h"
+#include <fstream>
 
-#ifdef __linux__
-#include <unistd.h>
-#include <dirent.h>
+#ifdef _WIN32
+#include "windows.h"
 #endif
 
-#ifdef _MSC_VER
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#endif
+#if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
+//No filesystem
 
-#if defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
+#elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
+#define CPL_FILE_USE_FILESYSTEM
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
+#elif defined(__GNUC__) && (__GNUC__ > 10 || __cplusplus >= 201703L) ||  defined(__clang__)
+#define CPL_FILE_USE_FILESYSTEM
+#include <filesystem>
+namespace fs = std::filesystem;
 #elif defined(_MSC_VER) && _MSC_VER <= 1900
+#define CPL_FILE_USE_FILESYSTEM
 #include <filesystem>
 namespace fs = std::tr2::sys;
 #else
-#include <filesystem>
-namespace fs = std::filesystem;
+#error Unknow system
 #endif
 
 namespace
@@ -94,7 +95,7 @@ namespace Cpl
         return String("/");
 #else
         std::cerr << "FolderSeparator: Is not implemented yet!\n";
-        return return String("");
+        return String("");
 #endif
     }
 
@@ -120,14 +121,21 @@ namespace Cpl
         return MakePath(MakePath(a, b), args...);
     }
 
-    CPL_INLINE bool FileExists(const String& path)
+    CPL_INLINE bool FileExists(const String& filePath)
     {
-#ifdef _MSC_VER
+#ifdef CPL_FILE_USE_FILESYSTEM
+        fs::path fspath(filePath);
+        return fs::exists(filePath) && (fs::is_regular_file(filePath) || fs::is_symlink(filePath));
+#elif _MSC_VER
         DWORD fileAttribute = ::GetFileAttributes(path.c_str());
         return (fileAttribute != INVALID_FILE_ATTRIBUTES);
-#else
+#elif (__unix__)
         return (::access(path.c_str(), F_OK) != -1);
-#endif	//_MSC_VER
+#else
+        std::ifstream ifs;
+        ifs.open(path, std::ios::in | std::ios::binary);
+        return (!ifs.fail());
+#endif
     }
 
     // only $USER is currently supported
@@ -154,9 +162,18 @@ namespace Cpl
         return path;
     }
 
-    CPL_INLINE bool DirectoryExists(const String& path)
+    CPL_INLINE bool DirectoryExists(const String& path_)
     {
-#ifdef _MSC_VER
+#ifdef CPL_FILE_USE_FILESYSTEM
+        try {
+            fs::directory_entry dir_entry(path_);
+            return dir_entry.is_directory() && dir_entry.exists();
+        } catch (...) {
+
+        }
+        return false;
+
+#elif defined(_MSC_VER)
         DWORD fileAttribute = GetFileAttributes(path.c_str());
         return ((fileAttribute != INVALID_FILE_ATTRIBUTES) &&
             (fileAttribute & FILE_ATTRIBUTE_DIRECTORY) != 0);
@@ -174,17 +191,33 @@ namespace Cpl
 
     CPL_INLINE bool CreatePath(const String& path)
     {
-#if defined(_MSC_VER)
+#ifdef CPL_FILE_USE_FILESYSTEM
+        return fs::create_directories(fs::path(path));
+#elif _MSC_VER
         return fs::create_directories(fs::path(path));
 #else
         return std::system((String("mkdir -p ") + path).c_str()) == 0;
 #endif
     }
 
-    inline StringList GetFileList(const String& directory, const String& filter, bool files, bool directories)
-    {
+    inline StringList GetFileList(const String& directory, const String& filter, bool files, bool directories) {
         std::list<String> names;
-#ifdef _MSC_VER
+#ifdef CPL_FILE_USE_FILESYSTEM
+        fs::directory_entry dir_entry(directory);
+        if (!dir_entry.exists()) {
+            return names;
+        }
+
+        for (auto const& entrance : std::filesystem::directory_iterator{directory}) {
+            if (entrance.is_regular_file() && files){
+                names.push_back(entrance.path().string());
+            }
+            else if (entrance.is_directory() && directories){
+                names.push_back(entrance.path().string());
+            }
+        }
+
+#elif _MSC_VER
         ::WIN32_FIND_DATA fd;
         ::HANDLE hFind = ::FindFirstFile(MakePath(directory, filter).c_str(), &fd);
         if (hFind != INVALID_HANDLE_VALUE)
@@ -235,18 +268,18 @@ namespace Cpl
 
     CPL_INLINE String GetNameByPath(const String& path_)
     {
-#ifdef _MSC_VER
+#ifdef CPL_FILE_USE_FILESYSTEM
         fs::path path(path_);
         return path.filename().string();
-#elif defined(__unix__)
+#elif  _MSC_VER
+        fs::path path(path_);
+        return path.filename().string();
+#else
         size_t pos = path_.find_last_of("/");
         if (pos == std::string::npos)
             return path_;
         else
             return path_.substr(pos + 1);
-#else
-        std::cerr << "GetNameByPath: Is not implemented yet!\n";
-        return "";
 #endif
     }
 
@@ -285,16 +318,23 @@ namespace Cpl
         return fs::absolute(p).string();
     }
 
-    CPL_INLINE bool CopyDirectory(const String& src, const String& dst)
+    CPL_INLINE bool CopyDirectory(const String& src, const String& dst, bool recursive = true)
     {
-#if defined(_MSC_VER)
+#ifdef CPL_FILE_USE_FILESYSTEM
+        try {
+            std::filesystem::copy(src, dst, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+            return true;
+        }
+        catch (...) {
+            return false;
+        }
+#elif defined(_MSC_VER)
         try
         {
             typedef fs::copy_options opt;
             fs::copy(src, dst, opt::overwrite_existing | opt::recursive);
         }
-        catch (...)
-        {
+        catch (...){
             return false;
         }
         return true;
@@ -308,7 +348,15 @@ namespace Cpl
 
     CPL_INLINE bool DeleteDirectory(const String& dir)
     {
-#if defined(_MSC_VER)
+#ifdef CPL_FILE_USE_FILESYSTEM
+        try {
+            std::filesystem::remove_all(dir);
+            return true;
+        }
+        catch (...) {
+            return false;
+        }
+#elif defined(_MSC_VER)
         return false;
 #elif defined (__linux__)
         String com = String("rm -rf ") + dir;
@@ -316,5 +364,151 @@ namespace Cpl
 #else
         return false;
 #endif
+    }
+
+    CPL_INLINE String GetExecutableLocation()
+    {
+#if defined(_WIN32)
+        std::string retval;
+        char buf[MAX_PATH];
+        DWORD nSize = ::GetModuleFileName(NULL, buf, sizeof(buf));
+        if (nSize > 0) {
+            retval = std::string(buf);
+        }
+#elif defined(linux) || defined (__linux) || defined (__linux__)
+        char buf[512];
+        size_t len = readlink("/proc/self/exe", buf, sizeof(buf));
+        std::string retval(buf, len);
+#else
+#error Not support system
+#endif
+        retval = retval.substr(0, retval.find_last_of("/\\"));
+        return retval;
+    }
+
+    CPL_INLINE String FileNameWithoutExt(const String & fileName) {
+        return fileName.substr(0, fileName.find_last_of('.'));
+    }
+
+    CPL_INLINE String FileNameByPath(const String & path)
+    {
+#if defined CPL_FILE_USE_FILESYSTEM
+        return fs::path(path).filename().string();
+#else
+        return path.substr(path.find_last_of("/\\") + 1);
+#endif
+    }
+
+    CPL_INLINE size_t FileSize (const String & path) {
+        if (FileExists(path)) {
+            std::ifstream ifs;
+            ifs.open(path, std::ios::in | std::ios::binary);
+            if (!ifs.fail()) {
+                std::ifstream::pos_type size = 0;
+                if (ifs.seekg(0, std::ios::end))
+                    size = ifs.tellg();
+
+                return size;
+            }
+        }
+
+        return 0;
+    }
+
+    struct FileReadedData {
+        enum class Type {
+            Binary,
+            Text
+        };
+
+        FileReadedData(Type type = Type::Binary) : _size(0) {};
+
+        const char* data() const {
+            if (_holder)
+                return _holder.get();
+            else
+                return nullptr;
+        }
+
+        size_t size() const { return _size; }
+
+        FileReadedData& operator=(FileReadedData&& other) {
+            this->_size = other._size;
+            this->_type = other._type;
+            this->_holder = std::move(other._holder);
+
+            other._size = 0;
+            other._type = Type::Binary;
+
+            return *this;
+        }
+
+    private:
+        FileReadedData(size_t size, Type type)
+            : _type(type)
+            , _size(size)
+            , _holder()
+        {
+            if (size)
+                recreateHolder();
+        }
+
+        bool recreateHolder() {
+            try {
+                if (_type == Type::Text) {
+                    _holder = std::make_unique<char[]>(_size + 1);
+                    _holder.get()[_size] = 0;
+                }
+                else
+                    _holder = std::make_unique<char[]>(_size);
+
+                return true;
+            }
+            catch (...) {
+            }
+            return false;
+        }
+
+        Type _type;
+        size_t _size;
+        std::unique_ptr<char[]> _holder;
+
+        friend int ReadFile(const String & path, FileReadedData& out, size_t byteBudget);
+    };
+
+    CPL_INLINE int ReadFile(const String & path, FileReadedData& out, size_t byteBudget = 1 * 1024 * 1024 * 1024 /* 1 gb */ ) {
+        try {
+            std::ifstream ifs;
+            ifs.open(path, std::ios::in | std::ios::binary);
+            if (!ifs.fail()) {
+                std::ifstream::pos_type pos = 0;
+
+                if (!ifs.seekg(0, std::ios::end)) {
+                    return 2;
+                }
+
+                pos = ifs.tellg();
+
+                if (pos > byteBudget) {
+                    return 3;
+                }
+
+                FileReadedData readed(pos, out._type);
+
+                if (pos && ifs.seekg(0, std::ios::beg)) {
+                    ifs.read(readed._holder.get(), readed.size());
+                    if (ifs.fail()) {
+                        return false;
+                    }
+                }
+
+                out = std::move(readed);
+                return -1;
+            }
+        }
+        catch (...) {
+        }
+
+        return 0;
     }
 }
