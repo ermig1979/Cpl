@@ -28,6 +28,7 @@
 #include "Cpl/Defs.h"
 
 #include <array>
+#include <memory>
 
 namespace Cpl
 {

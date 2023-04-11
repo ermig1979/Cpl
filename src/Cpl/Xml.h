@@ -107,6 +107,15 @@ namespace Cpl
                 return tmp - p;
             }
 
+            template<class Ch> inline size_t MeasureLimit(const Ch * p, size_t limit = std::numeric_limits<size_t>::max())
+            {
+                const Ch * tmp = p;
+                while ((tmp - p <= limit) && *tmp)
+                    ++tmp;
+                return tmp - p;
+            }
+
+
             template<class Ch> inline bool Compare(const Ch *p1, size_t size1, const Ch * p2, size_t size2, bool caseSensitive)
             {
                 static const unsigned char upcase[256] =
@@ -210,15 +219,47 @@ namespace Cpl
                 return attribute;
             }
 
-            Ch * AllocateString(const Ch *source = 0, size_t size = 0)
+            /*!
+            * \fn Ch * AllocateString(const Ch *source = 0, size_t size = 0)
+            *
+            * \brief Allocate string function. Usually return null terminated string (if source was null terminated, or size == 0).
+            *        Can return not null terminated, if
+            *
+            * @param [in] source - pointer to c-style string
+            * @param [in] size - length of c-style string
+            * @param [in] forceNullTermination - add zero value byte if source not contain it
+            */
+
+            Ch * AllocateString(const Ch *source = 0, size_t size = 0, bool forceNullTermination = true)
             {
                 assert(source || size);
-                if (size == 0)
-                    size = Internal::Measure(source) + 1;
-                Ch *result = static_cast<Ch *>(AllocateAligned(size * sizeof(Ch)));
-                if (source)
-                    for (size_t i = 0; i < size; ++i)
-                        result[i] = source[i];
+
+                if (source == nullptr){
+                    return static_cast<Ch *>(AllocateAligned(size * sizeof(Ch)));
+                }
+
+                size_t data_size = 0;
+                bool append_null = false;
+
+                if (size == 0) {
+                    data_size = Internal::Measure(source) + 1;
+                }
+                else {
+                    data_size = Internal::MeasureLimit(source, size);
+                    if ((data_size == size) && (source[data_size - 1] != 0) && forceNullTermination){
+                        append_null = true;
+                    }
+                }
+
+                size_t to_allocate = append_null ? data_size + 1 : data_size;
+
+                Ch *result = static_cast<Ch *>(AllocateAligned(to_allocate * sizeof(Ch)));
+                for (size_t i = 0; i < data_size; ++i)
+                    result[i] = source[i];
+
+                if (append_null)
+                    result[data_size] = 0;
+
                 return result;
             }
 
@@ -462,6 +503,10 @@ namespace Cpl
             XmlNode(NodeType type)
                 : _type(type)
                 , _firstNode(0)
+                , _lastNode(0)
+                , _prevSibling(0)
+                , _nextSibling(0)
+                , _lastAttribute(0)
                 , _firstAttribute(0)
             {
             }
@@ -805,17 +850,17 @@ namespace Cpl
             {
             }
 
-            template<int Flags> void Parse(Ch * text)
+            template<int Flags> void Parse(Ch * text, size_t length)
             {
                 assert(text);
-
+                const Ch * startPos = text;
                 this->RemoveAllNodes();
                 this->RemoveAllAttributes();
                 ParseBom<Flags>(text);
                 while (1)
                 {
                     Skip<Whitespace, Flags>(text);
-                    if (*text == 0)
+                    if (*text == 0 || text - startPos >= length)
                         break;
                     if (*text == Ch('<'))
                     {
