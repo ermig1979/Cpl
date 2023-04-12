@@ -110,7 +110,7 @@ namespace Cpl
             template<class Ch> inline size_t MeasureLimit(const Ch * p, size_t limit = std::numeric_limits<size_t>::max())
             {
                 const Ch * tmp = p;
-                while ((tmp - p <= limit) && *tmp)
+                while ((tmp - p < limit) && *tmp)
                     ++tmp;
                 return tmp - p;
             }
@@ -227,15 +227,16 @@ namespace Cpl
             *
             * @param [in] source - pointer to c-style string
             * @param [in] size - length of c-style string
-            * @param [in] forceNullTermination - add zero value byte if source not contain it
             */
 
-            Ch * AllocateString(const Ch *source = 0, size_t size = 0, bool forceNullTermination = true)
+            [[nodiscard]] Ch * AllocateString(const Ch *source = 0, size_t size = 0)
             {
                 assert(source || size);
 
                 if (source == nullptr){
-                    return static_cast<Ch *>(AllocateAligned(size * sizeof(Ch)));
+                    auto ptr = static_cast<Ch *>(AllocateAligned((size + 1) * sizeof(Ch)));
+                    ptr[size] = 0;
+                    return ptr;
                 }
 
                 size_t data_size = 0;
@@ -246,7 +247,7 @@ namespace Cpl
                 }
                 else {
                     data_size = Internal::MeasureLimit(source, size);
-                    if ((data_size == size) && (source[data_size - 1] != 0) && forceNullTermination){
+                    if ((data_size == size) && (source[data_size - 1] != 0)){
                         append_null = true;
                     }
                 }
@@ -254,11 +255,13 @@ namespace Cpl
                 size_t to_allocate = append_null ? data_size + 1 : data_size;
 
                 Ch *result = static_cast<Ch *>(AllocateAligned(to_allocate * sizeof(Ch)));
+                
                 for (size_t i = 0; i < data_size; ++i)
                     result[i] = source[i];
 
-                if (append_null)
+                if (append_null){
                     result[data_size] = 0;
+                }
 
                 return result;
             }

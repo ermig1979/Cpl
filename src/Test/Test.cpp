@@ -87,6 +87,8 @@ namespace Test
     TEST_ADD(YamlSimple);
     TEST_ADD(YamlParam);
 
+    TEST_ADD(XmlAllocateString);
+
     struct Options : public Cpl::ArgsParser
     {
         bool help;
