@@ -223,8 +223,7 @@ namespace Cpl
             /*!
             * \fn Ch * AllocateString(const Ch *source = 0, size_t size = 0)
             *
-            * \brief Allocate string function. Usually return null terminated string (if source was null terminated, or size == 0).
-            *        Can return not null terminated, if
+            * \brief Allocate string function. Always return null terminated string of need size or actual source string size
             *
             * @param [in] source - pointer to c-style string
             * @param [in] size - length of c-style string
