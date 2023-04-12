@@ -234,35 +234,20 @@ namespace Cpl
             {
                 assert(source || size);
 
-                if (source == nullptr){
-                    auto ptr = static_cast<Ch *>(AllocateAligned((size + 1) * sizeof(Ch)));
-                    ptr[size] = 0;
-                    return ptr;
-                }
-
                 size_t data_size = 0;
-                bool append_null = false;
 
-                if (size == 0) {
-                    data_size = Internal::Measure(source) + 1;
-                }
-                else {
-                    data_size = Internal::MeasureLimit(source, size);
-                    if ((data_size == size) && (source[data_size - 1] != 0)){
-                        append_null = true;
-                    }
-                }
+                if (source == nullptr)
+                    data_size = size;
+                else 
+                    data_size = (size == 0) ? Internal::Measure(source) : Internal::MeasureLimit(source, size);
 
-                size_t to_allocate = append_null ? data_size + 1 : data_size;
-
-                Ch *result = static_cast<Ch *>(AllocateAligned(to_allocate * sizeof(Ch)));
+                Ch *result = static_cast<Ch *>(AllocateAligned((data_size + 1) * sizeof(Ch)));
                 
-                for (size_t i = 0; i < data_size; ++i)
-                    result[i] = source[i];
+                if (source != nullptr)
+                    for (size_t i = 0; i < data_size; ++i)
+                        result[i] = source[i];
 
-                if (append_null){
-                    result[data_size] = 0;
-                }
+                result[data_size] = 0;
 
                 return result;
             }
