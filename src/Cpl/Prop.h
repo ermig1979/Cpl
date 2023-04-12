@@ -1,7 +1,7 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar,
+* Copyright (c) 2021-2023 Yermalayeu Ihar,
 *               2021-2022 Andrey Drogolyub,
 *               2023-2023 Daniil Germanenko.
 *
