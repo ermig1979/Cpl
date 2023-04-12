@@ -238,7 +238,7 @@ namespace Cpl
             Xml::XmlDocument<char> doc;
             try
             {
-                doc.Parse<0>(file.Data());
+                doc.Parse<0>(file.Data(), file.Size());
             }
             catch (std::exception& e)
             {
