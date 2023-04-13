@@ -228,8 +228,10 @@ namespace Cpl
             * @param [in] source - pointer to c-style string
             * @param [in] size - length of c-style string
             */
-
-            [[nodiscard]] Ch * AllocateString(const Ch *source = 0, size_t size = 0)
+#if __cplusplus >= 201703L
+            [[nodiscard]] 
+#endif
+            Ch * AllocateString(const Ch *source = 0, size_t size = 0)
             {
                 assert(source || size);
 

@@ -45,6 +45,9 @@ namespace fs = std::experimental::filesystem;
 #elif defined(_MSC_VER) && _MSC_VER <= 1900
 #include <filesystem>
 namespace fs = std::tr2::sys;
+#elif defined(_MSC_VER) && _MSC_VER <= 1920
+#include <filesystem>
+namespace fs = std::experimental::filesystem;
 #else
 #include <filesystem>
 namespace fs = std::filesystem;
