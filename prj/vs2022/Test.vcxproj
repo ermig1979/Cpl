@@ -33,6 +33,7 @@
     <ClCompile Include="..\..\src\Test\TestProp.cpp" />
     <ClCompile Include="..\..\src\Test\TestString.cpp" />
     <ClCompile Include="..\..\src\Test\TestTable.cpp" />
+    <ClCompile Include="..\..\src\Test\TestXml.cpp" />
     <ClCompile Include="..\..\src\Test\TestYaml.cpp" />
   </ItemGroup>
   <ItemGroup>

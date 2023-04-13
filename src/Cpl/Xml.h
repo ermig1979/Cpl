@@ -111,7 +111,7 @@ namespace Cpl
             template<class Ch> inline size_t MeasureLimit(const Ch * p, size_t limit = std::numeric_limits<size_t>::max())
             {
                 const Ch * tmp = p;
-                while ((tmp - p < limit) && *tmp)
+                while ((size_t(tmp - p) < limit) && *tmp)
                     ++tmp;
                 return tmp - p;
             }
@@ -848,7 +848,7 @@ namespace Cpl
                 while (1)
                 {
                     Skip<Whitespace, Flags>(text);
-                    if (*text == 0 || text - startPos >= length)
+                    if (*text == 0 || size_t(text - startPos) >= length)
                         break;
                     if (*text == Ch('<'))
                     {

@@ -129,7 +129,7 @@ namespace Test
             const int size = 6;
             char* temp = (char*) malloc(size);
             for (size_t i = 0; i < size; i++){
-                temp[i] = 10 + i;
+                temp[i] = char(10 + i);
             }
             
             auto t1 = pool.AllocateString(temp, size);
