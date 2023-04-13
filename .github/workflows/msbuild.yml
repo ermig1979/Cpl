@@ -1,0 +1,40 @@
+name: MSBuild
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build_and_test_vs2022:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+        platform: [Win32, x64]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Restore NuGet packages
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: nuget restore ./prj/vs2022
+
+    - name: Host properties
+      run: wmic cpu get /format:value
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=${{matrix.build_type}} /p:Platform=${{matrix.platform}} -maxCpuCount:2 ./prj/vs2022/Cpl.sln
+     
+    - name: Test
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: bin/v143/${{matrix.platform}}/${{matrix.build_type}}/Test.exe
