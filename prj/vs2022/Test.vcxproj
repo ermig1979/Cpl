@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="Prop.props" />
-  <ImportGroup Label="PropertySheets">
-    <Import Project="Ocv.props" Condition="exists('Ocv.props')" Label="Ocv" />
-  </ImportGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{423128F2-9D4E-408D-9123-49CE57A32B0A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -26,12 +23,14 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\Test\Test.cpp" />
     <ClCompile Include="..\..\src\Test\TestGeometryUtils.cpp" />
+    <ClCompile Include="..\..\src\Test\TestLog.cpp" />
     <ClCompile Include="..\..\src\Test\TestParam.cpp" />
     <ClCompile Include="..\..\src\Test\TestParamV2.cpp" />
     <ClCompile Include="..\..\src\Test\TestPerformance.cpp" />
     <ClCompile Include="..\..\src\Test\TestProp.cpp" />
     <ClCompile Include="..\..\src\Test\TestString.cpp" />
     <ClCompile Include="..\..\src\Test\TestTable.cpp" />
+    <ClCompile Include="..\..\src\Test\TestXml.cpp" />
     <ClCompile Include="..\..\src\Test\TestYaml.cpp" />
   </ItemGroup>
   <ItemGroup>

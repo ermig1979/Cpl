@@ -47,6 +47,9 @@ namespace fs = std::filesystem;
 #define CPL_FILE_USE_FILESYSTEM
 #include <filesystem>
 namespace fs = std::tr2::sys;
+#elif defined(_MSC_VER) && _MSC_VER <= 1920
+#include <filesystem>
+namespace fs = std::experimental::filesystem;
 #else
 #error Unknow system
 #endif
@@ -136,6 +139,17 @@ namespace Cpl
         ifs.open(path, std::ios::in | std::ios::binary);
         return (!ifs.fail());
 #endif
+    }
+
+    CPL_INLINE bool FileIsReadable(const String& path)
+    {
+#if defined(_MSC_VER)
+        DWORD fileAttribute = GetFileAttributes(path.c_str());
+        return (fileAttribute != INVALID_FILE_ATTRIBUTES);
+        //return (::_access(path.c_str(), 4) != -1);
+#else
+        return (::access(path.c_str(), R_OK) != -1);
+#endif	//_MSC_VER
     }
 
     // only $USER is currently supported
