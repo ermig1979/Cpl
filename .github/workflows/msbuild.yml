@@ -69,7 +69,7 @@ jobs:
       run: bin/v142/${{matrix.platform}}/${{matrix.build_type}}/Test.exe
       
   build_and_test_vs2017:
-    runs-on: windows-latest
+    runs-on: windows-2019
     
     strategy:
       matrix:
@@ -104,7 +104,7 @@ jobs:
       run: bin/v141/${{matrix.platform}}/${{matrix.build_type}}/Test.exe
 
   build_and_test_vs2015:
-    runs-on: windows-latest
+    runs-on: windows-2019
     
     strategy:
       matrix:
