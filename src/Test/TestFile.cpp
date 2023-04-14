@@ -29,6 +29,7 @@
 #include <iostream>
 #include <string>
 #include <set>
+#include <unistd.h>
 
 extern "C" {
 #include <sys/stat.h>
@@ -46,7 +47,7 @@ f           notempty.txt
 f           notemptyx2
 */
 
-#define COMPARE_RESULT(definition, target) [&]()->bool{bool result = definition; if (result != target) { std::cout << "Not correct result on row " << __LINE__  << std::endl;}}();
+#define COMPARE_RESULT(definition, target) [&]()->bool{bool result = definition; if (result != target) { std::cout << "Not correct result on row " << __LINE__  << std::endl;} return result;}();
 namespace Test
 {
     std::string joinPath(const std::string& a, const std::string& b) {
@@ -55,7 +56,7 @@ namespace Test
         return a + "/" + b;
     }
 
-    static inline std::string testPath = "/tmp/cpl/";
+    static inline std::string testPath = "/tmp/cpl";
     static inline std::string testString = "123456789876543210";
 
     const static std::set<std::string> all_folders = [](){
@@ -178,7 +179,7 @@ namespace Test
                 cnt5 += COMPARE_RESULT(Cpl::FileExists(Cpl::DirectoryByPath(exist)), 0);
             }
             ok &= cnt5 == 0;
-            
+
             //Check files via up and down path #6
             int cnt6 = 0;
             for (auto& exist : existance_files){
@@ -231,10 +232,182 @@ namespace Test
 
             ok &= cnt4 == 0;
 
+
+            int cnt5 = 0;
+            //Case if directory ends with symbol "/"
+            for (auto& exist : all_folders){
+                cnt5 += COMPARE_RESULT(Cpl::DirectoryExists(Cpl::MakePath(exist, "")), 1);
+            }
+
+            ok &= cnt5 == all_folders.size();
+
             return ok;
         }
     }
 
+    namespace Modify{
+
+        bool folders(){
+            bool ok = true;
+            static std::string folderName1 = "4";
+            std::string newFolder = joinPath(testPath, folderName1);
+
+            //Case 1
+            ok &= !Cpl::DirectoryExists(newFolder);
+            ok &= Cpl::CreatePath(newFolder);
+            ok &= Cpl::DirectoryExists(newFolder);
+            ok &= Cpl::DeleteDirectory(newFolder);
+            ok &= !Cpl::DirectoryExists(newFolder);
+
+
+            //Case 2
+            static std::string folderName2 = "5";
+            std::string newFolder2 = joinPath(newFolder, folderName2);
+            // /tmp/cpl/4/5
+
+            ok &= !Cpl::DirectoryExists(newFolder2);
+            
+            ok &= Cpl::CreatePath(newFolder2);
+            ok &= Cpl::DirectoryExists(newFolder);
+            ok &= Cpl::DirectoryExists(newFolder2);
+
+            ok &= Cpl::DeleteDirectory(newFolder2);
+            ok &= !Cpl::DirectoryExists(newFolder2);
+            ok &= Cpl::DirectoryExists(newFolder);
+            ok &= Cpl::DeleteDirectory(newFolder);
+            ok &= !Cpl::DirectoryExists(newFolder);
+
+            //Case 2.1
+            ok &= !Cpl::DirectoryExists(newFolder);
+            ok &= !Cpl::DirectoryExists(newFolder2);
+            
+            ok &= Cpl::CreatePath(newFolder2);
+            ok &= Cpl::DirectoryExists(newFolder);
+            ok &= Cpl::DirectoryExists(newFolder2);
+
+            ok &= Cpl::DeleteDirectory(newFolder);
+            ok &= !Cpl::DirectoryExists(newFolder2);
+            ok &= !Cpl::DirectoryExists(newFolder);
+
+            ok &= !Cpl::DirectoryExists(newFolder);
+
+            return ok;
+        }
+
+
+        bool createFiles(){
+
+
+            
+        }
+
+    }
+
+    namespace Info{
+
+        bool fileList(){
+            bool ok = true;
+
+            {
+                auto files = Cpl::GetFileList(testPath, "", true, false, false);
+                ok &= files.size() == 3;
+                for (const auto& concrete_filename_path: files){
+                    ok &= !concrete_filename_path.empty();
+                    auto directory = Cpl::DirectoryByPath(concrete_filename_path);
+                    //TODO: fix comparison
+                    ok &= COMPARE_RESULT(directory == testPath, 1);
+                }
+
+
+                auto filesRecursive = Cpl::GetFileList(testPath, "", true, false, true);
+                ok &= filesRecursive.size() == existance_files.size();
+
+                auto dirs = Cpl::GetFileList(testPath, "", false, true, false);
+                ok &= COMPARE_RESULT(dirs.size() == 3, 1);
+
+                auto dirsRecursive = Cpl::GetFileList(testPath, "", false, true, true);
+                ok &= COMPARE_RESULT(dirsRecursive.size() == 4, 1);
+
+            }
+
+
+            return ok;
+        }
+
+        bool naming(){
+            bool ok = true;
+            
+            auto folder = Cpl::GetNameByPath(testPath);
+            ok &= folder == "cpl";
+
+            folder = Cpl::GetNameByPath(testPath + '/');
+            
+            ok &= folder == "cpl";
+            ok &= Cpl::LastDashFix("/tmp/cpl//") == "/tmp/cpl";
+
+            for (const auto& file : existance_files){
+                auto filename = Cpl::GetNameByPath(file);
+                auto filedir = Cpl::DirectoryByPath(file);
+
+                ok &= Cpl::MakePath(filedir, filename) == file;
+                ok &= Cpl::FileExists(Cpl::MakePath(filedir, filename));
+                ok &= Cpl::FileExists(Cpl::MakePath(Cpl::MakePath(filedir, ""), filename));
+
+            }
+            return ok;
+        }
+
+        bool extension(){
+            bool ok = true;
+            //Test get extention
+            //TODO: add case for full paths, folders with dots
+            ok &= Cpl::ExtensionByPath("photo.jpeg") == "jpeg";
+            ok &= Cpl::ExtensionByPath("photo").size() == 0;
+            ok &= Cpl::ExtensionByPath("photo.").size() == 0;
+            ok &= Cpl::ExtensionByPath(".b") == "b";
+            ok &= Cpl::ExtensionByPath("...b") == "b";
+            ok &= Cpl::ExtensionByPath("..a.b") == "b";
+
+
+            ok &= Cpl::RemoveExtension("photo.jpeg") == "photo";
+            ok &= Cpl::RemoveExtension("photo.") == "photo.";
+            ok &= Cpl::RemoveExtension("photo") == "photo";
+            ok &= Cpl::RemoveExtension("") == "";
+            ok &= Cpl::RemoveExtension(".a") == "";
+            ok &= Cpl::RemoveExtension("...b") == "..";
+            ok &= Cpl::RemoveExtension("..a.b") == "..a";
+            ok &= Cpl::RemoveExtension("..a.b....zyx") == "..a.b...";
+
+
+            ok &= Cpl::ChangeExtension("photo.jpeg", "png") == "photo.png";
+            ok &= Cpl::ChangeExtension("photo.jpeg", ".png") == "photo.png";
+            ok &= Cpl::ChangeExtension("photo.", ".png") == "photo..png";
+            ok &= Cpl::ChangeExtension("test.photo.", ".png") == "test.photo..png";
+            ok &= Cpl::ChangeExtension("test.photo.", "png") == "test.photo..png";
+            ok &= Cpl::ChangeExtension("photo", ".png") == "photo.png";
+            ok &= Cpl::ChangeExtension("photo", "png") == "photo.png";
+            ok &= Cpl::ChangeExtension("", ".png") == "";
+            ok &= Cpl::ChangeExtension("", "png") == "";
+            ok &= Cpl::ChangeExtension(".a", ".png") == ".png";
+            ok &= Cpl::ChangeExtension(".a", "png") == ".png";
+
+            return ok;
+        }
+
+        bool pathing(){
+            bool ok = true;
+
+            ok &= Cpl::FileNameByPath("/usr/local/photo.png") == "photo.png";
+            ok &= Cpl::FileNameByPath("photo.png") == "photo.png";
+            ok &= Cpl::FileNameByPath("./photo.png") == "photo.png";
+            ok &= Cpl::FileNameByPath(".././ab/../photo.png") == "photo.png";
+            ok &= Cpl::FileNameByPath(".././a.b/../photo.") == "photo.";
+            ok &= Cpl::FileNameByPath(".././a.b/../photo") == "photo";
+            ok &= Cpl::FileNameByPath(".././a.b/../.a") == ".a";
+
+            return ok;
+        }
+    }
 
     bool DoFileTest(){
         bool ok = true;
@@ -243,6 +416,11 @@ namespace Test
             initializeTree();
             ok &= Existance::testFileExists();
             ok &= Existance::testFolderExists();
+            ok &= Modify::folders();
+            ok &= Info::fileList();
+            ok &= Info::naming();
+            ok &= Info::extension();
+            ok &= Info::pathing();
         }
         catch(...){
             std::cerr << "File test exception";
