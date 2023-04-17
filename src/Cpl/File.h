@@ -25,31 +25,37 @@
 
 #pragma once
 
+#include "Cpl/Defs.h"
 #include "Cpl/Log.h"
+#include <algorithm>
+#include <bits/types/FILE.h>
 #include <fstream>
+#include <iostream>
+#include <iterator>
+#include <string>
 
 #ifdef _WIN32
 #include "windows.h"
 #endif
 
+#ifdef __linux__
+#include <unistd.h>
+#endif
+
 #if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
 //No filesystem
-
 #elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
-#define CPL_FILE_USE_FILESYSTEM
+#define CPL_FILE_USE_FILESYSTEM 1
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 #elif defined(__GNUC__) && (__GNUC__ > 10 || __cplusplus >= 201703L) ||  defined(__clang__)
-#define CPL_FILE_USE_FILESYSTEM
+#define CPL_FILE_USE_FILESYSTEM 2
 #include <filesystem>
 namespace fs = std::filesystem;
 #elif defined(_MSC_VER) && _MSC_VER <= 1900
-#define CPL_FILE_USE_FILESYSTEM
+#define CPL_FILE_USE_FILESYSTEM 1
 #include <filesystem>
 namespace fs = std::tr2::sys;
-#elif defined(_MSC_VER) && _MSC_VER <= 1920
-#include <filesystem>
-namespace fs = std::experimental::filesystem;
 #else
 #error Unknow system
 #endif
@@ -102,6 +108,51 @@ namespace Cpl
 #endif
     }
 
+    static const std::vector<char> forbiddenSymbols = [](){
+        std::vector<char> temp = {'<', '>', ':', '"', '/', '\\', '|', '?', '*'};
+        for (char ch= 0; ch < 32; ch++){
+            temp.push_back(ch);
+        }
+        return temp;
+    }();
+
+    CPL_INLINE String LastDashFix(const String& path){
+        for (auto iter = path.rbegin(); iter != path.rend(); iter++){
+            auto forbidden_iter = std::find(std::begin(forbiddenSymbols), std::end(forbiddenSymbols), *iter);
+            if (forbidden_iter == forbiddenSymbols.end() && *iter != ' '){
+                return path.substr(0, std::distance(iter, path.rend()));
+            }
+        }
+        return path;
+    }
+
+    CPL_INLINE size_t Compiler(){
+        #if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
+            return 0;
+        #elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
+            return 1;
+        #elif defined(__GNUC__) && (__GNUC__ > 10 || __cplusplus >= 201703L) ||  defined(__clang__)
+            return 2;
+        #elif defined(_MSC_VER) && _MSC_VER <= 1900
+            return 3;
+        #else
+            return 4;
+        #endif
+    }
+
+    CPL_INLINE size_t UsedFs(){
+#if CPL_FILE_USE_FILESYSTEM == 2
+        return 2;
+#elif CPL_FILE_USE_FILESYSTEM == 1
+        return 3;
+#elif defined(_MSC_VER)
+        return 1;
+#else
+        return 0;
+#endif
+    }
+
+
     namespace {
         CPL_INLINE Cpl::String MakePathImpl(const Cpl::String& a, const Cpl::String& b)
         {
@@ -141,17 +192,6 @@ namespace Cpl
 #endif
     }
 
-    CPL_INLINE bool FileIsReadable(const String& path)
-    {
-#if defined(_MSC_VER)
-        DWORD fileAttribute = GetFileAttributes(path.c_str());
-        return (fileAttribute != INVALID_FILE_ATTRIBUTES);
-        //return (::_access(path.c_str(), 4) != -1);
-#else
-        return (::access(path.c_str(), R_OK) != -1);
-#endif	//_MSC_VER
-    }
-
     // only $USER is currently supported
     CPL_INLINE String SubstituteEnv(const String& path)
     {
@@ -178,19 +218,27 @@ namespace Cpl
 
     CPL_INLINE bool DirectoryExists(const String& path_)
     {
-#ifdef CPL_FILE_USE_FILESYSTEM
+        const String path = LastDashFix(path_);
+
+#if CPL_FILE_USE_FILESYSTEM == 2
         try {
-            fs::directory_entry dir_entry(path_);
+            fs::directory_entry dir_entry(path);
             return dir_entry.is_directory() && dir_entry.exists();
         } catch (...) {
 
         }
         return false;
-
+#elif CPL_FILE_USE_FILESYSTEM == 1
+        try {
+            return fs::is_directory(path);
+        }
+        catch(...){
+            return false;
+        }
 #elif defined(_MSC_VER)
         DWORD fileAttribute = GetFileAttributes(path.c_str());
         return ((fileAttribute != INVALID_FILE_ATTRIBUTES) &&
-            (fileAttribute & FILE_ATTRIBUTE_DIRECTORY) != 0);
+                (fileAttribute & FILE_ATTRIBUTE_DIRECTORY) != 0);
 #else
         DIR* dir = opendir(path.c_str());
         if (dir != NULL)
@@ -205,32 +253,72 @@ namespace Cpl
 
     CPL_INLINE bool CreatePath(const String& path)
     {
+        if (DirectoryExists(path))
+            return true;
+
 #ifdef CPL_FILE_USE_FILESYSTEM
         return fs::create_directories(fs::path(path));
 #elif _MSC_VER
         return fs::create_directories(fs::path(path));
 #else
-        return std::system((String("mkdir -p ") + path).c_str()) == 0;
+        return (mkdir(path.c_str(), 0777) == 0);
 #endif
     }
 
-    inline StringList GetFileList(const String& directory, const String& filter, bool files, bool directories) {
+
+
+    inline StringList GetFileList(const String& directory, const String& filter, bool files, bool directories, bool recursive) {
         std::list<String> names;
-#ifdef CPL_FILE_USE_FILESYSTEM
+#if CPL_FILE_USE_FILESYSTEM == 2
         fs::directory_entry dir_entry(directory);
         if (!dir_entry.exists()) {
             return names;
         }
+        
+        if (!recursive) {
+            for (auto const& entrance : fs::directory_iterator{directory}) {
+                auto regular = entrance.path().filename().string();
+                if (entrance.is_regular_file() && files){
+                    if (filter.empty() || Match(filter.c_str(), regular.c_str(), filter.size(), regular.size())){
+                        names.push_back(entrance.path().string());
+                    }
+                }
+                else if (entrance.is_directory() && directories){
+                    if (filter.empty() ||Match(filter.c_str(), regular.c_str(), filter.size(), regular.size())){
+                        names.push_back(entrance.path().string());
+                    }
+                }
+            }
+        }
+        else {
+            for (auto const& entrance : fs::recursive_directory_iterator{directory}) {
+                auto regular = entrance.path().filename().string();
+                if (entrance.is_regular_file() && files){
+                    if (filter.empty() || Match(filter.c_str(), regular.c_str(), filter.size(), regular.size())){
+                        names.push_back(entrance.path().string());
+                    }
+                }
+                else if (entrance.is_directory() && directories){
+                    if (filter.empty() ||Match(filter.c_str(), regular.c_str(), filter.size(), regular.size())){
+                        names.push_back(entrance.path().string());
+                    }
+                }
+            }
+        }
+#elif CPL_FILE_USE_FILESYSTEM == 1
 
-        for (auto const& entrance : std::filesystem::directory_iterator{directory}) {
-            if (entrance.is_regular_file() && files){
+        if (!Cpl::DirectoryExists(directory)) {
+            return names;
+        }
+
+        for (auto const& entrance : fs::directory_iterator{directory}) {
+            if (fs::is_regular_file(entrance) && files){
                 names.push_back(entrance.path().string());
             }
-            else if (entrance.is_directory() && directories){
+            else if (fs::is_directory(entrance) && directories){
                 names.push_back(entrance.path().string());
             }
         }
-
 #elif _MSC_VER
         ::WIN32_FIND_DATA fd;
         ::HANDLE hFind = ::FindFirstFile(MakePath(directory, filter).c_str(), &fd);
@@ -282,38 +370,83 @@ namespace Cpl
 
     CPL_INLINE String GetNameByPath(const String& path_)
     {
+        const String path = LastDashFix(path_);
+
 #ifdef CPL_FILE_USE_FILESYSTEM
-        fs::path path(path_);
-        return path.filename().string();
+        fs::path fspath(path);
+        return fspath.filename().string();
 #elif  _MSC_VER
-        fs::path path(path_);
+        fs::path path(path);
         return path.filename().string();
 #else
-        size_t pos = path_.find_last_of("/");
-        if (pos == std::string::npos)
-            return path_;
+        size_t pos = path.find_last_of("/");
+        if (pos == String::npos)
+            return path;
         else
-            return path_.substr(pos + 1);
+            return path.substr(pos + 1);
 #endif
     }
 
-    CPL_INLINE String DirectoryByPath(const String& path)
+    CPL_INLINE String DirectoryByPath(const String& path_)
     {
+        const String path = LastDashFix(path_);
+
         size_t pos = path.find_last_of(FolderSeparator());
-        if (pos == std::string::npos)
+        if (pos == String::npos)
             return path.find(".") == 0 ? String("") : path;
         else
             return path.substr(0, pos);
     }
 
+    CPL_INLINE String FileNameByPath(const String & path)
+    {
+#if defined CPL_FILE_USE_FILESYSTEM
+        return fs::path(path).filename().string();
+#else
+        return path.substr(path.find_last_of("/\\") + 1);
+#endif
+    }
+
+
     CPL_INLINE String ExtensionByPath(const String& path)
     {
         size_t pos = path.find_last_of(".");
-        if (pos == std::string::npos)
+        if (pos == String::npos)
             return String();
         else
             return path.substr(pos + 1);
     }
+
+    CPL_INLINE String RemoveExtension(const String& path)
+    {
+        size_t last_sep = (size_t) path.find_last_of(".");
+        if (last_sep == String::npos || last_sep == path.size() - 1) 
+            return path;
+
+        return path.substr(0, last_sep);
+    }
+
+    CPL_INLINE String ChangeExtension(const String& path, const String& ext) 
+    {
+        //TODO:add asserts
+        if (path == "." || path.size() == 0)
+            return path;
+
+        size_t last_sep = (size_t) path.find_last_of(".");
+        size_t last_sep_ext = (size_t) ext.find_last_of(".");
+
+        //If path end with dot without extension, this dot count as file name
+        if (last_sep + 1 == path.size())
+            ++last_sep;
+
+        if (last_sep_ext == String::npos)
+            last_sep_ext = 0;
+        else 
+            ++last_sep_ext;
+        
+        return path.substr(0, last_sep) + "." + ext.substr(last_sep_ext, String::npos);
+    }
+
 
     // path is absolute or relative to basePath, path and basePath must exist
     // returns empty string if path is empty
@@ -332,11 +465,11 @@ namespace Cpl
         return fs::absolute(p).string();
     }
 
-    CPL_INLINE bool CopyDirectory(const String& src, const String& dst, bool recursive = true)
+    CPL_INLINE bool Copy(const String& src, const String& dst, bool recursive = true)
     {
 #ifdef CPL_FILE_USE_FILESYSTEM
         try {
-            std::filesystem::copy(src, dst, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
+            fs::copy(src, dst, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
             return true;
         }
         catch (...) {
@@ -360,16 +493,27 @@ namespace Cpl
 #endif
     }
 
-    CPL_INLINE bool DeleteDirectory(const String& dir)
+    CPL_INLINE bool DeleteFile(const String& filename)
+    {
+        std::error_code code;
+        if (!FileExists(filename)){
+            return false;
+        }
+        bool ret = fs::remove(filename, code);
+        return ret;
+    }
+
+    CPL_INLINE size_t DeleteDirectory(const String& dir)
     {
 #ifdef CPL_FILE_USE_FILESYSTEM
         try {
-            std::filesystem::remove_all(dir);
-            return true;
+            std::error_code code;
+            size_t removeCount = (size_t) fs::remove_all(dir, code);
+            return removeCount;
         }
         catch (...) {
-            return false;
         }
+        return 0;
 #elif defined(_MSC_VER)
         return false;
 #elif defined (__linux__)
@@ -379,6 +523,9 @@ namespace Cpl
         return false;
 #endif
     }
+
+    //TODO:
+    //CPL_INLINE bool EqualPath(const String& first, const String& second);
 
     CPL_INLINE String GetExecutableLocation()
     {
@@ -400,20 +547,7 @@ namespace Cpl
         return retval;
     }
 
-    CPL_INLINE String FileNameWithoutExt(const String & fileName) {
-        return fileName.substr(0, fileName.find_last_of('.'));
-    }
-
-    CPL_INLINE String FileNameByPath(const String & path)
-    {
-#if defined CPL_FILE_USE_FILESYSTEM
-        return fs::path(path).filename().string();
-#else
-        return path.substr(path.find_last_of("/\\") + 1);
-#endif
-    }
-
-    CPL_INLINE size_t FileSize (const String & path) {
+    CPL_INLINE long int FileSize (const String & path) {
         if (FileExists(path)) {
             std::ifstream ifs;
             ifs.open(path, std::ios::in | std::ios::binary);
@@ -426,18 +560,42 @@ namespace Cpl
             }
         }
 
-        return 0;
+        return -1;
     }
 
-    struct FileReadedData {
+
+    CPL_INLINE bool DirectorySize (const String & path, size_t& size) {
+        size_t tsize = 0;
+        try {
+            if (!DirectoryExists(path))
+                return false;
+
+            fs::recursive_directory_iterator end_itr;
+
+            for (fs::recursive_directory_iterator iter(path); iter != end_itr; ++iter ) {
+                if (!fs::is_directory(iter->status()) )
+                    tsize += fs::file_size(iter->path());
+            }
+            size = tsize;
+            return true;
+        }
+        catch(...) {
+        }
+        return false;
+    }
+
+    struct FileData {
         enum class Type {
             Binary,
-            Text
+            BinaryToNullTerminatedText
         };
 
-        FileReadedData(Type type = Type::Binary) : _size(0) {};
+        FileData(Type type = Type::Binary)
+        : _type(type)
+        , _size(0)
+        {};
 
-        const char* data() const {
+        unsigned const char* data() const {
             if (_holder)
                 return _holder.get();
             else
@@ -445,8 +603,9 @@ namespace Cpl
         }
 
         size_t size() const { return _size; }
+        bool empty() const { return !_holder.operator bool(); }
 
-        FileReadedData& operator=(FileReadedData&& other) {
+        FileData& operator=(FileData&& other) {
             this->_size = other._size;
             this->_type = other._type;
             this->_holder = std::move(other._holder);
@@ -458,10 +617,9 @@ namespace Cpl
         }
 
     private:
-        FileReadedData(size_t size, Type type)
+        FileData(size_t size, Type type)
             : _type(type)
             , _size(size)
-            , _holder()
         {
             if (size)
                 recreateHolder();
@@ -469,12 +627,12 @@ namespace Cpl
 
         bool recreateHolder() {
             try {
-                if (_type == Type::Text) {
-                    _holder = std::make_unique<char[]>(_size + 1);
+                if (_type == Type::BinaryToNullTerminatedText) {
+                    _holder = std::make_unique<unsigned char[]>(_size + 1);
                     _holder.get()[_size] = 0;
                 }
                 else
-                    _holder = std::make_unique<char[]>(_size);
+                    _holder = std::make_unique<unsigned char[]>(_size);
 
                 return true;
             }
@@ -485,39 +643,62 @@ namespace Cpl
 
         Type _type;
         size_t _size;
-        std::unique_ptr<char[]> _holder;
+        std::unique_ptr<unsigned char[]> _holder;
 
-        friend int ReadFile(const String & path, FileReadedData& out, size_t byteBudget);
+        friend int ReadFile(const String & path, FileData& out, size_t byteBudget);
     };
 
-    CPL_INLINE int ReadFile(const String & path, FileReadedData& out, size_t byteBudget = 1 * 1024 * 1024 * 1024 /* 1 gb */ ) {
+    CPL_INLINE int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate = true) {
+        try {
+            std::ofstream fs;
+            auto fl = std::ios::out | std::ios::binary;
+            if (!recreate)
+                fl |= std::ios::app;
+
+            fs.open(filePath, fl);
+            if (!fs.fail()) {
+                fs.write(data, size);
+                fs.close();
+                return -1;
+            }
+        }
+        catch (...) {
+        }
+
+        return 0;
+
+    }
+
+    CPL_INLINE int ReadFile(const String & path, FileData& out, size_t byteBudget = 1 * 1024 * 1024 * 1024 /* 1 gb */ ) {
         try {
             std::ifstream ifs;
             ifs.open(path, std::ios::in | std::ios::binary);
+            bool partial = false;
             if (!ifs.fail()) {
                 std::ifstream::pos_type pos = 0;
 
                 if (!ifs.seekg(0, std::ios::end)) {
-                    return 2;
+                    return 1;
                 }
 
                 pos = ifs.tellg();
 
                 if (pos > byteBudget) {
-                    return 3;
+                    pos = byteBudget;
+                    partial = true;
                 }
 
-                FileReadedData readed(pos, out._type);
+                FileData readed(pos, out._type);
 
                 if (pos && ifs.seekg(0, std::ios::beg)) {
-                    ifs.read(readed._holder.get(), readed.size());
+                    ifs.read((char*) readed._holder.get(), readed.size());
                     if (ifs.fail()) {
-                        return false;
+                        return 2;
                     }
                 }
 
                 out = std::move(readed);
-                return -1;
+                return partial ? -2 : -1;
             }
         }
         catch (...) {

@@ -101,10 +101,11 @@ namespace Test
         return temp;
     }();
 
-    const static std::set<std::string> not_empty_files = [](){
-        std::set<std::string> temp;
-        temp.insert(joinPath(testPath, "notempty.txt"));
-        temp.insert(joinPath(testPath, "notemptyx2"));
+    //Every file have at least test string testString
+    const static std::vector<std::pair<std::string, size_t>> not_empty_files = [](){
+        std::vector<std::pair<std::string, size_t>> temp;
+        temp.push_back({joinPath(testPath, "notempty.txt"), testString.size()});
+        temp.push_back({joinPath(testPath, "notemptyx2"), 2*testString.size()});
         return temp;
     }();
 
@@ -252,11 +253,14 @@ namespace Test
             static std::string folderName1 = "4";
             std::string newFolder = joinPath(testPath, folderName1);
 
+            if (Cpl::DirectoryExists(newFolder))
+                ok &= (Cpl::DeleteDirectory(newFolder) > 0);
+
             //Case 1
             ok &= !Cpl::DirectoryExists(newFolder);
             ok &= Cpl::CreatePath(newFolder);
             ok &= Cpl::DirectoryExists(newFolder);
-            ok &= Cpl::DeleteDirectory(newFolder);
+            ok &= (Cpl::DeleteDirectory(newFolder) > 0);
             ok &= !Cpl::DirectoryExists(newFolder);
 
 
@@ -271,10 +275,10 @@ namespace Test
             ok &= Cpl::DirectoryExists(newFolder);
             ok &= Cpl::DirectoryExists(newFolder2);
 
-            ok &= Cpl::DeleteDirectory(newFolder2);
+            ok &= (Cpl::DeleteDirectory(newFolder2) > 0);
             ok &= !Cpl::DirectoryExists(newFolder2);
             ok &= Cpl::DirectoryExists(newFolder);
-            ok &= Cpl::DeleteDirectory(newFolder);
+            ok &= (Cpl::DeleteDirectory(newFolder) > 0);
             ok &= !Cpl::DirectoryExists(newFolder);
 
             //Case 2.1
@@ -285,7 +289,7 @@ namespace Test
             ok &= Cpl::DirectoryExists(newFolder);
             ok &= Cpl::DirectoryExists(newFolder2);
 
-            ok &= Cpl::DeleteDirectory(newFolder);
+            ok &= (Cpl::DeleteDirectory(newFolder) > 0);
             ok &= !Cpl::DirectoryExists(newFolder2);
             ok &= !Cpl::DirectoryExists(newFolder);
 
@@ -294,24 +298,205 @@ namespace Test
             return ok;
         }
 
-
         bool createFiles(){
+            const Cpl::String tempfilename = Cpl::MakePath(testPath, "write_test.bin");
+            bool ok = true;
+            if (Cpl::FileExists(tempfilename)){
+                if (!Cpl::DeleteFile(tempfilename)){
+                    std::cout << "Cant delete file " << __LINE__;
+                    return false;
+                }
+            }
+            const uint8_t d[] = {0x01, 0x02, 0x03, 0x04, 0xff};
 
+            {
+                //Case 1, create
+                ok &= Cpl::WriteToFile(tempfilename, (const char *) d, sizeof(d));
 
-            
+                if (Cpl::FileSize(tempfilename) != sizeof(d)){
+                    return false;
+                }
+
+                Cpl::FileData fd;
+                ok &= Cpl::ReadFile(tempfilename, fd);
+                ok &= fd.size() == sizeof(d);
+
+                if (!ok)
+                    return false;
+                for (size_t ind = 0; ind < sizeof(d); ind++) {
+                    ok &= fd.data()[ind] == d[ind];
+                }
+            }
+            {
+                //Case 2, append data
+                ok &= Cpl::WriteToFile(tempfilename, (const char *) d + 1, sizeof(d) / 2, false);
+                if (Cpl::FileSize(tempfilename) != sizeof(d) + (sizeof(d) / 2))
+                    return false;
+
+                Cpl::FileData fd;
+                ok &= Cpl::ReadFile(tempfilename, fd);
+                ok &= fd.size() == sizeof(d) + (sizeof(d) / 2);
+
+                if (!ok)
+                    return false;
+
+                for (size_t ind = 0; ind < sizeof(d); ind++) {
+                    ok &= fd.data()[ind] == d[ind];
+                }
+
+                for (size_t ind = 0; ind < sizeof(d) / 2; ind++) {
+                    ok &= fd.data()[sizeof(d) + ind] == d[ind + 1];
+                }
+            }
+
+            {
+                //Case 3, rewrite
+                ok &= Cpl::WriteToFile(tempfilename, (const char *) d, sizeof(d));
+
+                if (Cpl::FileSize(tempfilename) != sizeof(d))
+                    return false;
+
+                Cpl::FileData fd;
+                ok &= Cpl::ReadFile(tempfilename, fd);
+                ok &= fd.size() == sizeof(d);
+
+                if (!ok)
+                    return false;
+
+                for (size_t ind = 0; ind < sizeof(d); ind++) {
+                    ok &= fd.data()[ind] == d[ind];
+                }
+            }
+
+            ok &= Cpl::DeleteFile(tempfilename);
+
+            return ok;
         }
 
+        bool readFormatsTest(){
+            bool ok = true;
+
+            {
+                //Test binary data
+                for (const auto& elem : not_empty_files){
+                    Cpl::FileData fd;
+                    auto code = Cpl::ReadFile(elem.first, fd);
+                    ok &= code == -1;
+                    ok &= !fd.empty();
+                    ok &= fd.size() == elem.second;
+
+                    for (size_t ind = 0; ind < testString.size(); ind++) {
+                        ok &= fd.data()[ind] == testString.c_str()[ind];
+                    }
+                }
+
+                //Test null terminated data
+                for (const auto& elem : not_empty_files){
+                    Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
+                    auto code = Cpl::ReadFile(elem.first, fd);
+                    ok &= code == -1;
+                    ok &= fd.size() == elem.second;
+                    ok &= !fd.empty();
+                    ok &= fd.data()[fd.size()] == 0;
+
+                    for (size_t ind = 0; ind < testString.size(); ind++) {
+                        ok &= fd.data()[ind] == testString.c_str()[ind];
+                    }
+                }
+
+                //Test binary data of empty files
+                for (const auto& elem : empty_files){
+                    Cpl::FileData fd;
+                    auto code = Cpl::ReadFile(elem, fd);
+                    ok &= code == -1;
+                    ok &= fd.size() == 0;
+                    ok &= fd.empty();
+                    ok &= fd.data() == nullptr;
+                }
+
+                //Test null terminated data of empty files
+                for (const auto& elem : empty_files){
+                    Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
+                    auto code = Cpl::ReadFile(elem, fd);
+                    ok &= code == -1;
+                    ok &= fd.size() == 0;
+                    ok &= fd.empty();
+                    ok &= fd.data() == nullptr;
+                }
+
+                {
+                    //Not existing file binary
+                    Cpl::FileData fd(Cpl::FileData::Type::Binary);
+                    Cpl::FileData fd_empty(Cpl::FileData::Type::Binary);
+                    auto code = Cpl::ReadFile(*not_existance_files.begin(), fd);
+                    ok &= code == 0;
+                    ok &= fd.size() == 0;
+                    ok &= fd.empty();
+                    ok &= fd.data() == nullptr;
+                    ok &= fd.size() == fd_empty.size();
+                    ok &= fd.empty() == fd_empty.empty();
+                    ok &= fd.data() == fd_empty.data();
+                }
+
+                {
+                    //Existing file, binary format, budget less than file size
+                    Cpl::FileData fd(Cpl::FileData::Type::Binary);
+                    auto code = Cpl::ReadFile(not_empty_files[0].first, fd, testString.size() - 1);
+                    ok &= code == -2;
+                    ok &= fd.size() == testString.size() - 1;
+                    ok &= !fd.empty();
+                    ok &= fd.data() != nullptr;
+
+                    for (size_t ind = 0; ind < fd.size(); ind++) {
+                        ok &= fd.data()[ind] == testString.c_str()[ind];
+                    }
+                }
+
+                {
+                    //Existing file, null terminated format, budget less than file size
+                    Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
+                    auto code = Cpl::ReadFile(not_empty_files[0].first, fd, testString.size() - 1);
+                    ok &= code == -2;
+                    ok &= fd.size() == testString.size() - 1;
+                    ok &= !fd.empty();
+                    ok &= fd.data() != nullptr;
+
+                    for (size_t ind = 0; ind < fd.size(); ind++) {
+                        ok &= fd.data()[ind] == testString.c_str()[ind];
+                    }
+
+                    ok &= fd.data()[fd.size()] == 0;
+                }
+
+                {
+                    //Open folder
+                    Cpl::FileData fd(Cpl::FileData::Type::Binary);
+                    Cpl::FileData fd_empty(Cpl::FileData::Type::Binary);
+                    auto code = Cpl::ReadFile(*all_folders.begin(), fd);
+                    ok &= code == 2;
+                    ok &= fd.size() == 0;
+                    ok &= fd.empty();
+                    ok &= fd.data() == nullptr;
+                    ok &= fd.size() == fd_empty.size();
+                    ok &= fd.empty() == fd_empty.empty();
+                    ok &= fd.data() == fd_empty.data();
+
+                }
+            }
+
+            return ok;
+        }
     }
 
-    namespace Info{
+    namespace Info {
 
-        bool fileList(){
+        bool fileList() {
             bool ok = true;
 
             {
                 auto files = Cpl::GetFileList(testPath, "", true, false, false);
                 ok &= files.size() == 3;
-                for (const auto& concrete_filename_path: files){
+                for (const auto &concrete_filename_path: files) {
                     ok &= !concrete_filename_path.empty();
                     auto directory = Cpl::DirectoryByPath(concrete_filename_path);
                     //TODO: fix comparison
@@ -334,18 +519,18 @@ namespace Test
             return ok;
         }
 
-        bool naming(){
+        bool naming() {
             bool ok = true;
-            
+
             auto folder = Cpl::GetNameByPath(testPath);
             ok &= folder == "cpl";
 
             folder = Cpl::GetNameByPath(testPath + '/');
-            
+
             ok &= folder == "cpl";
             ok &= Cpl::LastDashFix("/tmp/cpl//") == "/tmp/cpl";
 
-            for (const auto& file : existance_files){
+            for (const auto &file: existance_files) {
                 auto filename = Cpl::GetNameByPath(file);
                 auto filedir = Cpl::DirectoryByPath(file);
 
@@ -357,7 +542,7 @@ namespace Test
             return ok;
         }
 
-        bool extension(){
+        bool extension() {
             bool ok = true;
             //Test get extention
             //TODO: add case for full paths, folders with dots
@@ -394,7 +579,7 @@ namespace Test
             return ok;
         }
 
-        bool pathing(){
+        bool pathing() {
             bool ok = true;
 
             ok &= Cpl::FileNameByPath("/usr/local/photo.png") == "photo.png";
@@ -407,7 +592,75 @@ namespace Test
 
             return ok;
         }
+
+        bool fileSizing() {
+            bool ok = true;
+            try {
+                if (existance_files.size() == 0) return false;
+                if (empty_files.size() == 0) return false;
+
+                for (const auto &path: existance_files) {
+                    if (!Cpl::FileExists(path))
+                        return false;
+
+                    {  //Search in not empty list
+                        auto iter = std::find_if(not_empty_files.begin(), not_empty_files.end(), [path](auto &pair) {
+                            if (pair.first == path) {
+                                return true;
+                            }
+                        });
+
+                        if (iter != not_empty_files.end()) {
+                            ok &= Cpl::FileSize(iter->first) == iter->second;
+                            continue;
+                        }
+                    }
+
+                    {  //Search in empty list
+                        auto empty_iter = empty_files.find(path);
+                        if (empty_iter != empty_files.end()) {
+                            std::cout << "File size " << *empty_iter << " " << Cpl::FileSize(*empty_iter) << std::endl;
+                            ok &= Cpl::FileSize(*empty_iter) == 0;
+                            continue;
+                        }
+                    }
+                }
+
+                for (const auto &path: not_existance_files) {
+                    if (Cpl::FileExists(path)) {
+                        return false;
+                    }
+
+                    ok &= Cpl::FileSize(path) < 0;
+                }
+
+                return ok;
+            }
+            catch (...) {
+            }
+
+            return false;
+        }
+
+        bool directorySizing() {
+            bool ok = true;
+            if (existance_files.size() == 0) return false;
+            size_t size = 0;
+            size_t calc_size = 0;
+
+            for (const auto &path: not_empty_files) {
+                calc_size += path.second;
+            }
+
+            ok &= Cpl::DirectorySize(testPath, size);
+            std::cout << "Dir size " << Cpl::DirectorySize(testPath, size) << std::endl;
+
+            ok &= size == calc_size;
+
+            return ok;
+        }
     }
+
 
     bool DoFileTest(){
         bool ok = true;
@@ -421,6 +674,10 @@ namespace Test
             ok &= Info::naming();
             ok &= Info::extension();
             ok &= Info::pathing();
+            ok &= Info::fileSizing();
+            ok &= Info::directorySizing();
+            ok &= Modify::createFiles();
+            ok &= Modify::readFormatsTest();
         }
         catch(...){
             std::cerr << "File test exception";
@@ -429,4 +686,8 @@ namespace Test
 
         return ok;
     }
+
+
+
+
 }
