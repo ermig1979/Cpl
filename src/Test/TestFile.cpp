@@ -56,8 +56,8 @@ namespace Test
         return a + "/" + b;
     }
 
-    static inline std::string testPath = "/tmp/cpl";
-    static inline std::string testString = "123456789876543210";
+    static const std::string testPath = "/tmp/cpl";
+    static const std::string testString = "123456789876543210";
 
     const static std::set<std::string> all_folders = [](){
         std::set<std::string> temp;

@@ -40,6 +40,8 @@
 
 #ifdef __linux__
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #endif
 
 #if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
@@ -118,7 +120,7 @@ namespace Cpl
 
     CPL_INLINE String LastDashFix(const String& path){
         for (auto iter = path.rbegin(); iter != path.rend(); iter++){
-            auto forbidden_iter = std::find(std::begin(forbiddenSymbols), std::end(forbiddenSymbols), *iter);
+            auto forbidden_iter = std::find(forbiddenSymbols.begin(), forbiddenSymbols.end(), *iter);
             if (forbidden_iter == forbiddenSymbols.end() && *iter != ' '){
                 return path.substr(0, std::distance(iter, path.rend()));
             }
@@ -127,17 +129,17 @@ namespace Cpl
     }
 
     CPL_INLINE size_t Compiler(){
-        #if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
-            return 0;
-        #elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
-            return 1;
-        #elif defined(__GNUC__) && (__GNUC__ > 10 || __cplusplus >= 201703L) ||  defined(__clang__)
-            return 2;
-        #elif defined(_MSC_VER) && _MSC_VER <= 1900
-            return 3;
+#if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
+        return 0;
+#elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
+        return 1;
+#elif defined(__GNUC__) && (__GNUC__ > 10 || __cplusplus >= 201703L) ||  defined(__clang__)
+        return 2;
+#elif defined(_MSC_VER) && _MSC_VER <= 1900
+        return 3;
         #else
             return 4;
-        #endif
+#endif
     }
 
     CPL_INLINE size_t UsedFs(){
@@ -183,11 +185,11 @@ namespace Cpl
 #elif _MSC_VER
         DWORD fileAttribute = ::GetFileAttributes(path.c_str());
         return (fileAttribute != INVALID_FILE_ATTRIBUTES);
-#elif (__unix__)
-        return (::access(path.c_str(), F_OK) != -1);
+#elif (__lunux__)
+        return (::access(filePath.c_str(), F_OK) != -1);
 #else
         std::ifstream ifs;
-        ifs.open(path, std::ios::in | std::ios::binary);
+        ifs.open(filePath, std::ios::in | std::ios::binary);
         return (!ifs.fail());
 #endif
     }
@@ -196,7 +198,7 @@ namespace Cpl
     CPL_INLINE String SubstituteEnv(const String& path)
     {
 #ifdef _MSC_VER
-# pragma warning(push)
+        # pragma warning(push)
 # pragma warning(disable: 4996)
 #endif
         static char* userPtr = getenv("USER"); // see https://community.hpe.com/t5/HP-UX-General/Impact-on-performance-by-excessive-getenv/m-p/4600627/highlight/true#M144885
@@ -239,7 +241,7 @@ namespace Cpl
         DWORD fileAttribute = GetFileAttributes(path.c_str());
         return ((fileAttribute != INVALID_FILE_ATTRIBUTES) &&
                 (fileAttribute & FILE_ATTRIBUTE_DIRECTORY) != 0);
-#else
+#elif defined (__linux__)
         DIR* dir = opendir(path.c_str());
         if (dir != NULL)
         {
@@ -248,6 +250,8 @@ namespace Cpl
         }
         else
             return false;
+#else
+#error Not supported system
 #endif
     }
 
@@ -260,8 +264,10 @@ namespace Cpl
         return fs::create_directories(fs::path(path));
 #elif _MSC_VER
         return fs::create_directories(fs::path(path));
-#else
+#elif defined (__linux__)
         return (mkdir(path.c_str(), 0777) == 0);
+#else
+#error Not supported system
 #endif
     }
 
@@ -274,7 +280,7 @@ namespace Cpl
         if (!dir_entry.exists()) {
             return names;
         }
-        
+
         if (!recursive) {
             for (auto const& entrance : fs::directory_iterator{directory}) {
                 auto regular = entrance.path().filename().string();
@@ -334,7 +340,7 @@ namespace Cpl
             } while (::FindNextFile(hFind, &fd));
             ::FindClose(hFind);
         }
-#else
+#elif defined (__linux__)
         DIR* dir = ::opendir(directory.c_str());
         if (dir != NULL)
         {
@@ -355,6 +361,8 @@ namespace Cpl
         }
         else
             std::cout << "There is an error during (" << errno << ") opening '" << directory << "' !" << std::endl;
+#else
+#error Not supported system
 #endif
         return names;
     }
@@ -378,13 +386,16 @@ namespace Cpl
 #elif  _MSC_VER
         fs::path path(path);
         return path.filename().string();
-#else
+#elif defined (__linux__)
         size_t pos = path.find_last_of("/");
         if (pos == String::npos)
             return path;
         else
             return path.substr(pos + 1);
+#else
+#error Not supported system
 #endif
+
     }
 
     CPL_INLINE String DirectoryByPath(const String& path_)
@@ -420,13 +431,13 @@ namespace Cpl
     CPL_INLINE String RemoveExtension(const String& path)
     {
         size_t last_sep = (size_t) path.find_last_of(".");
-        if (last_sep == String::npos || last_sep == path.size() - 1) 
+        if (last_sep == String::npos || last_sep == path.size() - 1)
             return path;
 
         return path.substr(0, last_sep);
     }
 
-    CPL_INLINE String ChangeExtension(const String& path, const String& ext) 
+    CPL_INLINE String ChangeExtension(const String& path, const String& ext)
     {
         //TODO:add asserts
         if (path == "." || path.size() == 0)
@@ -441,9 +452,9 @@ namespace Cpl
 
         if (last_sep_ext == String::npos)
             last_sep_ext = 0;
-        else 
+        else
             ++last_sep_ext;
-        
+
         return path.substr(0, last_sep) + "." + ext.substr(last_sep_ext, String::npos);
     }
 
@@ -452,6 +463,7 @@ namespace Cpl
     // returns empty string if path is empty
     CPL_INLINE String GetAbsolutePath(const String& path, const String& basePath)
     {
+#ifdef CPL_FILE_USE_FILESYSTEM
         if (path.empty())
             return path;
         if (fs::path(path).is_absolute())
@@ -463,6 +475,15 @@ namespace Cpl
             p = fs::path(basePath).parent_path() / path;
         p = fs::canonical(p);
         return fs::absolute(p).string();
+#elif defined(_MSC_VER)
+        TODO:create
+#elif defined (__linux__)
+        char resolved_path[PATH_MAX];
+        realpath(path.c_str(), resolved_path);
+        return String(resolved_path);
+#else
+#error Not supported system
+#endif
     }
 
     CPL_INLINE bool Copy(const String& src, const String& dst, bool recursive = true)
@@ -489,18 +510,28 @@ namespace Cpl
         String com = String("cp -R ") + src + " " + dst;
         return std::system(com.c_str()) == 0;
 #else
-        return false;
+#error Not supported system
 #endif
     }
 
     CPL_INLINE bool DeleteFile(const String& filename)
     {
+#ifdef CPL_FILE_USE_FILESYSTEM
         std::error_code code;
         if (!FileExists(filename)){
             return false;
         }
         bool ret = fs::remove(filename, code);
         return ret;
+#elif defined(_MSC_VER)
+        return false;
+#elif defined (__linux__)
+        String com = String("rm -f") + filename;
+        return std::system(com.c_str()) == 0;
+#else
+#error Not supported system
+#endif
+
     }
 
     CPL_INLINE size_t DeleteDirectory(const String& dir)
@@ -520,7 +551,7 @@ namespace Cpl
         String com = String("rm -rf ") + dir;
         return std::system(com.c_str()) == 0;
 #else
-        return false;
+#error Not supported system
 #endif
     }
 
@@ -536,12 +567,12 @@ namespace Cpl
         if (nSize > 0) {
             retval = std::string(buf);
         }
-#elif defined(linux) || defined (__linux) || defined (__linux__)
+#elif defined (__linux__)
         char buf[512];
         size_t len = readlink("/proc/self/exe", buf, sizeof(buf));
         std::string retval(buf, len);
 #else
-#error Not support system
+#error Not supported system
 #endif
         retval = retval.substr(0, retval.find_last_of("/\\"));
         return retval;
@@ -566,6 +597,7 @@ namespace Cpl
 
     CPL_INLINE bool DirectorySize (const String & path, size_t& size) {
         size_t tsize = 0;
+#ifdef CPL_FILE_USE_FILESYSTEM
         try {
             if (!DirectoryExists(path))
                 return false;
@@ -576,12 +608,37 @@ namespace Cpl
                 if (!fs::is_directory(iter->status()) )
                     tsize += fs::file_size(iter->path());
             }
-            size = tsize;
-            return true;
         }
         catch(...) {
+            return false;
         }
+
+#elif defined(_MSC_VER)
         return false;
+#elif defined (__linux__)
+        //https://stackoverflow.com/questions/1129499/how-to-get-the-size-of-a-dir-programatically-in-linux
+        DIR *d = opendir( path.c_str() );
+        if( d == NULL )
+            return false;
+
+        struct dirent *de;
+        struct stat buf;
+
+        for( de = readdir( d ); de != NULL; de = readdir( d ) ) {
+            int exists = stat( de->d_name, &buf );
+
+            if( exists < 0 ) {
+                fprintf( stderr, "Cannot read file statistics for %s\n", de->d_name );
+            } else {
+                tsize += buf.st_size;
+            }
+        }
+
+#else
+#error Not supported system
+#endif
+        size = tsize;
+        return true;
     }
 
     struct FileData {
@@ -591,8 +648,8 @@ namespace Cpl
         };
 
         FileData(Type type = Type::Binary)
-        : _type(type)
-        , _size(0)
+                : _type(type)
+                , _size(0)
         {};
 
         unsigned const char* data() const {
@@ -618,8 +675,8 @@ namespace Cpl
 
     private:
         FileData(size_t size, Type type)
-            : _type(type)
-            , _size(size)
+                : _type(type)
+                , _size(size)
         {
             if (size)
                 recreateHolder();
@@ -628,11 +685,12 @@ namespace Cpl
         bool recreateHolder() {
             try {
                 if (_type == Type::BinaryToNullTerminatedText) {
-                    _holder = std::make_unique<unsigned char[]>(_size + 1);
+                    //_holder = std::make_unique<unsigned char[]>(_size + 1);
+                    _holder = std::unique_ptr<unsigned char[]>(new unsigned char[_size + 1]);
                     _holder.get()[_size] = 0;
                 }
                 else
-                    _holder = std::make_unique<unsigned char[]>(_size);
+                    _holder = std::unique_ptr<unsigned char[]>(new unsigned char[_size]);
 
                 return true;
             }
