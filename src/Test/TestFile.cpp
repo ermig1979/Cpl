@@ -29,11 +29,17 @@
 #include <iostream>
 #include <string>
 #include <set>
-#include <unistd.h>
 
+#ifdef __linux__
+#include <unistd.h>
 extern "C" {
-#include <sys/stat.h>
+    #include <sys/stat.h>
 }
+#endif
+
+#ifdef _WIN32
+#include <direct.h>
+#endif
 
 /*
 
@@ -53,10 +59,17 @@ namespace Test
     std::string joinPath(const std::string& a, const std::string& b) {
         assert(a.size());
         assert(b.size());
+#ifdef __linux__
         return a + "/" + b;
+#elif _WIN32
+        return a + "\\" + b;
+#endif
     }
-
+#ifdef __linux__
     static const std::string testPath = "/tmp/cpl";
+#elif _WIN32
+    static const std::string testPath = ".\\cpl";
+#endif
     static const std::string testString = "123456789876543210";
 
     const static std::set<std::string> all_folders = [](){
@@ -64,14 +77,14 @@ namespace Test
         temp.insert(joinPath(testPath, "1"));
         temp.insert(joinPath(testPath, "2"));
         temp.insert(joinPath(testPath, "zero0"));
-        temp.insert(joinPath(testPath, "zero0/test"));
+        temp.insert(joinPath(testPath, joinPath("zero0", "test")));
         return temp;
     }();
 
     const static std::set<std::string> not_exist_folders = [](){
         std::set<std::string> temp;
         temp.insert(joinPath(testPath, "999"));
-        temp.insert(joinPath(testPath, "zxcb/999"));
+        temp.insert(joinPath(testPath, joinPath("zxcb", "999")));
         temp.insert(joinPath(testPath, "8"));
         return temp;
     }();
@@ -79,7 +92,7 @@ namespace Test
     const static std::set<std::string> existance_files = [](){
         std::set<std::string> temp;
         temp.insert(joinPath(testPath, "emptyFile.js"));
-        temp.insert(joinPath(testPath, "2/22222.js"));
+        temp.insert(joinPath(testPath, joinPath("2", "22222.js")));
         temp.insert(joinPath(testPath, "notempty.txt"));
         temp.insert(joinPath(testPath, "notemptyx2"));
         return temp;
@@ -88,7 +101,7 @@ namespace Test
     const static std::set<std::string> not_existance_files = [](){
         std::set<std::string> temp;
         temp.insert(joinPath(testPath, "bemptyFile.js"));
-        temp.insert(joinPath(testPath, "2/b22222.js"));
+        temp.insert(joinPath(testPath, joinPath("2", "b22222.js")));
         temp.insert(joinPath(testPath, "bnotempty.txt"));
         temp.insert(joinPath(testPath, "bnotemptyx2"));
         return temp;
@@ -97,7 +110,7 @@ namespace Test
     const static std::set<std::string> empty_files = [](){
         std::set<std::string> temp;
         temp.insert(joinPath(testPath, "emptyFile.js"));
-        temp.insert(joinPath(testPath, "2/22222.js"));
+        temp.insert(joinPath(testPath, joinPath("2", "22222.js")));
         return temp;
     }();
 
@@ -114,27 +127,33 @@ namespace Test
         auto p = mkdir(joinPath(testPath, "1").c_str(), 0777);
         p |= mkdir(joinPath(testPath, "2").c_str(), 0777);
         p |= mkdir(joinPath(testPath, "zero0").c_str(), 0777);
-        p |= mkdir(joinPath(testPath, "zero0/test").c_str(), 0777);
+        p |= mkdir(joinPath(testPath, joinPath("zero0", "test")).c_str(), 0777);
+#elif _WIN32
+        auto p = _mkdir(testPath.c_str());
+        p |= _mkdir(joinPath(testPath, "1").c_str());
+        p |= _mkdir(joinPath(testPath, "2").c_str());
+        p |= _mkdir(joinPath(testPath, "zero0").c_str());
+        p |= _mkdir(joinPath(testPath, joinPath("zero0", "test")).c_str());
+#endif
 
         if (p)
             return false;
         
-        std::ofstream f1(joinPath(testPath, "/emptyFile.js"));
+        std::ofstream f1(joinPath(testPath, "emptyFile.js"));
         f1.close();
 
-        std::ofstream f2(testPath + "/2/22222.js");
+        std::ofstream f2(joinPath(testPath, joinPath("2", "22222.js")));
         f2.close();
 
-        std::ofstream f3(testPath + "/notempty.txt");
+        std::ofstream f3(joinPath(testPath, "notempty.txt"));
         f3 << testString;
         f3.close();
 
-        std::ofstream f4(testPath + "/notemptyx2");
+        std::ofstream f4(joinPath(testPath, "notemptyx2"));
         f4 << testString << testString;
         f4.close();
 
         return true;
-#endif
     }
 
     namespace Existance{
@@ -145,7 +164,6 @@ namespace Test
             int cnt1 = 0;
             for (auto& exist : existance_files){
                 cnt1 += COMPARE_RESULT(Cpl::FileExists(exist), true);
-
                 std::cout << exist << " " << Cpl::FileExists(exist) << std::endl;
             }
 
@@ -293,8 +311,14 @@ namespace Test
             ok &= !Cpl::DirectoryExists(newFolder2);
             ok &= !Cpl::DirectoryExists(newFolder);
 
-            ok &= !Cpl::DirectoryExists(newFolder);
 
+#ifdef _WIN32
+            ok &= Cpl::DirectoryExists("C://");
+
+            if (!Cpl::DirectoryExists("X://")) {
+                ok &= !Cpl::CreatePath("X:\\zxv\\123\\312\\abcdefg");
+            }
+#endif
             return ok;
         }
 
@@ -312,8 +336,9 @@ namespace Test
             {
                 //Case 1, create
                 ok &= Cpl::WriteToFile(tempfilename, (const char *) d, sizeof(d));
-
-                if (Cpl::FileSize(tempfilename) != sizeof(d)){
+                size_t size = 0;
+                ok &= Cpl::FileSize(tempfilename, size);
+                if (size != sizeof(d)){
                     return false;
                 }
 
@@ -330,7 +355,9 @@ namespace Test
             {
                 //Case 2, append data
                 ok &= Cpl::WriteToFile(tempfilename, (const char *) d + 1, sizeof(d) / 2, false);
-                if (Cpl::FileSize(tempfilename) != sizeof(d) + (sizeof(d) / 2))
+                size_t size = 0;
+                ok &= Cpl::FileSize(tempfilename, size);
+                if (size != sizeof(d) + (sizeof(d) / 2))
                     return false;
 
                 Cpl::FileData fd;
@@ -352,8 +379,9 @@ namespace Test
             {
                 //Case 3, rewrite
                 ok &= Cpl::WriteToFile(tempfilename, (const char *) d, sizeof(d));
-
-                if (Cpl::FileSize(tempfilename) != sizeof(d))
+                size_t size = 0;
+                ok &= Cpl::FileSize(tempfilename, size);
+                if (size != sizeof(d))
                     return false;
 
                 Cpl::FileData fd;
@@ -473,7 +501,12 @@ namespace Test
                     Cpl::FileData fd(Cpl::FileData::Type::Binary);
                     Cpl::FileData fd_empty(Cpl::FileData::Type::Binary);
                     auto code = Cpl::ReadFile(*all_folders.begin(), fd);
+#if __linux__
                     ok &= code == 2;
+#elif _WIN32
+                    ok &= code == 0;
+#endif
+
                     ok &= fd.size() == 0;
                     ok &= fd.empty();
                     ok &= fd.data() == nullptr;
@@ -525,10 +558,11 @@ namespace Test
             auto folder = Cpl::GetNameByPath(testPath);
             ok &= folder == "cpl";
 
-            folder = Cpl::GetNameByPath(testPath + '/');
+            folder = Cpl::GetNameByPath(testPath + Cpl::FolderSeparator());
 
             ok &= folder == "cpl";
-            ok &= Cpl::LastDashFix("/tmp/cpl//") == "/tmp/cpl";
+            
+            ok &= Cpl::DirectoryPathLastDashFix(Cpl::MakePath(testPath, Cpl::FolderSeparator())) == testPath;
 
             for (const auto &file: existance_files) {
                 auto filename = Cpl::GetNameByPath(file);
@@ -608,10 +642,13 @@ namespace Test
                             if (pair.first == path) {
                                 return true;
                             }
+                            return false;
                         });
 
                         if (iter != not_empty_files.end()) {
-                            ok &= Cpl::FileSize(iter->first) == iter->second;
+                            size_t size = 0;
+                            ok &= Cpl::FileSize(iter->first,size);
+                            ok &= size == iter->second;
                             continue;
                         }
                     }
@@ -619,8 +656,9 @@ namespace Test
                     {  //Search in empty list
                         auto empty_iter = empty_files.find(path);
                         if (empty_iter != empty_files.end()) {
-                            std::cout << "File size " << *empty_iter << " " << Cpl::FileSize(*empty_iter) << std::endl;
-                            ok &= Cpl::FileSize(*empty_iter) == 0;
+                            size_t size = 0;
+                            ok &= Cpl::FileSize(*empty_iter, size);
+                            ok &= size == 0;
                             continue;
                         }
                     }
@@ -631,7 +669,9 @@ namespace Test
                         return false;
                     }
 
-                    ok &= Cpl::FileSize(path) < 0;
+                    size_t size = 0;
+                    ok &= !Cpl::FileSize(path, size);
+                    ok &= size == 0;
                 }
 
                 return ok;
@@ -653,10 +693,18 @@ namespace Test
             }
 
             ok &= Cpl::DirectorySize(testPath, size);
-            std::cout << "Dir size " << Cpl::DirectorySize(testPath, size) << std::endl;
+            std::cout << "Dir size " << size << std::endl;
 
             ok &= size == calc_size;
 
+            return ok;
+        }
+
+        bool system() {
+            //TODO: add test of GetAbsolutePath with usage environment variable for check path
+            bool ok = true;
+            ok &= Cpl::GetAbsolutePath(testPath) != testPath;
+            ok &= !Cpl::GetAbsolutePath(testPath).empty();
             return ok;
         }
     }
@@ -665,7 +713,7 @@ namespace Test
     bool DoFileTest(){
         bool ok = true;
         try {
-            std::cout << "Filesystem " << Cpl::UsedFs() << std::endl;
+            std::cout << "Filesystem " << Cpl::FilesystemType() << std::endl;
             initializeTree();
             ok &= Existance::testFileExists();
             ok &= Existance::testFolderExists();
@@ -686,8 +734,4 @@ namespace Test
 
         return ok;
     }
-
-
-
-
 }

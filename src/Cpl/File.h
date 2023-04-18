@@ -28,7 +28,6 @@
 #include "Cpl/Defs.h"
 #include "Cpl/Log.h"
 #include <algorithm>
-#include <bits/types/FILE.h>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -46,11 +45,11 @@
 
 #if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
 //No filesystem
-#elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
+#elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L) || __cplusplus < 201703L
 #define CPL_FILE_USE_FILESYSTEM 1
-#include <experimental/filesystem>
+#include <filesystem>
 namespace fs = std::experimental::filesystem;
-#elif defined(__GNUC__) && (__GNUC__ > 10 || __cplusplus >= 201703L) ||  defined(__clang__)
+#elif defined(__GNUC__) && (__GNUC__ > 10) || defined(__clang__) || __cplusplus >= 201703L
 #define CPL_FILE_USE_FILESYSTEM 2
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -100,7 +99,7 @@ namespace Cpl
 {
     CPL_INLINE String FolderSeparator()
     {
-#ifdef WIN32
+#ifdef _WIN32
         return String("\\");
 #elif defined(__unix__)
         return String("/");
@@ -118,17 +117,15 @@ namespace Cpl
         return temp;
     }();
 
-    CPL_INLINE String LastDashFix(const String& path){
-        for (auto iter = path.rbegin(); iter != path.rend(); iter++){
-            auto forbidden_iter = std::find(forbiddenSymbols.begin(), forbiddenSymbols.end(), *iter);
-            if (forbidden_iter == forbiddenSymbols.end() && *iter != ' '){
-                return path.substr(0, std::distance(iter, path.rend()));
-            }
-        }
-        return path;
+    CPL_INLINE String DirectoryPathLastDashFix(const String& path){
+        auto iter = path.rbegin();
+        while (*iter == FolderSeparator().at(0) || *iter == ' ')
+            iter++;
+
+        return path.substr(0, std::distance(iter, path.rend()));
     }
 
-    CPL_INLINE size_t Compiler(){
+    CPL_INLINE size_t CompilerType(){
 #if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
         return 0;
 #elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
@@ -137,23 +134,22 @@ namespace Cpl
         return 2;
 #elif defined(_MSC_VER) && _MSC_VER <= 1900
         return 3;
-        #else
-            return 4;
+#else
+        return 4;
 #endif
     }
 
-    CPL_INLINE size_t UsedFs(){
+    CPL_INLINE size_t FilesystemType(){
 #if CPL_FILE_USE_FILESYSTEM == 2
         return 2;
 #elif CPL_FILE_USE_FILESYSTEM == 1
         return 3;
-#elif defined(_MSC_VER)
+#elif _WIN32
         return 1;
 #else
         return 0;
 #endif
     }
-
 
     namespace {
         CPL_INLINE Cpl::String MakePathImpl(const Cpl::String& a, const Cpl::String& b)
@@ -162,6 +158,18 @@ namespace Cpl
                 return b;
             auto sep = Cpl::FolderSeparator();
             return a + (a[a.size() - 1] == sep[0] ? "" : sep) + b;
+        }
+
+        CPL_INLINE bool DirectoryIsDrive(const Cpl::String& path) {
+#ifdef __linux__
+            return false;
+#elif _WIN32
+            String substring = DirectoryPathLastDashFix(path);
+            if (substring.size() == 2 && substring[1] == ':') {
+                return true;
+            }
+            return false;
+#endif
         }
     }
 
@@ -182,10 +190,10 @@ namespace Cpl
 #ifdef CPL_FILE_USE_FILESYSTEM
         fs::path fspath(filePath);
         return fs::exists(filePath) && (fs::is_regular_file(filePath) || fs::is_symlink(filePath));
-#elif _MSC_VER
-        DWORD fileAttribute = ::GetFileAttributes(path.c_str());
+#elif _WIN32
+        DWORD fileAttribute = ::GetFileAttributes(filePath.c_str());
         return (fileAttribute != INVALID_FILE_ATTRIBUTES);
-#elif (__lunux__)
+#elif __lunux__
         return (::access(filePath.c_str(), F_OK) != -1);
 #else
         std::ifstream ifs;
@@ -220,7 +228,7 @@ namespace Cpl
 
     CPL_INLINE bool DirectoryExists(const String& path_)
     {
-        const String path = LastDashFix(path_);
+        const String path = DirectoryPathLastDashFix(path_);
 
 #if CPL_FILE_USE_FILESYSTEM == 2
         try {
@@ -237,11 +245,11 @@ namespace Cpl
         catch(...){
             return false;
         }
-#elif defined(_MSC_VER)
+#elif _WIN32
         DWORD fileAttribute = GetFileAttributes(path.c_str());
         return ((fileAttribute != INVALID_FILE_ATTRIBUTES) &&
                 (fileAttribute & FILE_ATTRIBUTE_DIRECTORY) != 0);
-#elif defined (__linux__)
+#elif __linux__
         DIR* dir = opendir(path.c_str());
         if (dir != NULL)
         {
@@ -255,23 +263,45 @@ namespace Cpl
 #endif
     }
 
+    CPL_INLINE String DirectoryByPath(const String& path_);
+
     CPL_INLINE bool CreatePath(const String& path)
     {
         if (DirectoryExists(path))
             return true;
+        if (DirectoryIsDrive(path))
+            return false;
 
-#ifdef CPL_FILE_USE_FILESYSTEM
+#ifdef _WIN32
+        if (CreateDirectory(path.c_str(), NULL)) {
+            return true;
+        } 
+        else 
+        {
+            if (GetLastError() == ERROR_PATH_NOT_FOUND) {
+                String parent = Cpl::DirectoryByPath(path);
+                
+                if (parent == path) {
+                    return false;
+                }
+
+                if (CreatePath(parent)) {
+                    if (CreatePath(path))
+                        return true;
+                }
+            }
+        }
+
+        return false;
+        
+#elif  CPL_FILE_USE_FILESYSTEM
         return fs::create_directories(fs::path(path));
-#elif _MSC_VER
-        return fs::create_directories(fs::path(path));
-#elif defined (__linux__)
+#elif __linux__
         return (mkdir(path.c_str(), 0777) == 0);
 #else
 #error Not supported system
 #endif
     }
-
-
 
     inline StringList GetFileList(const String& directory, const String& filter, bool files, bool directories, bool recursive) {
         std::list<String> names;
@@ -325,7 +355,7 @@ namespace Cpl
                 names.push_back(entrance.path().string());
             }
         }
-#elif _MSC_VER
+#elif _WIN32
         ::WIN32_FIND_DATA fd;
         ::HANDLE hFind = ::FindFirstFile(MakePath(directory, filter).c_str(), &fd);
         if (hFind != INVALID_HANDLE_VALUE)
@@ -340,7 +370,7 @@ namespace Cpl
             } while (::FindNextFile(hFind, &fd));
             ::FindClose(hFind);
         }
-#elif defined (__linux__)
+#elif __linux__
         DIR* dir = ::opendir(directory.c_str());
         if (dir != NULL)
         {
@@ -378,15 +408,15 @@ namespace Cpl
 
     CPL_INLINE String GetNameByPath(const String& path_)
     {
-        const String path = LastDashFix(path_);
+        const String path = DirectoryPathLastDashFix(path_);
 
 #ifdef CPL_FILE_USE_FILESYSTEM
         fs::path fspath(path);
         return fspath.filename().string();
-#elif  _MSC_VER
+#elif  _WIN32
         fs::path path(path);
         return path.filename().string();
-#elif defined (__linux__)
+#elif __linux__
         size_t pos = path.find_last_of("/");
         if (pos == String::npos)
             return path;
@@ -397,16 +427,15 @@ namespace Cpl
 #endif
 
     }
-
-    CPL_INLINE String DirectoryByPath(const String& path_)
-    {
-        const String path = LastDashFix(path_);
-
+    //TODO: maybe rename, check "." folder on linux
+    CPL_INLINE String DirectoryByPath(const String& path_) {
+        const String path = DirectoryPathLastDashFix(path_);
         size_t pos = path.find_last_of(FolderSeparator());
-        if (pos == String::npos)
-            return path.find(".") == 0 ? String("") : path;
-        else
-            return path.substr(0, pos);
+        String substr = path.substr(0, pos);
+        if (DirectoryIsDrive(substr))
+            return substr + FolderSeparator();
+
+        return substr;
     }
 
     CPL_INLINE String FileNameByPath(const String & path)
@@ -417,7 +446,6 @@ namespace Cpl
         return path.substr(path.find_last_of("/\\") + 1);
 #endif
     }
-
 
     CPL_INLINE String ExtensionByPath(const String& path)
     {
@@ -458,25 +486,12 @@ namespace Cpl
         return path.substr(0, last_sep) + "." + ext.substr(last_sep_ext, String::npos);
     }
 
-
-    // path is absolute or relative to basePath, path and basePath must exist
-    // returns empty string if path is empty
-    CPL_INLINE String GetAbsolutePath(const String& path, const String& basePath)
+    CPL_INLINE String GetAbsolutePath(const String& path)
     {
-#ifdef CPL_FILE_USE_FILESYSTEM
-        if (path.empty())
-            return path;
-        if (fs::path(path).is_absolute())
-            return path;
-        fs::path p;
-        if (fs::is_directory(basePath))
-            p = fs::path(basePath) / path;
-        else
-            p = fs::path(basePath).parent_path() / path;
-        p = fs::canonical(p);
-        return fs::absolute(p).string();
-#elif defined(_MSC_VER)
-        TODO:create
+#ifdef _WIN32
+        std::array<char, MAX_PATH> buffer;
+        const char* end = _fullpath(buffer.data(), path.c_str(), MAX_PATH);
+        return String(buffer.data());
 #elif defined (__linux__)
         char resolved_path[PATH_MAX];
         realpath(path.c_str(), resolved_path);
@@ -496,7 +511,7 @@ namespace Cpl
         catch (...) {
             return false;
         }
-#elif defined(_MSC_VER)
+#elif _WIN32
         try
         {
             typedef fs::copy_options opt;
@@ -506,7 +521,7 @@ namespace Cpl
             return false;
         }
         return true;
-#elif defined (__linux__)
+#elif __linux__
         String com = String("cp -R ") + src + " " + dst;
         return std::system(com.c_str()) == 0;
 #else
@@ -523,9 +538,9 @@ namespace Cpl
         }
         bool ret = fs::remove(filename, code);
         return ret;
-#elif defined(_MSC_VER)
+#elif _WIN32
         return false;
-#elif defined (__linux__)
+#elif __linux__
         String com = String("rm -f") + filename;
         return std::system(com.c_str()) == 0;
 #else
@@ -545,9 +560,9 @@ namespace Cpl
         catch (...) {
         }
         return 0;
-#elif defined(_MSC_VER)
+#elif _WIN32
         return false;
-#elif defined (__linux__)
+#elif __linux__
         String com = String("rm -rf ") + dir;
         return std::system(com.c_str()) == 0;
 #else
@@ -560,14 +575,14 @@ namespace Cpl
 
     CPL_INLINE String GetExecutableLocation()
     {
-#if defined(_WIN32)
+#if _WIN32
         std::string retval;
         char buf[MAX_PATH];
         DWORD nSize = ::GetModuleFileName(NULL, buf, sizeof(buf));
         if (nSize > 0) {
             retval = std::string(buf);
         }
-#elif defined (__linux__)
+#elif __linux__
         char buf[512];
         size_t len = readlink("/proc/self/exe", buf, sizeof(buf));
         std::string retval(buf, len);
@@ -578,26 +593,52 @@ namespace Cpl
         return retval;
     }
 
-    CPL_INLINE long int FileSize (const String & path) {
+    CPL_INLINE bool FileSize (const String & path, size_t& size) {
         if (FileExists(path)) {
             std::ifstream ifs;
             ifs.open(path, std::ios::in | std::ios::binary);
             if (!ifs.fail()) {
-                std::ifstream::pos_type size = 0;
+                std::ifstream::pos_type pos = 0;
                 if (ifs.seekg(0, std::ios::end))
-                    size = ifs.tellg();
+                    pos = ifs.tellg();
 
-                return size;
+                size = pos;
+                return true;
             }
         }
 
-        return -1;
+        return false;
     }
 
 
     CPL_INLINE bool DirectorySize (const String & path, size_t& size) {
         size_t tsize = 0;
-#ifdef CPL_FILE_USE_FILESYSTEM
+#ifdef _WIN32
+        WIN32_FIND_DATAA data;
+        HANDLE handle = NULL;
+
+        handle = FindFirstFileA(Cpl::MakePath(DirectoryPathLastDashFix(path), Cpl::String("*")).c_str(), &data);
+        if (handle == INVALID_HANDLE_VALUE)
+            return false;
+
+        do {
+            // skip current directory and parent directory
+            if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0))
+            {
+                if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
+                {
+                    size_t ttsize = 0;
+                    if (!DirectorySize(Cpl::MakePath(path, data.cFileName), ttsize))
+                        return false;
+                    tsize += ttsize;
+                }
+                else
+                    tsize += (size_t)(data.nFileSizeHigh * MAXDWORD + data.nFileSizeLow);
+            }
+
+        } while (FindNextFile(handle, &data));
+        
+#elif CPL_FILE_USE_FILESYSTEM
         try {
             if (!DirectoryExists(path))
                 return false;
@@ -612,10 +653,7 @@ namespace Cpl
         catch(...) {
             return false;
         }
-
-#elif defined(_MSC_VER)
-        return false;
-#elif defined (__linux__)
+#elif __linux__
         //https://stackoverflow.com/questions/1129499/how-to-get-the-size-of-a-dir-programatically-in-linux
         DIR *d = opendir( path.c_str() );
         if( d == NULL )
@@ -741,7 +779,7 @@ namespace Cpl
 
                 pos = ifs.tellg();
 
-                if (pos > byteBudget) {
+                if ((size_t) pos > byteBudget) {
                     pos = byteBudget;
                     partial = true;
                 }
