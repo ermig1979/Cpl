@@ -229,18 +229,9 @@ namespace Cpl
     CPL_INLINE bool DirectoryExists(const String& path_)
     {
         const String path = DirectoryPathLastDashFix(path_);
-
-#if CPL_FILE_USE_FILESYSTEM == 2
+#ifdef CPL_FILE_USE_FILESYSTEM
         try {
-            fs::directory_entry dir_entry(path);
-            return dir_entry.is_directory() && dir_entry.exists();
-        } catch (...) {
-
-        }
-        return false;
-#elif CPL_FILE_USE_FILESYSTEM == 1
-        try {
-            return fs::is_directory(path);
+            return fs::is_directory(path) && fs::exists(path);
         }
         catch(...){
             return false;
@@ -492,7 +483,7 @@ namespace Cpl
         std::array<char, MAX_PATH> buffer;
         const char* end = _fullpath(buffer.data(), path.c_str(), MAX_PATH);
         return String(buffer.data());
-#elif defined (__linux__)
+#elif __linux__
         char resolved_path[PATH_MAX];
         realpath(path.c_str(), resolved_path);
         return String(resolved_path);
@@ -531,15 +522,16 @@ namespace Cpl
 
     CPL_INLINE bool DeleteFile(const String& filename)
     {
-#ifdef CPL_FILE_USE_FILESYSTEM
-        std::error_code code;
-        if (!FileExists(filename)){
+        if (!FileExists(filename)) {
             return false;
         }
+
+#ifdef _WIN32 
+        return ::DeleteFile(filename.c_str());
+#elif CPL_FILE_USE_FILESYSTEM
+        std::error_code code;
         bool ret = fs::remove(filename, code);
         return ret;
-#elif _WIN32
-        return false;
 #elif __linux__
         String com = String("rm -f") + filename;
         return std::system(com.c_str()) == 0;
@@ -549,9 +541,41 @@ namespace Cpl
 
     }
 
-    CPL_INLINE size_t DeleteDirectory(const String& dir)
+    CPL_INLINE bool DeleteDirectory(const String& dir)
     {
-#ifdef CPL_FILE_USE_FILESYSTEM
+#ifdef _WIN32
+        const String undashed = DirectoryPathLastDashFix(dir);
+        String dashed = MakePath(undashed, FolderSeparator());
+
+        WIN32_FIND_DATAA data;
+        HANDLE handle = NULL;
+
+        handle = FindFirstFileA(Cpl::MakePath(DirectoryPathLastDashFix(dashed), Cpl::String("*")).c_str(), &data);
+        if (handle == INVALID_HANDLE_VALUE)
+            return false;
+
+        do {
+            if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0))
+            {
+                if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                    if (!Cpl::DeleteDirectory(Cpl::MakePath(dir, data.cFileName)))
+                        return false;
+                }
+                else {
+                    if (!Cpl::DeleteFile(Cpl::MakePath(dir, data.cFileName)))
+                        return false;
+                }
+            }
+
+        } while (FindNextFile(handle, &data));
+
+        if (GetLastError() != ERROR_NO_MORE_FILES)
+            return false;
+        FindClose(handle);
+
+        return RemoveDirectory(dir.c_str());
+   
+#elif CPL_FILE_USE_FILESYSTEM
         try {
             std::error_code code;
             size_t removeCount = (size_t) fs::remove_all(dir, code);
@@ -560,8 +584,6 @@ namespace Cpl
         catch (...) {
         }
         return 0;
-#elif _WIN32
-        return false;
 #elif __linux__
         String com = String("rm -rf ") + dir;
         return std::system(com.c_str()) == 0;
@@ -637,6 +659,8 @@ namespace Cpl
             }
 
         } while (FindNextFile(handle, &data));
+
+        FindClose(handle);
         
 #elif CPL_FILE_USE_FILESYSTEM
         try {
@@ -683,6 +707,28 @@ namespace Cpl
         enum class Type {
             Binary,
             BinaryToNullTerminatedText
+        };
+
+
+        struct Error {
+            enum ReadFileError {
+                NoError,
+                PartitialRead,
+                FailedToOpen,
+                FailedToRead,
+                FailedToGetInfo,
+                CommonFail
+            };
+
+            Error(Error::ReadFileError code_) : code(code_) {}
+            const ReadFileError code;
+
+            operator bool() const {
+                if (code == NoError || code == PartitialRead) {
+                    return true;
+                }
+                return false;
+            }
         };
 
         FileData(Type type = Type::Binary)
@@ -741,7 +787,7 @@ namespace Cpl
         size_t _size;
         std::unique_ptr<unsigned char[]> _holder;
 
-        friend int ReadFile(const String & path, FileData& out, size_t byteBudget);
+        friend FileData::Error ReadFile(const String & path, FileData& out, size_t startPos, size_t maxSize);
     };
 
     CPL_INLINE int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate = true) {
@@ -762,44 +808,51 @@ namespace Cpl
         }
 
         return 0;
-
     }
+    
 
-    CPL_INLINE int ReadFile(const String & path, FileData& out, size_t byteBudget = 1 * 1024 * 1024 * 1024 /* 1 gb */ ) {
+
+    CPL_INLINE FileData::Error ReadFile(const String & path, FileData& out, size_t startPos = 0, size_t maxSize = 1 * 1024 * 1024 * 1024 /* 1 gb */) {
         try {
             std::ifstream ifs;
             ifs.open(path, std::ios::in | std::ios::binary);
             bool partial = false;
             if (!ifs.fail()) {
-                std::ifstream::pos_type pos = 0;
 
-                if (!ifs.seekg(0, std::ios::end)) {
-                    return 1;
+                if (startPos) {
+                    if (!ifs.seekg(startPos)) {
+                        return FileData::Error::FailedToGetInfo;
+                    }
                 }
 
-                pos = ifs.tellg();
+                if (!ifs.seekg(0, std::ios::end)) {
+                    return FileData::Error::FailedToGetInfo;
+                }
 
-                if ((size_t) pos > byteBudget) {
-                    pos = byteBudget;
+                size_t end = ifs.tellg();
+                size_t size = end - startPos;
+
+                if ( size > maxSize) {
+                    size = maxSize;
                     partial = true;
                 }
 
-                FileData readed(pos, out._type);
+                FileData readed(size, out._type);
 
-                if (pos && ifs.seekg(0, std::ios::beg)) {
+                if (size && ifs.seekg(startPos)) {
                     ifs.read((char*) readed._holder.get(), readed.size());
                     if (ifs.fail()) {
-                        return 2;
+                        return FileData::Error::FailedToRead;
                     }
                 }
 
                 out = std::move(readed);
-                return partial ? -2 : -1;
+                return partial ? FileData::Error::PartitialRead : FileData::Error::NoError;
             }
         }
         catch (...) {
         }
 
-        return 0;
+        return FileData::Error::CommonFail;
     }
 }

@@ -339,6 +339,7 @@ namespace Test
                 size_t size = 0;
                 ok &= Cpl::FileSize(tempfilename, size);
                 if (size != sizeof(d)){
+                    Cpl::DeleteFile(tempfilename);
                     return false;
                 }
 
@@ -346,8 +347,10 @@ namespace Test
                 ok &= Cpl::ReadFile(tempfilename, fd);
                 ok &= fd.size() == sizeof(d);
 
-                if (!ok)
+                if (!ok) {
+                    Cpl::DeleteFile(tempfilename);
                     return false;
+                }
                 for (size_t ind = 0; ind < sizeof(d); ind++) {
                     ok &= fd.data()[ind] == d[ind];
                 }
@@ -357,15 +360,19 @@ namespace Test
                 ok &= Cpl::WriteToFile(tempfilename, (const char *) d + 1, sizeof(d) / 2, false);
                 size_t size = 0;
                 ok &= Cpl::FileSize(tempfilename, size);
-                if (size != sizeof(d) + (sizeof(d) / 2))
+                if (size != sizeof(d) + (sizeof(d) / 2)) {
+                    Cpl::DeleteFile(tempfilename);
                     return false;
+                }
 
                 Cpl::FileData fd;
                 ok &= Cpl::ReadFile(tempfilename, fd);
                 ok &= fd.size() == sizeof(d) + (sizeof(d) / 2);
 
-                if (!ok)
+                if (!ok) {
+                    Cpl::DeleteFile(tempfilename);
                     return false;
+                }
 
                 for (size_t ind = 0; ind < sizeof(d); ind++) {
                     ok &= fd.data()[ind] == d[ind];
@@ -381,15 +388,19 @@ namespace Test
                 ok &= Cpl::WriteToFile(tempfilename, (const char *) d, sizeof(d));
                 size_t size = 0;
                 ok &= Cpl::FileSize(tempfilename, size);
-                if (size != sizeof(d))
+                if (size != sizeof(d)) {
+                    Cpl::DeleteFile(tempfilename);
                     return false;
+                }
 
                 Cpl::FileData fd;
                 ok &= Cpl::ReadFile(tempfilename, fd);
                 ok &= fd.size() == sizeof(d);
 
-                if (!ok)
+                if (!ok) {
+                    Cpl::DeleteFile(tempfilename);
                     return false;
+                }
 
                 for (size_t ind = 0; ind < sizeof(d); ind++) {
                     ok &= fd.data()[ind] == d[ind];
@@ -408,8 +419,8 @@ namespace Test
                 //Test binary data
                 for (const auto& elem : not_empty_files){
                     Cpl::FileData fd;
-                    auto code = Cpl::ReadFile(elem.first, fd);
-                    ok &= code == -1;
+                    auto error = Cpl::ReadFile(elem.first, fd);
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::NoError;
                     ok &= !fd.empty();
                     ok &= fd.size() == elem.second;
 
@@ -421,8 +432,8 @@ namespace Test
                 //Test null terminated data
                 for (const auto& elem : not_empty_files){
                     Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
-                    auto code = Cpl::ReadFile(elem.first, fd);
-                    ok &= code == -1;
+                    auto error = Cpl::ReadFile(elem.first, fd);
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::NoError;
                     ok &= fd.size() == elem.second;
                     ok &= !fd.empty();
                     ok &= fd.data()[fd.size()] == 0;
@@ -435,8 +446,8 @@ namespace Test
                 //Test binary data of empty files
                 for (const auto& elem : empty_files){
                     Cpl::FileData fd;
-                    auto code = Cpl::ReadFile(elem, fd);
-                    ok &= code == -1;
+                    auto error = Cpl::ReadFile(elem, fd);
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::NoError;
                     ok &= fd.size() == 0;
                     ok &= fd.empty();
                     ok &= fd.data() == nullptr;
@@ -445,8 +456,8 @@ namespace Test
                 //Test null terminated data of empty files
                 for (const auto& elem : empty_files){
                     Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
-                    auto code = Cpl::ReadFile(elem, fd);
-                    ok &= code == -1;
+                    auto error = Cpl::ReadFile(elem, fd);
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::NoError;
                     ok &= fd.size() == 0;
                     ok &= fd.empty();
                     ok &= fd.data() == nullptr;
@@ -456,8 +467,8 @@ namespace Test
                     //Not existing file binary
                     Cpl::FileData fd(Cpl::FileData::Type::Binary);
                     Cpl::FileData fd_empty(Cpl::FileData::Type::Binary);
-                    auto code = Cpl::ReadFile(*not_existance_files.begin(), fd);
-                    ok &= code == 0;
+                    auto error = Cpl::ReadFile(*not_existance_files.begin(), fd);
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::CommonFail;
                     ok &= fd.size() == 0;
                     ok &= fd.empty();
                     ok &= fd.data() == nullptr;
@@ -469,8 +480,8 @@ namespace Test
                 {
                     //Existing file, binary format, budget less than file size
                     Cpl::FileData fd(Cpl::FileData::Type::Binary);
-                    auto code = Cpl::ReadFile(not_empty_files[0].first, fd, testString.size() - 1);
-                    ok &= code == -2;
+                    auto error = Cpl::ReadFile(not_empty_files[0].first, fd, 0, testString.size() - 1);
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::PartitialRead;
                     ok &= fd.size() == testString.size() - 1;
                     ok &= !fd.empty();
                     ok &= fd.data() != nullptr;
@@ -483,8 +494,8 @@ namespace Test
                 {
                     //Existing file, null terminated format, budget less than file size
                     Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
-                    auto code = Cpl::ReadFile(not_empty_files[0].first, fd, testString.size() - 1);
-                    ok &= code == -2;
+                    auto error = Cpl::ReadFile(not_empty_files[0].first, fd, 0, testString.size() - 1);
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::PartitialRead;
                     ok &= fd.size() == testString.size() - 1;
                     ok &= !fd.empty();
                     ok &= fd.data() != nullptr;
@@ -500,11 +511,11 @@ namespace Test
                     //Open folder
                     Cpl::FileData fd(Cpl::FileData::Type::Binary);
                     Cpl::FileData fd_empty(Cpl::FileData::Type::Binary);
-                    auto code = Cpl::ReadFile(*all_folders.begin(), fd);
+                    auto error = Cpl::ReadFile(*all_folders.begin(), fd);
 #if __linux__
-                    ok &= code == 2;
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::PartitialRead;
 #elif _WIN32
-                    ok &= code == 0;
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::CommonFail;
 #endif
 
                     ok &= fd.size() == 0;
