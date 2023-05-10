@@ -45,11 +45,11 @@
 
 #if (defined(__GNUC__) && (__GNUC__ < 8) || ( defined(__clang__) &&  __clang_major__ < 5) || __cplusplus < 201402L)
 //No filesystem
-#elif ((defined(__GNUC__) && (__GNUC__ >= 8 )) &&  __cplusplus < 201703L)
+#elif (((defined(__GNUC__) && (__GNUC__ >= 8 )) || defined(_MSC_VER)) &&  __cplusplus < 201703L) 
 #define CPL_FILE_USE_FILESYSTEM 1
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
-#elif ((defined(__GNUC__) && (__GNUC__ > 10) && __cplusplus >= 201703L) || defined(__clang__))
+#elif (((defined(__GNUC__) && (__GNUC__ > 10) ) || defined(__clang__)) && __cplusplus >= 201703L || (defined(_MSC_VER)) && __cplusplus >= 201402L)
 #define CPL_FILE_USE_FILESYSTEM 2
 #include <filesystem>
 namespace fs = std::filesystem;
