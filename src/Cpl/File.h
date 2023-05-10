@@ -280,7 +280,9 @@ namespace Cpl
         if (DirectoryIsDrive(path))
             return false;
 
-#ifdef _WIN32
+#ifdef CPL_FILE_USE_FILESYSTEM
+        return fs::create_directories(fs::path(path));
+#elif _WIN32
         if (CreateDirectory(path.c_str(), NULL)) {
             return true;
         } 
@@ -301,9 +303,6 @@ namespace Cpl
         }
 
         return false;
-        
-#elif  CPL_FILE_USE_FILESYSTEM
-        return fs::create_directories(fs::path(path));
 #elif __linux__
 
         if (mkdir(path.c_str(), 0777) == 0) {
@@ -468,7 +467,7 @@ namespace Cpl
 #if defined CPL_FILE_USE_FILESYSTEM
         return fs::path(path).filename().string();
 #else
-        return path.substr(path.find_last_of("/\\") + 1);
+        return path.substr(path.find_last_of(Cpl::FolderSeparator()) + 1);
 #endif
     }
 
@@ -559,13 +558,12 @@ namespace Cpl
         if (!FileExists(filename)) {
             return false;
         }
-
-#ifdef _WIN32 
-        return ::DeleteFile(filename.c_str());
-#elif CPL_FILE_USE_FILESYSTEM
+#ifdef CPL_FILE_USE_FILESYSTEM
         std::error_code code;
         bool ret = fs::remove(filename, code);
         return ret;
+#elif _WIN32 
+        return ::DeleteFile(filename.c_str());
 #elif __linux__
         return unlink(filename.c_str()) == 0;
 #else
@@ -576,7 +574,16 @@ namespace Cpl
 
     CPL_INLINE bool DeleteDirectory(const String& dir)
     {
-#ifdef _WIN32
+#ifdef CPL_FILE_USE_FILESYSTEM
+        try {
+            std::error_code code;
+            size_t removeCount = (size_t) fs::remove_all(dir, code);
+            return removeCount;
+        }
+        catch (...) {
+        }
+        return 0;
+#elif _WIN32
         const String undashed = DirectoryPathLastDashFix(dir);
         String dashed = MakePath(undashed, FolderSeparator());
 
@@ -607,16 +614,6 @@ namespace Cpl
         FindClose(handle);
 
         return RemoveDirectory(dir.c_str());
-   
-#elif CPL_FILE_USE_FILESYSTEM
-        try {
-            std::error_code code;
-            size_t removeCount = (size_t) fs::remove_all(dir, code);
-            return removeCount;
-        }
-        catch (...) {
-        }
-        return 0;
 #elif __linux__
         String com = String("rm -rf ") + dir;
         return std::system(com.c_str()) == 0;
@@ -668,7 +665,22 @@ namespace Cpl
 
     CPL_INLINE bool DirectorySize (const String & path, size_t& size) {
         size_t tsize = 0;
-#ifdef _WIN32
+#ifdef CPL_FILE_USE_FILESYSTEM
+        try {
+            if (!DirectoryExists(path))
+                return false;
+
+            fs::recursive_directory_iterator end_itr;
+
+            for (fs::recursive_directory_iterator iter(path); iter != end_itr; ++iter ) {
+                if (!fs::is_directory(iter->status()) )
+                    tsize += fs::file_size(iter->path());
+            }
+        }
+        catch(...) {
+            return false;
+        }
+#elif _WIN32
         WIN32_FIND_DATAA data;
         HANDLE handle = NULL;
 
@@ -694,22 +706,6 @@ namespace Cpl
         } while (FindNextFile(handle, &data));
 
         FindClose(handle);
-        
-#elif CPL_FILE_USE_FILESYSTEM
-        try {
-            if (!DirectoryExists(path))
-                return false;
-
-            fs::recursive_directory_iterator end_itr;
-
-            for (fs::recursive_directory_iterator iter(path); iter != end_itr; ++iter ) {
-                if (!fs::is_directory(iter->status()) )
-                    tsize += fs::file_size(iter->path());
-            }
-        }
-        catch(...) {
-            return false;
-        }
 #elif __linux__
         //https://stackoverflow.com/questions/1129499/how-to-get-the-size-of-a-dir-programatically-in-linux
         DIR *d = opendir( path.c_str() );
@@ -844,8 +840,6 @@ namespace Cpl
         return 0;
     }
     
-
-
     CPL_INLINE FileData::Error ReadFile(const String & path, FileData& out, size_t startPos = 0, size_t maxSize = 1 * 1024 * 1024 * 1024 /* 1 gb */) {
         try {
             std::ifstream ifs;
