@@ -124,7 +124,8 @@ namespace Test
 
     bool initializeTree() {
 #ifdef __linux__
-        auto p = mkdir(joinPath(testPath, "1").c_str(), 0777);
+        auto p = mkdir(testPath.c_str(), 0777);
+        p |= mkdir(joinPath(testPath, "1").c_str(), 0777);
         p |= mkdir(joinPath(testPath, "2").c_str(), 0777);
         p |= mkdir(joinPath(testPath, "zero0").c_str(), 0777);
         p |= mkdir(joinPath(testPath, joinPath("zero0", "test")).c_str(), 0777);
@@ -513,7 +514,7 @@ namespace Test
                     Cpl::FileData fd_empty(Cpl::FileData::Type::Binary);
                     auto error = Cpl::ReadFile(*all_folders.begin(), fd);
 #if __linux__
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::PartitialRead;
+                    ok &= error.code == Cpl::FileData::Error::ReadFileError::FailedToRead;
 #elif _WIN32
                     ok &= error.code == Cpl::FileData::Error::ReadFileError::CommonFail;
 #endif
@@ -649,7 +650,7 @@ namespace Test
                         return false;
 
                     {  //Search in not empty list
-                        auto iter = std::find_if(not_empty_files.begin(), not_empty_files.end(), [path](auto &pair) {
+                        decltype(not_empty_files)::const_iterator iter = std::find_if(not_empty_files.begin(), not_empty_files.end(), [path](const decltype(not_empty_files)::value_type &pair) {
                             if (pair.first == path) {
                                 return true;
                             }

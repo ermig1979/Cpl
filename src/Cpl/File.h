@@ -43,13 +43,13 @@
 #include <sys/stat.h>
 #endif
 
-#if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
+#if (defined(__GNUC__) && (__GNUC__ < 8) || ( defined(__clang__) &&  __clang_major__ < 5) || __cplusplus < 201402L)
 //No filesystem
-#elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L) || __cplusplus < 201703L
+#elif ((defined(__GNUC__) && (__GNUC__ >= 8 )) &&  __cplusplus < 201703L)
 #define CPL_FILE_USE_FILESYSTEM 1
-#include <filesystem>
+#include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
-#elif defined(__GNUC__) && (__GNUC__ > 10) || defined(__clang__) || __cplusplus >= 201703L
+#elif ((defined(__GNUC__) && (__GNUC__ > 10) && __cplusplus >= 201703L) || defined(__clang__))
 #define CPL_FILE_USE_FILESYSTEM 2
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -185,6 +185,26 @@ namespace Cpl
         return MakePath(MakePath(a, b), args...);
     }
 
+    //TODO: maybe rename, check "." folder on linux
+    CPL_INLINE String DirectoryByPath(const String& path_) {
+        const String path = DirectoryPathLastDashFix(path_);
+        size_t pos = path.find_last_of(FolderSeparator());
+        String substr = path.substr(0, pos);
+        if (DirectoryIsDrive(substr))
+            return substr + FolderSeparator();
+
+        return substr;
+    }
+
+    CPL_INLINE String DirectoryUp(const String& path) {
+        return DirectoryByPath(path);
+    }
+
+    CPL_INLINE String DirectoryDown(const String& format, const String& path) {
+        size_t endPos = format.find(Cpl::FolderSeparator(), path.size() + Cpl::FolderSeparator().size());
+        return format.substr(0, endPos);
+    }
+
     CPL_INLINE bool FileExists(const String& filePath)
     {
 #ifdef CPL_FILE_USE_FILESYSTEM
@@ -193,8 +213,10 @@ namespace Cpl
 #elif _WIN32
         DWORD fileAttribute = ::GetFileAttributes(filePath.c_str());
         return (fileAttribute != INVALID_FILE_ATTRIBUTES);
-#elif __lunux__
-        return (::access(filePath.c_str(), F_OK) != -1);
+#elif __linux__
+        struct stat buf;
+        int exists = stat( filePath.c_str(), &buf );
+        return exists == 0 && S_ISREG(buf.st_mode);
 #else
         std::ifstream ifs;
         ifs.open(filePath, std::ios::in | std::ios::binary);
@@ -241,14 +263,9 @@ namespace Cpl
         return ((fileAttribute != INVALID_FILE_ATTRIBUTES) &&
                 (fileAttribute & FILE_ATTRIBUTE_DIRECTORY) != 0);
 #elif __linux__
-        DIR* dir = opendir(path.c_str());
-        if (dir != NULL)
-        {
-            ::closedir(dir);
-            return true;
-        }
-        else
-            return false;
+        struct stat buf;
+        int exists = stat( path_.c_str(), &buf );
+        return exists == 0 && S_ISDIR(buf.st_mode);
 #else
 #error Not supported system
 #endif
@@ -288,7 +305,37 @@ namespace Cpl
 #elif  CPL_FILE_USE_FILESYSTEM
         return fs::create_directories(fs::path(path));
 #elif __linux__
-        return (mkdir(path.c_str(), 0777) == 0);
+
+        if (mkdir(path.c_str(), 0777) == 0) {
+            return true;
+        }
+        const String startPath = path;
+        String parent = Cpl::DirectoryUp(startPath);
+
+        do {
+            if (!Cpl::DirectoryExists(parent)) {
+                String newParent = Cpl::DirectoryUp(parent);
+                if (newParent == parent) {
+                    break;
+                }
+                parent.swap(newParent);
+            }
+            else {
+                break;
+            }
+        }
+        while(parent != path);
+
+        //parent folder now is last exist in path
+        String dir = parent;
+        do {
+            dir = Cpl::DirectoryDown(startPath, dir);
+            if (mkdir(dir.c_str(), 0777) != 0)
+                return false;
+        }
+        while(dir != path);
+
+        return DirectoryExists(path);
 #else
 #error Not supported system
 #endif
@@ -296,21 +343,25 @@ namespace Cpl
 
     inline StringList GetFileList(const String& directory, const String& filter, bool files, bool directories, bool recursive) {
         std::list<String> names;
-#if CPL_FILE_USE_FILESYSTEM == 2
+#if CPL_FILE_USE_FILESYSTEM
+        if (!Cpl::DirectoryExists(directory)) {
+            return names;
+        }
+
         fs::directory_entry dir_entry(directory);
-        if (!dir_entry.exists()) {
+        if (!fs::exists(dir_entry)) {
             return names;
         }
 
         if (!recursive) {
             for (auto const& entrance : fs::directory_iterator{directory}) {
                 auto regular = entrance.path().filename().string();
-                if (entrance.is_regular_file() && files){
+                if (fs::is_regular_file(entrance) && files){
                     if (filter.empty() || Match(filter.c_str(), regular.c_str(), filter.size(), regular.size())){
                         names.push_back(entrance.path().string());
                     }
                 }
-                else if (entrance.is_directory() && directories){
+                else if (fs::is_directory(entrance) && directories){
                     if (filter.empty() ||Match(filter.c_str(), regular.c_str(), filter.size(), regular.size())){
                         names.push_back(entrance.path().string());
                     }
@@ -320,32 +371,19 @@ namespace Cpl
         else {
             for (auto const& entrance : fs::recursive_directory_iterator{directory}) {
                 auto regular = entrance.path().filename().string();
-                if (entrance.is_regular_file() && files){
+                if (fs::is_regular_file(entrance) && files){
                     if (filter.empty() || Match(filter.c_str(), regular.c_str(), filter.size(), regular.size())){
                         names.push_back(entrance.path().string());
                     }
                 }
-                else if (entrance.is_directory() && directories){
+                else if (fs::is_directory(entrance) && directories){
                     if (filter.empty() ||Match(filter.c_str(), regular.c_str(), filter.size(), regular.size())){
                         names.push_back(entrance.path().string());
                     }
                 }
             }
         }
-#elif CPL_FILE_USE_FILESYSTEM == 1
 
-        if (!Cpl::DirectoryExists(directory)) {
-            return names;
-        }
-
-        for (auto const& entrance : fs::directory_iterator{directory}) {
-            if (fs::is_regular_file(entrance) && files){
-                names.push_back(entrance.path().string());
-            }
-            else if (fs::is_directory(entrance) && directories){
-                names.push_back(entrance.path().string());
-            }
-        }
 #elif _WIN32
         ::WIN32_FIND_DATA fd;
         ::HANDLE hFind = ::FindFirstFile(MakePath(directory, filter).c_str(), &fd);
@@ -373,10 +411,16 @@ namespace Cpl
                     continue;
                 if (!filter.empty() && !Match(filter, name))
                     continue;
-                if (files && drnt->d_type != DT_DIR)
-                    names.push_back(String(drnt->d_name));
-                if (directories && drnt->d_type == DT_DIR)
-                    names.push_back(String(drnt->d_name));
+                if (files && drnt->d_type == DT_REG)
+                    names.push_back(Cpl::MakePath(directory, String(drnt->d_name)));
+                if (drnt->d_type == DT_DIR) {
+                    if (directories)
+                        names.push_back(Cpl::MakePath(directory, String(drnt->d_name)));
+                    if (recursive) {
+                        StringList list = GetFileList(Cpl::MakePath(directory, String(drnt->d_name)), filter, files, directories, recursive);
+                        names.insert(names.end(), list.begin(), list.end());
+                    }
+                }
             }
             ::closedir(dir);
         }
@@ -417,16 +461,6 @@ namespace Cpl
 #error Not supported system
 #endif
 
-    }
-    //TODO: maybe rename, check "." folder on linux
-    CPL_INLINE String DirectoryByPath(const String& path_) {
-        const String path = DirectoryPathLastDashFix(path_);
-        size_t pos = path.find_last_of(FolderSeparator());
-        String substr = path.substr(0, pos);
-        if (DirectoryIsDrive(substr))
-            return substr + FolderSeparator();
-
-        return substr;
     }
 
     CPL_INLINE String FileNameByPath(const String & path)
@@ -533,8 +567,7 @@ namespace Cpl
         bool ret = fs::remove(filename, code);
         return ret;
 #elif __linux__
-        String com = String("rm -f") + filename;
-        return std::system(com.c_str()) == 0;
+        return unlink(filename.c_str()) == 0;
 #else
 #error Not supported system
 #endif
@@ -687,12 +720,13 @@ namespace Cpl
         struct stat buf;
 
         for( de = readdir( d ); de != NULL; de = readdir( d ) ) {
-            int exists = stat( de->d_name, &buf );
+            int exists = stat( Cpl::MakePath(path, String(de->d_name)).c_str(), &buf );
 
             if( exists < 0 ) {
                 fprintf( stderr, "Cannot read file statistics for %s\n", de->d_name );
             } else {
-                tsize += buf.st_size;
+                if (de->d_type == DT_REG)
+                    tsize += buf.st_size;
             }
         }
 
