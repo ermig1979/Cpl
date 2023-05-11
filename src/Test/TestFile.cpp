@@ -139,7 +139,7 @@ namespace Test
 
         if (p)
             return false;
-        
+
         std::ofstream f1(joinPath(testPath, "emptyFile.js"));
         f1.close();
 
@@ -289,7 +289,7 @@ namespace Test
             // /tmp/cpl/4/5
 
             ok &= !Cpl::DirectoryExists(newFolder2);
-            
+
             ok &= Cpl::CreatePath(newFolder2);
             ok &= Cpl::DirectoryExists(newFolder);
             ok &= Cpl::DirectoryExists(newFolder2);
@@ -566,19 +566,19 @@ namespace Test
         bool naming() {
             bool ok = true;
 
-            auto folder = Cpl::GetNameByPath(testPath);
+            auto folder = Cpl::FileNameByPath(testPath);
             ok &= folder == "cpl";
 
-            folder = Cpl::GetNameByPath(testPath + Cpl::FolderSeparator());
+            folder = Cpl::FileNameByPath(testPath + Cpl::FolderSeparator());
 
             ok &= folder == "cpl";
-            
+
             ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::FolderSeparator())) == testPath;
             ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::MakePath(Cpl::FolderSeparator(), " "))) == testPath;
             ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::MakePath(Cpl::FolderSeparator(), Cpl::FolderSeparator()))) == testPath;
 
             for (const auto &file: existance_files) {
-                auto filename = Cpl::GetNameByPath(file);
+                auto filename = Cpl::FileNameByPath(file);
                 auto filedir = Cpl::DirectoryByPath(file);
 
                 ok &= Cpl::MakePath(filedir, filename) == file;
@@ -591,36 +591,75 @@ namespace Test
         bool extension() {
             bool ok = true;
             //Test get extention
-            //TODO: add case for full paths, folders with dots
-            ok &= Cpl::ExtensionByPath("photo.jpeg") == "jpeg";
+            ok &= Cpl::ExtensionByPath("photo.jpeg") == ".jpeg";
             ok &= Cpl::ExtensionByPath("photo").size() == 0;
-            ok &= Cpl::ExtensionByPath("photo.").size() == 0;
-            ok &= Cpl::ExtensionByPath(".b") == "b";
-            ok &= Cpl::ExtensionByPath("...b") == "b";
-            ok &= Cpl::ExtensionByPath("..a.b") == "b";
+            ok &= Cpl::ExtensionByPath("photo.") == ".";
+            ok &= Cpl::ExtensionByPath(".b").size() == 0;
+            ok &= Cpl::ExtensionByPath("...b") == ".b";
+            ok &= Cpl::ExtensionByPath("..a.b") == ".b";
 
 
             ok &= Cpl::RemoveExtension("photo.jpeg") == "photo";
-            ok &= Cpl::RemoveExtension("photo.") == "photo.";
+            ok &= Cpl::RemoveExtension("photo.") == "photo";
             ok &= Cpl::RemoveExtension("photo") == "photo";
             ok &= Cpl::RemoveExtension("") == "";
-            ok &= Cpl::RemoveExtension(".a") == "";
+            ok &= Cpl::RemoveExtension(".a") == ".a";
             ok &= Cpl::RemoveExtension("...b") == "..";
             ok &= Cpl::RemoveExtension("..a.b") == "..a";
             ok &= Cpl::RemoveExtension("..a.b....zyx") == "..a.b...";
 
-
             ok &= Cpl::ChangeExtension("photo.jpeg", "png") == "photo.png";
             ok &= Cpl::ChangeExtension("photo.jpeg", ".png") == "photo.png";
-            ok &= Cpl::ChangeExtension("photo.", ".png") == "photo..png";
-            ok &= Cpl::ChangeExtension("test.photo.", ".png") == "test.photo..png";
-            ok &= Cpl::ChangeExtension("test.photo.", "png") == "test.photo..png";
+            ok &= Cpl::ChangeExtension("photo.", ".png") == "photo.png";
+            ok &= Cpl::ChangeExtension("test.photo.", ".png") == "test.photo.png";
+            ok &= Cpl::ChangeExtension("test.photo.", "png") == "test.photo.png";
             ok &= Cpl::ChangeExtension("photo", ".png") == "photo.png";
             ok &= Cpl::ChangeExtension("photo", "png") == "photo.png";
             ok &= Cpl::ChangeExtension("", ".png") == "";
             ok &= Cpl::ChangeExtension("", "png") == "";
-            ok &= Cpl::ChangeExtension(".a", ".png") == ".png";
-            ok &= Cpl::ChangeExtension(".a", "png") == ".png";
+            ok &= Cpl::ChangeExtension(".a", ".png") == ".a.png";
+            ok &= Cpl::ChangeExtension(".a", "png") == ".a.png";
+
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), "png") == Cpl::MakePath(".", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), ".png") == Cpl::MakePath(".", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), "") == Cpl::MakePath(".", "a");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), " ") == Cpl::MakePath(".", "a");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), ".") == Cpl::MakePath(".", "a.");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "ab."), ".") == Cpl::MakePath(".", "ab.");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.z"), ".") == Cpl::MakePath(".", "a.");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.z"), ".random") == Cpl::MakePath(".", "a.random");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.z"), "random") == Cpl::MakePath(".", "a.random");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "abc.z"), "random") == Cpl::MakePath(".", "abc.random");
+
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.jpeg"), "png") ==  Cpl::MakePath(".", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.jpeg"), ".png") ==  Cpl::MakePath(".", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", ".jpeg"), ".png") ==  Cpl::MakePath(".", ".jpeg.png");
+
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("..", "a.jpeg"), "png") ==  Cpl::MakePath("..", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("..", "a.jpeg"), ".png") ==  Cpl::MakePath("..", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("..", ".jpeg"), ".png") ==  Cpl::MakePath("..", ".jpeg.png");
+
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("abc", "a.jpeg"), "png") ==  Cpl::MakePath("abc", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("abcz123", "a.jpeg"), ".png") ==  Cpl::MakePath("abcz123", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("poiabc", ".jpeg"), ".png") ==  Cpl::MakePath("poiabc", ".jpeg.png");
+
+            //Parent folder with dot
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("ab.c", "a.jpeg"), "png") ==  Cpl::MakePath("ab.c", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("abcz.123", "a.jpeg"), ".png") ==  Cpl::MakePath("abcz.123", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("poiab.c", ".jpeg"), ".png") ==  Cpl::MakePath("poiab.c", ".jpeg.png");
+
+            //Full paths
+#ifdef _WIN32
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("C:", "a.jpeg"), "png") ==  Cpl::MakePath("C:", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("C:", Cpl::MakePath("folder1", "a.jpeg")), "png") ==  Cpl::MakePath("C:", Cpl::MakePath("folder1", "a.png"));
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("C:", Cpl::MakePath("fol.der1", "a.jpeg")), "png") ==  Cpl::MakePath("C:", Cpl::MakePath("fol.der1", "a.png"));
+#endif
+
+#ifdef __linux__
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("/tmp", "a.jpeg"), "png") ==  Cpl::MakePath("/tmp", "a.png");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("/tmp", Cpl::MakePath("folder1", "a.jpeg")), "png") ==  Cpl::MakePath("/tmp", Cpl::MakePath("folder1", "a.png"));
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("/tmp", Cpl::MakePath("fol.der1", "a.jpeg")), "png") ==  Cpl::MakePath("/tmp", Cpl::MakePath("fol.der1", "a.png"));
+#endif
 
             return ok;
         }

@@ -462,44 +462,35 @@ namespace Cpl
         return vector;
     }
 
-    CPL_INLINE String GetNameByPath(const String& path_)
+    CPL_INLINE String FileNameByPath(const String & path_)
     {
         const String path = DirectoryPathRemoveAllLastDash(path_);
 
-#ifdef CPL_FILE_USE_FILESYSTEM
-        fs::path fspath(path);
-        return fspath.filename().string();
-#else
-        size_t pos = path.find_last_of(Cpl::FolderSeparator());
-        if (pos == String::npos)
-            return path;
-        else
-            return path.substr(pos + 1);
-#endif
-    }
-
-    CPL_INLINE String FileNameByPath(const String & path)
-    {
 #if defined CPL_FILE_USE_FILESYSTEM
         return fs::path(path).filename().string();
 #else
-        return path.substr(path.find_last_of(Cpl::FolderSeparator()) + 1);
+        auto pos = path.find_last_of(Cpl::FolderSeparator());
+        pos = (pos == String::npos) ? 0 : pos + 1;
+        return path.substr(pos);
 #endif
     }
 
     CPL_INLINE String ExtensionByPath(const String& path)
     {
-        size_t pos = path.find_last_of(".");
-        if (pos == String::npos)
+        auto filename = FileNameByPath(path);
+        assert(filename.find_first_of(FolderSeparator()) == std::string::npos);
+
+        size_t pos = filename.find_last_of(".");
+        if (pos == String::npos || pos == 0)
             return String();
         else
-            return path.substr(pos + 1);
+            return filename.substr(pos);
     }
 
     CPL_INLINE String RemoveExtension(const String& path)
     {
         size_t last_sep = (size_t) path.find_last_of(".");
-        if (last_sep == String::npos || last_sep == path.size() - 1)
+        if (last_sep == String::npos || last_sep == 0)
             return path;
 
         return path.substr(0, last_sep);
@@ -511,19 +502,36 @@ namespace Cpl
         if (path == "." || path.size() == 0)
             return path;
 
-        size_t last_sep = (size_t) path.find_last_of(".");
-        size_t last_sep_ext = (size_t) ext.find_last_of(".");
+        auto filenamePos = path.find_last_of(Cpl::FolderSeparator());
+        filenamePos = (filenamePos == String::npos) ? 0 : filenamePos + 1;
 
-        //If path end with dot without extension, this dot count as file name
-        if (last_sep + 1 == path.size())
-            ++last_sep;
+        String filename;
+        {
+            filename = path.substr(filenamePos);
+            String extFixed = ext;
+            extFixed.erase(std::remove_if(extFixed.begin(), extFixed.end(), [](const char c){
+                if (std::isspace(c))
+                    return true;
 
-        if (last_sep_ext == String::npos)
-            last_sep_ext = 0;
-        else
-            ++last_sep_ext;
+                auto iter = std::find(forbiddenSymbols.begin(), forbiddenSymbols.end(), c);
+                if (iter != forbiddenSymbols.end())
+                    return true;
 
-        return path.substr(0, last_sep) + "." + ext.substr(last_sep_ext, String::npos);
+                return false;
+            }), extFixed.end());
+
+            if (extFixed.empty()){
+                filename = RemoveExtension(filename);
+            }
+            else if (extFixed.at(0) == '.'){
+                filename = RemoveExtension(filename) + extFixed;
+            }
+            else {
+                filename = RemoveExtension(filename) + '.' + extFixed;
+            }
+        }
+
+        return MakePath(path.substr(0, filenamePos), filename);
     }
 
     CPL_INLINE String GetAbsolutePath(const String& path)
