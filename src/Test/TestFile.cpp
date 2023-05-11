@@ -574,6 +574,8 @@ namespace Test
             ok &= folder == "cpl";
             
             ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::FolderSeparator())) == testPath;
+            ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::MakePath(Cpl::FolderSeparator(), " "))) == testPath;
+            ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::MakePath(Cpl::FolderSeparator(), Cpl::FolderSeparator()))) == testPath;
 
             for (const auto &file: existance_files) {
                 auto filename = Cpl::GetNameByPath(file);
@@ -582,7 +584,6 @@ namespace Test
                 ok &= Cpl::MakePath(filedir, filename) == file;
                 ok &= Cpl::FileExists(Cpl::MakePath(filedir, filename));
                 ok &= Cpl::FileExists(Cpl::MakePath(Cpl::MakePath(filedir, ""), filename));
-
             }
             return ok;
         }

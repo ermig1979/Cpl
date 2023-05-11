@@ -127,18 +127,14 @@ namespace Cpl
             return path;
         }
 
-        if (path.back() != separator.back()){
+        if (path.back() != separator.back() && path.back() != ' '){
             return path;
         }
 
         std::advance(iter, separator.size());
         while (std::memcmp(separator.c_str(), iter.operator->(), separator.size()) == 0 || *iter == ' ')
             iter++;
-
-        //while (*iter == FolderSeparator().at(0) || *iter == ' ')
-            //iter++;
-
-        return path.substr(0, std::distance(iter, path.rend()));
+        return path.substr(0, std::distance(iter, path.rend()));;
     }
 
     CPL_INLINE size_t CompilerType(){
@@ -627,35 +623,6 @@ namespace Cpl
 
         return SHFileOperation( &operation ) == 0;
 
-
-//        WIN32_FIND_DATAA data;
-//        HANDLE handle = NULL;
-//
-//        handle = FindFirstFileA(Cpl::MakePath(DirectoryPathRemoveAllLastDash(dashed), Cpl::String("*")).c_str(), &data);
-//        if (handle == INVALID_HANDLE_VALUE)
-//            return false;
-//
-//
-//        do {
-//            if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0))
-//            {
-//                if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-//                    if (!Cpl::DeleteDirectory(Cpl::MakePath(dir, data.cFileName)))
-//                        return false;
-//                }
-//                else {
-//                    if (!Cpl::DeleteFile(Cpl::MakePath(dir, data.cFileName)))
-//                        return false;
-//                }
-//            }
-//
-//        } while (FindNextFile(handle, &data));
-//
-//        if (GetLastError() != ERROR_NO_MORE_FILES)
-//            return false;
-//        FindClose(handle);
-//
-//        return RemoveDirectory(dir.c_str());
 #elif __linux__
         String com = String("rm -rf ") + dir;
         return std::system(com.c_str()) == 0;
