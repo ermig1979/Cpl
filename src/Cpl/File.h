@@ -32,6 +32,8 @@
 #include <iostream>
 #include <iterator>
 #include <string>
+#include <cstring>
+#include <queue>
 
 #ifdef _WIN32
 #include "windows.h"
@@ -117,10 +119,24 @@ namespace Cpl
         return temp;
     }();
 
-    CPL_INLINE String DirectoryPathLastDashFix(const String& path){
+    CPL_INLINE String DirectoryPathRemoveAllLastDash(const String& path){
         auto iter = path.rbegin();
-        while (*iter == FolderSeparator().at(0) || *iter == ' ')
+        auto separator = FolderSeparator();
+
+        if (path.size() <= separator.size()){
+            return path;
+        }
+
+        if (path.back() != separator.back()){
+            return path;
+        }
+
+        std::advance(iter, separator.size());
+        while (std::memcmp(separator.c_str(), iter.operator->(), separator.size()) == 0 || *iter == ' ')
             iter++;
+
+        //while (*iter == FolderSeparator().at(0) || *iter == ' ')
+            //iter++;
 
         return path.substr(0, std::distance(iter, path.rend()));
     }
@@ -164,7 +180,8 @@ namespace Cpl
 #ifdef __linux__
             return false;
 #elif _WIN32
-            String substring = DirectoryPathLastDashFix(path);
+            //TODO: replace by system call and check disk flag
+            String substring = DirectoryPathRemoveAllLastDash(path);
             if (substring.size() == 2 && substring[1] == ':') {
                 return true;
             }
@@ -187,11 +204,11 @@ namespace Cpl
 
     //TODO: maybe rename, check "." folder on linux
     CPL_INLINE String DirectoryByPath(const String& path_) {
-        const String path = DirectoryPathLastDashFix(path_);
+        const String path = DirectoryPathRemoveAllLastDash(path_);
         size_t pos = path.find_last_of(FolderSeparator());
         String substr = path.substr(0, pos);
-        if (DirectoryIsDrive(substr))
-            return substr + FolderSeparator();
+        if (DirectoryIsDrive(path))
+            return MakePath(path, FolderSeparator());
 
         return substr;
     }
@@ -212,7 +229,7 @@ namespace Cpl
         return fs::exists(filePath) && (fs::is_regular_file(filePath) || fs::is_symlink(filePath));
 #elif _WIN32
         DWORD fileAttribute = ::GetFileAttributes(filePath.c_str());
-        return (fileAttribute != INVALID_FILE_ATTRIBUTES);
+        return (fileAttribute != INVALID_FILE_ATTRIBUTES) && !(fileAttribute & FILE_ATTRIBUTE_DIRECTORY);
 #elif __linux__
         struct stat buf;
         int exists = stat( filePath.c_str(), &buf );
@@ -250,7 +267,7 @@ namespace Cpl
 
     CPL_INLINE bool DirectoryExists(const String& path_)
     {
-        const String path = DirectoryPathLastDashFix(path_);
+        const String path = DirectoryPathRemoveAllLastDash(path_);
 #ifdef CPL_FILE_USE_FILESYSTEM
         try {
             return fs::is_directory(path) && fs::exists(path);
@@ -281,31 +298,23 @@ namespace Cpl
             return false;
 
 #ifdef CPL_FILE_USE_FILESYSTEM
-        return fs::create_directories(fs::path(path));
-#elif _WIN32
-        if (CreateDirectory(path.c_str(), NULL)) {
-            return true;
-        } 
-        else 
-        {
-            if (GetLastError() == ERROR_PATH_NOT_FOUND) {
-                String parent = Cpl::DirectoryByPath(path);
-                
-                if (parent == path) {
-                    return false;
-                }
-
-                if (CreatePath(parent)) {
-                    if (CreatePath(path))
-                        return true;
-                }
-            }
+        try {
+            return fs::create_directories(fs::path(path));
         }
+        catch (...){
 
+        }
         return false;
+#elif defined(_WIN32) || defined (__linux__)
+        auto createDirFunctor = [](const String& path) -> bool {
+#ifdef _WIN32
+            return CreateDirectory(path.c_str(), NULL);
 #elif __linux__
+            return mkdir(path.c_str(), 0777) == 0;
+#endif
+        };
 
-        if (mkdir(path.c_str(), 0777) == 0) {
+        if (createDirFunctor(path)) {
             return true;
         }
         const String startPath = path;
@@ -329,7 +338,7 @@ namespace Cpl
         String dir = parent;
         do {
             dir = Cpl::DirectoryDown(startPath, dir);
-            if (mkdir(dir.c_str(), 0777) != 0)
+            if (!createDirFunctor(dir))
                 return false;
         }
         while(dir != path);
@@ -340,7 +349,7 @@ namespace Cpl
 #endif
     }
 
-    inline StringList GetFileList(const String& directory, const String& filter, bool files, bool directories, bool recursive) {
+    inline StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive) {
         std::list<String> names;
 #if CPL_FILE_USE_FILESYSTEM
         if (!Cpl::DirectoryExists(directory)) {
@@ -385,18 +394,35 @@ namespace Cpl
 
 #elif _WIN32
         ::WIN32_FIND_DATA fd;
-        ::HANDLE hFind = ::FindFirstFile(MakePath(directory, filter).c_str(), &fd);
-        if (hFind != INVALID_HANDLE_VALUE)
-        {
-            do
+        std::queue<String> queue;
+
+        if (filter.empty())
+            filter = "*";
+
+        queue.push(MakePath(directory, filter));
+
+        while (!queue.empty()){
+            auto dir = std::move(queue.front());
+            queue.pop();
+
+            ::HANDLE hFind = ::FindFirstFile(dir.c_str(), &fd);
+            if (hFind != INVALID_HANDLE_VALUE)
             {
-                String name = fd.cFileName;
-                if (files && !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-                    names.push_back(fd.cFileName);
-                if (directories && (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && name != "." && name != "..")
-                    names.push_back(name);
-            } while (::FindNextFile(hFind, &fd));
-            ::FindClose(hFind);
+                do
+                {
+                    String name = fd.cFileName;
+                    if (files && !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+                        names.push_back(MakePath(DirectoryPathRemoveAllLastDash(directory),fd.cFileName));
+                    if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && name != "." && name != "..") {
+                        String curDir = MakePath(DirectoryPathRemoveAllLastDash(directory), name);
+                        if (directories)
+                            names.push_back(curDir);
+                        if (recursive)
+                            queue.push(MakePath(curDir, filter));
+                    }
+                } while (::FindNextFile(hFind, &fd));
+                ::FindClose(hFind);
+            }
         }
 #elif __linux__
         DIR* dir = ::opendir(directory.c_str());
@@ -442,24 +468,18 @@ namespace Cpl
 
     CPL_INLINE String GetNameByPath(const String& path_)
     {
-        const String path = DirectoryPathLastDashFix(path_);
+        const String path = DirectoryPathRemoveAllLastDash(path_);
 
 #ifdef CPL_FILE_USE_FILESYSTEM
         fs::path fspath(path);
         return fspath.filename().string();
-#elif  _WIN32
-        fs::path path(path);
-        return path.filename().string();
-#elif __linux__
-        size_t pos = path.find_last_of("/");
+#else
+        size_t pos = path.find_last_of(Cpl::FolderSeparator());
         if (pos == String::npos)
             return path;
         else
             return path.substr(pos + 1);
-#else
-#error Not supported system
 #endif
-
     }
 
     CPL_INLINE String FileNameByPath(const String & path)
@@ -527,6 +547,10 @@ namespace Cpl
 
     CPL_INLINE bool Copy(const String& src, const String& dst, bool recursive = true)
     {
+        if (src == dst) {
+            return true;
+        }
+
 #ifdef CPL_FILE_USE_FILESYSTEM
         try {
             fs::copy(src, dst, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
@@ -538,8 +562,13 @@ namespace Cpl
 #elif _WIN32
         try
         {
-            typedef fs::copy_options opt;
-            fs::copy(src, dst, opt::overwrite_existing | opt::recursive);
+            SHFILEOPSTRUCT s { };
+            s.hwnd = 0;
+            s.wFunc = FO_COPY;
+            s.fFlags = FOF_SILENT;
+            s.pTo = dst.c_str();
+            s.pFrom = src.c_str();;
+            SHFileOperation(&s);
         }
         catch (...){
             return false;
@@ -584,36 +613,49 @@ namespace Cpl
         }
         return 0;
 #elif _WIN32
-        const String undashed = DirectoryPathLastDashFix(dir);
-        String dashed = MakePath(undashed, FolderSeparator());
+        const String undashed = DirectoryPathRemoveAllLastDash(dir);
 
-        WIN32_FIND_DATAA data;
-        HANDLE handle = NULL;
+        SHFILEOPSTRUCTA operation{};
+        operation.wFunc= FO_DELETE;
+        operation.fFlags = FOF_NO_UI;
 
-        handle = FindFirstFileA(Cpl::MakePath(DirectoryPathLastDashFix(dashed), Cpl::String("*")).c_str(), &data);
-        if (handle == INVALID_HANDLE_VALUE)
-            return false;
+        auto named = GetAbsolutePath(undashed);
+        //need double null termination
+        named.push_back(0);
 
-        do {
-            if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0))
-            {
-                if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                    if (!Cpl::DeleteDirectory(Cpl::MakePath(dir, data.cFileName)))
-                        return false;
-                }
-                else {
-                    if (!Cpl::DeleteFile(Cpl::MakePath(dir, data.cFileName)))
-                        return false;
-                }
-            }
+        operation.pFrom = named.c_str();
 
-        } while (FindNextFile(handle, &data));
+        return SHFileOperation( &operation ) == 0;
 
-        if (GetLastError() != ERROR_NO_MORE_FILES)
-            return false;
-        FindClose(handle);
 
-        return RemoveDirectory(dir.c_str());
+//        WIN32_FIND_DATAA data;
+//        HANDLE handle = NULL;
+//
+//        handle = FindFirstFileA(Cpl::MakePath(DirectoryPathRemoveAllLastDash(dashed), Cpl::String("*")).c_str(), &data);
+//        if (handle == INVALID_HANDLE_VALUE)
+//            return false;
+//
+//
+//        do {
+//            if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0))
+//            {
+//                if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+//                    if (!Cpl::DeleteDirectory(Cpl::MakePath(dir, data.cFileName)))
+//                        return false;
+//                }
+//                else {
+//                    if (!Cpl::DeleteFile(Cpl::MakePath(dir, data.cFileName)))
+//                        return false;
+//                }
+//            }
+//
+//        } while (FindNextFile(handle, &data));
+//
+//        if (GetLastError() != ERROR_NO_MORE_FILES)
+//            return false;
+//        FindClose(handle);
+//
+//        return RemoveDirectory(dir.c_str());
 #elif __linux__
         String com = String("rm -rf ") + dir;
         return std::system(com.c_str()) == 0;
@@ -681,29 +723,31 @@ namespace Cpl
             return false;
         }
 #elif _WIN32
-        WIN32_FIND_DATAA data;
+        ::WIN32_FIND_DATA data;
         HANDLE handle = NULL;
+        std::queue<String> queue;
+        const String filter = "*";
+        queue.push(path);
 
-        handle = FindFirstFileA(Cpl::MakePath(DirectoryPathLastDashFix(path), Cpl::String("*")).c_str(), &data);
-        if (handle == INVALID_HANDLE_VALUE)
-            return false;
+        while (!queue.empty()) {
+            auto dir = std::move(queue.front());
+            queue.pop();
 
-        do {
-            // skip current directory and parent directory
-            if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0))
-            {
-                if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
-                {
-                    size_t ttsize = 0;
-                    if (!DirectorySize(Cpl::MakePath(path, data.cFileName), ttsize))
-                        return false;
-                    tsize += ttsize;
+            handle = FindFirstFile(MakePath(dir, filter).c_str(), &data);
+            if (handle == INVALID_HANDLE_VALUE)
+                return false;
+
+            do {
+                // skip current directory and parent directory
+                if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0)) {
+                    if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY) {
+                        queue.push(Cpl::MakePath(dir, data.cFileName));
+                    } else
+                        tsize += (size_t) (data.nFileSizeHigh * MAXDWORD + data.nFileSizeLow);
                 }
-                else
-                    tsize += (size_t)(data.nFileSizeHigh * MAXDWORD + data.nFileSizeLow);
-            }
 
-        } while (FindNextFile(handle, &data));
+            } while (FindNextFile(handle, &data));
+        }
 
         FindClose(handle);
 #elif __linux__

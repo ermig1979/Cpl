@@ -303,7 +303,7 @@ namespace Test
             //Case 2.1
             ok &= !Cpl::DirectoryExists(newFolder);
             ok &= !Cpl::DirectoryExists(newFolder2);
-            
+
             ok &= Cpl::CreatePath(newFolder2);
             ok &= Cpl::DirectoryExists(newFolder);
             ok &= Cpl::DirectoryExists(newFolder2);
@@ -311,7 +311,6 @@ namespace Test
             ok &= (Cpl::DeleteDirectory(newFolder) > 0);
             ok &= !Cpl::DirectoryExists(newFolder2);
             ok &= !Cpl::DirectoryExists(newFolder);
-
 
 #ifdef _WIN32
             ok &= Cpl::DirectoryExists("C://");
@@ -574,7 +573,7 @@ namespace Test
 
             ok &= folder == "cpl";
             
-            ok &= Cpl::DirectoryPathLastDashFix(Cpl::MakePath(testPath, Cpl::FolderSeparator())) == testPath;
+            ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::FolderSeparator())) == testPath;
 
             for (const auto &file: existance_files) {
                 auto filename = Cpl::GetNameByPath(file);
@@ -628,13 +627,13 @@ namespace Test
         bool pathing() {
             bool ok = true;
 
-            ok &= Cpl::FileNameByPath("/usr/local/photo.png") == "photo.png";
+            ok &= Cpl::FileNameByPath(Cpl::MakePath("", Cpl::MakePath("usr", Cpl::MakePath("local", "photo.png")))) == "photo.png";
             ok &= Cpl::FileNameByPath("photo.png") == "photo.png";
-            ok &= Cpl::FileNameByPath("./photo.png") == "photo.png";
-            ok &= Cpl::FileNameByPath(".././ab/../photo.png") == "photo.png";
-            ok &= Cpl::FileNameByPath(".././a.b/../photo.") == "photo.";
-            ok &= Cpl::FileNameByPath(".././a.b/../photo") == "photo";
-            ok &= Cpl::FileNameByPath(".././a.b/../.a") == ".a";
+            ok &= Cpl::FileNameByPath(Cpl::MakePath(".", "photo.png")) == "photo.png";
+            ok &= Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("ab", Cpl::MakePath("..", "photo.png"))))) == "photo.png";
+            ok &= Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("a.b", Cpl::MakePath("..", "photo."))))) == "photo.";
+            ok &= Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("a.b", Cpl::MakePath("..", "photo"))))) == "photo";
+            ok &= Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("a.b", Cpl::MakePath("..", ".a"))))) == ".a";
 
             return ok;
         }
