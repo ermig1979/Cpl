@@ -22,6 +22,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\Test\Test.cpp" />
+    <ClCompile Include="..\..\src\Test\TestFile.cpp" />
     <ClCompile Include="..\..\src\Test\TestGeometryUtils.cpp" />
     <ClCompile Include="..\..\src\Test\TestLog.cpp" />
     <ClCompile Include="..\..\src\Test\TestParam.cpp" />
