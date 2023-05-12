@@ -201,7 +201,7 @@ namespace Cpl
             }
             else
             {
-                CPL_LOG_SS(Error, "Can't open intput file: '" << path << "' !");
+                CPL_LOG_SS(Error, "Can't open input file: '" << path << "' !");
             }
             return result;
         }
@@ -221,9 +221,9 @@ namespace Cpl
             if (format != ParamFormatByExt)
                 return true;
             String ext = ToLowerCase(ExtensionByPath(path));
-            if (ext == "xml")
+            if (ext == ".xml")
                 format = ParamFormatXml;
-            else if (ext == "yaml" || ext == "yml")
+            else if (ext == ".yaml" || ext == ".yml")
                 format = ParamFormatYaml;
             else
             {

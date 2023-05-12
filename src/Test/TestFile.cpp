@@ -41,8 +41,9 @@ extern "C" {
 #include <direct.h>
 #endif
 
-/*
+/* Test file hierarchy
 
+FOR LINUX:
 ----/tmp/cpl/1
             /2
 f               22222.js
@@ -251,7 +252,6 @@ namespace Test
             }
 
             ok &= cnt4 == 0;
-
 
             int cnt5 = 0;
             //Case if directory ends with symbol "/"
@@ -591,6 +591,11 @@ namespace Test
         bool extension() {
             bool ok = true;
             //Test get extention
+            ok &= Cpl::ChangeExtension(Cpl::MakePath("..", ""), "png") == Cpl::MakePath("..", "");
+            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", ""), "png") == Cpl::MakePath(".", "");
+            ok &= Cpl::ChangeExtension(".......", "png") == ".......";
+            ok &= Cpl::ChangeExtension(".......jpeg", "png") == ".......png";
+
             ok &= Cpl::ExtensionByPath("photo.jpeg") == ".jpeg";
             ok &= Cpl::ExtensionByPath("photo").size() == 0;
             ok &= Cpl::ExtensionByPath("photo.") == ".";

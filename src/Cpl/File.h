@@ -198,6 +198,11 @@ namespace Cpl
         return MakePath(MakePath(a, b), args...);
     }
 
+/*!
+* \fn   String DirectoryByPath(const String& path);
+* \brief Returns the directory of the file path or the parent directory of the directory path
+* \param [in] path_ - The file or directory path
+*/
     //TODO: maybe rename, check "." folder on linux
     CPL_INLINE String DirectoryByPath(const String& path_) {
         const String path = DirectoryPathRemoveAllLastDash(path_);
@@ -209,15 +214,34 @@ namespace Cpl
         return substr;
     }
 
+/*!
+* \fn   String DirectoryUp(const String& path);
+* \brief Returns the parent directory of the directory path
+* \param [in] path - The directory path
+*/
     CPL_INLINE String DirectoryUp(const String& path) {
         return DirectoryByPath(path);
     }
 
+/*!
+* \fn   String DirectoryDown(const String& format, const String& path);
+* \brief Returns the path with one level deeper than than path with corresponding format.
+*        For example, if format = "/usr/local/bin" and path = "/usr/", returns "/usr/local"
+* \param [in] format - the format path
+* \param [in] path - the current path
+* \return the path one level deeper than the current path with corresponding format.
+*/
     CPL_INLINE String DirectoryDown(const String& format, const String& path) {
         size_t endPos = format.find(Cpl::FolderSeparator(), path.size() + Cpl::FolderSeparator().size());
         return format.substr(0, endPos);
     }
 
+/*!
+* \fn   bool FileExists(const String& path);
+* \brief Checks if a file exists at the specified file path. Returns false for directory paths
+* \param [in] filePath - file path to check
+* \return true if file exists, false otherwise
+*/
     CPL_INLINE bool FileExists(const String& filePath)
     {
 #ifdef CPL_FILE_USE_FILESYSTEM
@@ -261,6 +285,12 @@ namespace Cpl
         return path;
     }
 
+/*!
+* \fn   bool DirectoryExists(const String& path_);
+* \brief Checks if a directory exists at the spicified path and return the result. Return false is path_ is a file path
+* \param [in] path_ - directory path
+* \return true if directory exits at the specified path, false otherwise
+*/
     CPL_INLINE bool DirectoryExists(const String& path_)
     {
         const String path = DirectoryPathRemoveAllLastDash(path_);
@@ -286,6 +316,11 @@ namespace Cpl
 
     CPL_INLINE String DirectoryByPath(const String& path_);
 
+/*!
+* \fn  bool CreatePath(const String& path);
+* \brief Creates the directory path recursively. Returns true if path_ was created.
+* \param [in] path - path to create
+*/
     CPL_INLINE bool CreatePath(const String& path)
     {
         if (DirectoryExists(path))
@@ -345,6 +380,15 @@ namespace Cpl
 #endif
     }
 
+/*!
+* \fn   StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive)
+* \brief Observe the folder, return a list of all file/directory entrance
+* \param [in] directory - the path to observe
+* \param [in] filter - the mask, for example "*", "abc*"
+* \param [in] files - do count files or do skip
+* \param [in] directories - do count folders or do skip
+* \param [in] recursive - do recursive observation
+*/
     inline StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive) {
         std::list<String> names;
 #if CPL_FILE_USE_FILESYSTEM
@@ -462,6 +506,11 @@ namespace Cpl
         return vector;
     }
 
+/*!
+* \fn   String FileNameByPath(const String & path_)
+* \brief Returns the filename (with extension) from the given file path
+* \param [in] path_ - the path to the filename
+*/
     CPL_INLINE String FileNameByPath(const String & path_)
     {
         const String path = DirectoryPathRemoveAllLastDash(path_);
@@ -475,6 +524,11 @@ namespace Cpl
 #endif
     }
 
+/*!
+* \fn   String ExtensionByPath(const String& path)
+* \brief Returns the filename extension from the given file path
+* \param [in] path - the path to the filename
+*/
     CPL_INLINE String ExtensionByPath(const String& path)
     {
         auto filename = FileNameByPath(path);
@@ -487,6 +541,11 @@ namespace Cpl
             return filename.substr(pos);
     }
 
+/*!
+* \fn   String RemoveExtension(const String& path)
+* \brief Remove the extension from given filename path and return the result
+* \param [in] path - the path to the filename
+*/
     CPL_INLINE String RemoveExtension(const String& path)
     {
         size_t last_sep = (size_t) path.find_last_of(".");
@@ -496,44 +555,62 @@ namespace Cpl
         return path.substr(0, last_sep);
     }
 
+/*!
+* \fn   String ChangeExtension(const String& path, const String& ext)
+* \brief Change the extension of given filename path to ext
+* \param [in] path - the path to the filename
+* \param [in] ext - the new extension string
+*/
+
     CPL_INLINE String ChangeExtension(const String& path, const String& ext)
     {
-        //TODO:add asserts
-        if (path == "." || path.size() == 0)
-            return path;
-
         auto filenamePos = path.find_last_of(Cpl::FolderSeparator());
         filenamePos = (filenamePos == String::npos) ? 0 : filenamePos + 1;
+        const String filename = path.substr(filenamePos);
 
-        String filename;
-        {
-            filename = path.substr(filenamePos);
-            String extFixed = ext;
-            extFixed.erase(std::remove_if(extFixed.begin(), extFixed.end(), [](const char c){
-                if (std::isspace(c))
-                    return true;
+        auto countDigit = std::count_if(filename.begin(), filename.end(), [](const char ch) {
+            return std::isdigit(ch);
+        });
 
-                auto iter = std::find(forbiddenSymbols.begin(), forbiddenSymbols.end(), c);
-                if (iter != forbiddenSymbols.end())
-                    return true;
+        auto countLetter = std::count_if(filename.begin(), filename.end(), [](const char ch) {
+            return std::isalpha(ch);
+        });
 
-                return false;
-            }), extFixed.end());
-
-            if (extFixed.empty()){
-                filename = RemoveExtension(filename);
-            }
-            else if (extFixed.at(0) == '.'){
-                filename = RemoveExtension(filename) + extFixed;
-            }
-            else {
-                filename = RemoveExtension(filename) + '.' + extFixed;
-            }
+        if (countDigit == 0 && countLetter == 0){
+            return path;
         }
 
-        return MakePath(path.substr(0, filenamePos), filename);
+        String extFixed = ext;
+        extFixed.erase(std::remove_if(extFixed.begin(), extFixed.end(), [](const char c){
+            if (std::isspace(c))
+                return true;
+
+            auto iter = std::find(forbiddenSymbols.begin(), forbiddenSymbols.end(), c);
+            if (iter != forbiddenSymbols.end())
+                return true;
+
+            return false;
+        }), extFixed.end());
+
+        String filenameRemovedExtesion;
+        if (extFixed.empty()){
+            filenameRemovedExtesion = RemoveExtension(filename);
+        }
+        else if (extFixed.at(0) == '.'){
+            filenameRemovedExtesion = RemoveExtension(filename) + extFixed;
+        }
+        else {
+            filenameRemovedExtesion = RemoveExtension(filename) + '.' + extFixed;
+        }
+
+        return MakePath(path.substr(0, filenamePos), filenameRemovedExtesion);
     }
 
+/*!
+* \fn   String GetAbsolutePath(const String& path)
+* \brief Returns the absolute path corresponding to the given relative path
+* \param [in] path - relative path
+*/
     CPL_INLINE String GetAbsolutePath(const String& path)
     {
 #ifdef _WIN32
@@ -586,6 +663,11 @@ namespace Cpl
 #endif
     }
 
+/*!
+* \fn   bool DeleteFile(const String& filename)
+* \brief Deletes the file with specified file name. Returns true on success. If given filename is directory, do nothing and return false.
+* \param [in] path - the file path
+*/
     CPL_INLINE bool DeleteFile(const String& filename)
     {
         if (!FileExists(filename)) {
@@ -605,6 +687,11 @@ namespace Cpl
 
     }
 
+/*!
+* \fn   bool DeleteDirectory(const String& dir)
+* \brief Deletes the directory with specified name. Returns true on success. If given path correspond to a file, do nothing and return false.
+* \param [in] path - the file path
+*/
     CPL_INLINE bool DeleteDirectory(const String& dir)
     {
 #ifdef CPL_FILE_USE_FILESYSTEM
@@ -642,6 +729,10 @@ namespace Cpl
     //TODO:
     //CPL_INLINE bool EqualPath(const String& first, const String& second);
 
+/*!
+* \fn    String GetExecutableLocation()
+* \brief Returns the executable location
+*/
     CPL_INLINE String GetExecutableLocation()
     {
 #if _WIN32
@@ -662,6 +753,13 @@ namespace Cpl
         return retval;
     }
 
+/*!
+* \fn   bool FileSize(const String & path, size_t& size)
+* \brief Read file size info and write it to size
+* \param [in] path - the file path
+* \param [out] size - size ref to write
+* \return true if success
+*/
     CPL_INLINE bool FileSize (const String & path, size_t& size) {
         if (FileExists(path)) {
             std::ifstream ifs;
@@ -679,7 +777,13 @@ namespace Cpl
         return false;
     }
 
-
+/*!
+* \fn   bool DirectorySize(const String & path, size_t& size)
+* \brief Recursively read file size info of all files in directory and write it sum to size ref
+* \param [in] path - the file path
+* \param [out] size - size ref to write
+* \return true if success
+*/
     CPL_INLINE bool DirectorySize (const String & path, size_t& size) {
         size_t tsize = 0;
 #ifdef CPL_FILE_USE_FILESYSTEM
@@ -839,6 +943,15 @@ namespace Cpl
         friend FileData::Error ReadFile(const String & path, FileData& out, size_t startPos, size_t maxSize);
     };
 
+/*!
+* \fn   int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate)
+* \brief Write data to file.
+* \param [in] filePath - the file path
+* \param [in] data - the data to write
+* \param [in] size - the size of data to write
+* \param [in] recreate - if true, file will be created/overwritten. If false data will be appended
+* \return -1 in case of success, otherwise  0
+*/
     CPL_INLINE int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate = true) {
         try {
             std::ofstream fs;
@@ -858,7 +971,16 @@ namespace Cpl
 
         return 0;
     }
-    
+
+/*!
+* \fn   FileData::Error ReadFile(const String & path, FileData& out, size_t startPos, size_t maxSize)
+* \brief Read data from file. If try to open directory, return codes can be different, ReadFileError::FailedToRead on linux, ReadFileError::CommonFail on Windows
+* \param [in] path - the file path
+* \param [out] out - the data holder
+* \param [in] startPos - the shift to data read
+* \param [in] maxSize - max size to read file
+* \return FileData::Error state
+*/
     CPL_INLINE FileData::Error ReadFile(const String & path, FileData& out, size_t startPos = 0, size_t maxSize = 1 * 1024 * 1024 * 1024 /* 1 gb */) {
         try {
             std::ifstream ifs;
