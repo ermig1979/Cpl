@@ -710,8 +710,8 @@ namespace Cpl
 #ifdef CPL_FILE_USE_FILESYSTEM
         try {
             std::error_code code;
-            size_t removeCount = (size_t) fs::remove_all(dir, code);
-            return removeCount;
+            auto ret = fs::remove_all(dir);
+            return !code && ret != -1;
         }
         catch (...) {
         }

@@ -166,17 +166,16 @@ namespace Test
             int cnt1 = 0;
             for (auto& exist : existance_files){
                 cnt1 += COMPARE_RESULT(Cpl::FileExists(exist), true);
-                std::cout << exist << " " << Cpl::FileExists(exist) << std::endl;
             }
 
-            ok &= cnt1 == existance_files.size();
+            ok &= COMPARE_RESULT(cnt1 == existance_files.size(), 1);
 
             int cnt2 = 0;
             for (auto& not_exist : not_existance_files){
                 cnt2 += COMPARE_RESULT(Cpl::FileExists(not_exist), false);
             }
 
-            ok &= cnt2 == 0;
+            ok &= COMPARE_RESULT(cnt2 == 0, 1);
 
             //Inversion previous
             int cnt3 = 0;
@@ -184,22 +183,21 @@ namespace Test
                 cnt3 += !COMPARE_RESULT(Cpl::FileExists(not_exist), false);
             }
 
-            ok &= cnt3 == not_existance_files.size();
+            ok &= COMPARE_RESULT(cnt3 == not_existance_files.size(), 1);
 
             //Check folders as files #4
             int cnt4 = 0;
             for (auto& exist : all_folders){
                 cnt4 += COMPARE_RESULT(Cpl::FileExists(exist), 0);
-                std::cout << exist << " " << Cpl::FileExists(exist) << std::endl;
             }
-            ok &= cnt4 == 0;
+            ok &= COMPARE_RESULT(cnt4 == 0, 1);
 
             //Check parent folders as files #5
             int cnt5 = 0;
             for (auto& exist : existance_files){
                 cnt5 += COMPARE_RESULT(Cpl::FileExists(Cpl::DirectoryByPath(exist)), 0);
             }
-            ok &= cnt5 == 0;
+            ok &= COMPARE_RESULT(cnt5 == 0, 1);
 
             //Check files via up and down path #6
             int cnt6 = 0;
@@ -208,7 +206,7 @@ namespace Test
                 auto filename = Cpl::FileNameByPath(exist);
                 cnt6 += COMPARE_RESULT(Cpl::FileExists(Cpl::MakePath(dir, filename)), 1);
             }
-            ok &= cnt6 == existance_files.size();
+            ok &= COMPARE_RESULT(cnt6 == existance_files.size(), 1);
 
 
             return ok;
@@ -221,37 +219,33 @@ namespace Test
             //Common case #1 
             for (auto& exist : all_folders){
                 cnt1 += COMPARE_RESULT(Cpl::DirectoryExists(exist), 1);
-                std::cout << exist << " " << Cpl::DirectoryExists(exist) << std::endl;
             }
 
-            ok &= cnt1 == existance_files.size();
+            ok &= COMPARE_RESULT(cnt1 == existance_files.size(), 1);
 
             //Common cases #2
             int cnt2 = 0;
             for (auto& not_exist : not_exist_folders){
                 cnt2 += COMPARE_RESULT(Cpl::DirectoryExists(not_exist), 0);
-                std::cout << not_exist << " " << Cpl::DirectoryExists(not_exist) << std::endl;
             }
 
-            ok &= cnt2 == 0;
+            ok &= COMPARE_RESULT(cnt2 == 0, 1);
 
             //Check parent folder of exist files #3
             int cnt3 = 0;
             for (auto& exist : existance_files){
                 cnt3 += COMPARE_RESULT(Cpl::DirectoryExists(Cpl::DirectoryByPath(exist)), 1);
-                std::cout << exist << " " << Cpl::DirectoryExists(Cpl::DirectoryByPath(exist)) << std::endl;
             }
 
-            ok &= cnt3 == existance_files.size();
+            ok &= COMPARE_RESULT(cnt3 == existance_files.size(), 1);
 
             //Check files as folders #4
             int cnt4 = 0;
             for (auto& exist : existance_files){
                 cnt3 += COMPARE_RESULT(Cpl::DirectoryExists(exist), 0);
-                std::cout << exist << " " << Cpl::DirectoryExists(exist) << std::endl;
             }
 
-            ok &= cnt4 == 0;
+            ok &= COMPARE_RESULT(cnt4 == 0, 1);
 
             int cnt5 = 0;
             //Case if directory ends with symbol "/"
@@ -259,7 +253,7 @@ namespace Test
                 cnt5 += COMPARE_RESULT(Cpl::DirectoryExists(Cpl::MakePath(exist, "")), 1);
             }
 
-            ok &= cnt5 == all_folders.size();
+            ok &= COMPARE_RESULT(cnt5 == all_folders.size(), 1);
 
             return ok;
         }
@@ -273,50 +267,49 @@ namespace Test
             std::string newFolder = joinPath(testPath, folderName1);
 
             if (Cpl::DirectoryExists(newFolder))
-                ok &= (Cpl::DeleteDirectory(newFolder) > 0);
+                ok &= COMPARE_RESULT(Cpl::DeleteDirectory(newFolder), 1);
 
             //Case 1
-            ok &= !Cpl::DirectoryExists(newFolder);
-            ok &= Cpl::CreatePath(newFolder);
-            ok &= Cpl::DirectoryExists(newFolder);
-            ok &= (Cpl::DeleteDirectory(newFolder) > 0);
-            ok &= !Cpl::DirectoryExists(newFolder);
-
+            ok &= !COMPARE_RESULT(Cpl::DirectoryExists(newFolder), 0);
+            ok &= COMPARE_RESULT(Cpl::CreatePath(newFolder), 1);
+            ok &= COMPARE_RESULT(Cpl::DirectoryExists(newFolder), 1);
+            ok &= COMPARE_RESULT(Cpl::DeleteDirectory(newFolder), 1);
+            ok &= !COMPARE_RESULT(Cpl::DirectoryExists(newFolder), 0);
 
             //Case 2
             static std::string folderName2 = "5";
             std::string newFolder2 = joinPath(newFolder, folderName2);
             // /tmp/cpl/4/5
 
-            ok &= !Cpl::DirectoryExists(newFolder2);
+            ok &= !COMPARE_RESULT(Cpl::DirectoryExists(newFolder2), 0);
 
-            ok &= Cpl::CreatePath(newFolder2);
-            ok &= Cpl::DirectoryExists(newFolder);
-            ok &= Cpl::DirectoryExists(newFolder2);
+            ok &= COMPARE_RESULT(Cpl::CreatePath(newFolder2), 1);
+            ok &= COMPARE_RESULT(Cpl::DirectoryExists(newFolder), 1);
+            ok &= COMPARE_RESULT(Cpl::DirectoryExists(newFolder2), 1);
 
-            ok &= (Cpl::DeleteDirectory(newFolder2) > 0);
-            ok &= !Cpl::DirectoryExists(newFolder2);
-            ok &= Cpl::DirectoryExists(newFolder);
-            ok &= (Cpl::DeleteDirectory(newFolder) > 0);
-            ok &= !Cpl::DirectoryExists(newFolder);
+            ok &= COMPARE_RESULT(Cpl::DeleteDirectory(newFolder2), 1);
+            ok &= !COMPARE_RESULT(Cpl::DirectoryExists(newFolder2), 0);
+            ok &= COMPARE_RESULT(Cpl::DirectoryExists(newFolder), 1);
+            ok &= COMPARE_RESULT(Cpl::DeleteDirectory(newFolder), 1);
+            ok &= !COMPARE_RESULT(Cpl::DirectoryExists(newFolder), 0);
 
             //Case 2.1
-            ok &= !Cpl::DirectoryExists(newFolder);
-            ok &= !Cpl::DirectoryExists(newFolder2);
+            ok &= !COMPARE_RESULT(Cpl::DirectoryExists(newFolder), 0);
+            ok &= !COMPARE_RESULT(Cpl::DirectoryExists(newFolder2), 0);
 
-            ok &= Cpl::CreatePath(newFolder2);
-            ok &= Cpl::DirectoryExists(newFolder);
-            ok &= Cpl::DirectoryExists(newFolder2);
+            ok &= COMPARE_RESULT(Cpl::CreatePath(newFolder2), 1);
+            ok &= COMPARE_RESULT(Cpl::DirectoryExists(newFolder), 1);
+            ok &= COMPARE_RESULT(Cpl::DirectoryExists(newFolder2), 1);
 
-            ok &= (Cpl::DeleteDirectory(newFolder) > 0);
-            ok &= !Cpl::DirectoryExists(newFolder2);
-            ok &= !Cpl::DirectoryExists(newFolder);
+            ok &= COMPARE_RESULT(Cpl::DeleteDirectory(newFolder), 1);
+            ok &= !COMPARE_RESULT(Cpl::DirectoryExists(newFolder2), 0);
+            ok &= !COMPARE_RESULT(Cpl::DirectoryExists(newFolder), 0);
 
 #ifdef _WIN32
-            ok &= Cpl::DirectoryExists("C://");
+            ok &= COMPARE_RESULT(Cpl::DirectoryExists("C://"), 1);
 
             if (!Cpl::DirectoryExists("X://")) {
-                ok &= !Cpl::CreatePath("X:\\zxv\\123\\312\\abcdefg");
+                ok &= !COMPARE_RESULT(Cpl::CreatePath("X:\\zxv\\123\\312\\abcdefg"), 0);
             }
 #endif
             return ok;
@@ -327,7 +320,7 @@ namespace Test
             bool ok = true;
             if (Cpl::FileExists(tempfilename)){
                 if (!Cpl::DeleteFile(tempfilename)){
-                    std::cout << "Cant delete file " << __LINE__;
+                    CPL_LOG_SS(Error, "Cant delete file " << __LINE__);
                     return false;
                 }
             }
@@ -335,79 +328,83 @@ namespace Test
 
             {
                 //Case 1, create
-                ok &= Cpl::WriteToFile(tempfilename, (const char *) d, sizeof(d));
+                ok &= COMPARE_RESULT(Cpl::WriteToFile(tempfilename, (const char *) d, sizeof(d)), 1);
                 size_t size = 0;
-                ok &= Cpl::FileSize(tempfilename, size);
+                ok &= COMPARE_RESULT(Cpl::FileSize(tempfilename, size), 1);
                 if (size != sizeof(d)){
                     Cpl::DeleteFile(tempfilename);
                     return false;
                 }
 
                 Cpl::FileData fd;
-                ok &= Cpl::ReadFile(tempfilename, fd);
-                ok &= fd.size() == sizeof(d);
+                ok &= COMPARE_RESULT(Cpl::ReadFile(tempfilename, fd), 1);
+                ok &= COMPARE_RESULT(fd.size() == sizeof(d), 1);
 
                 if (!ok) {
                     Cpl::DeleteFile(tempfilename);
                     return false;
                 }
                 for (size_t ind = 0; ind < sizeof(d); ind++) {
-                    ok &= fd.data()[ind] == d[ind];
+                    COMPARE_RESULT(ok &= fd.data()[ind] == d[ind], 1);
                 }
             }
             {
                 //Case 2, append data
-                ok &= Cpl::WriteToFile(tempfilename, (const char *) d + 1, sizeof(d) / 2, false);
+                ok &= COMPARE_RESULT(Cpl::WriteToFile(tempfilename, (const char *) d + 1, sizeof(d) / 2, false), 1);
                 size_t size = 0;
-                ok &= Cpl::FileSize(tempfilename, size);
+                ok &= COMPARE_RESULT(Cpl::FileSize(tempfilename, size), 1);
                 if (size != sizeof(d) + (sizeof(d) / 2)) {
                     Cpl::DeleteFile(tempfilename);
+                    CPL_LOG_SS(Error, "Not correct size " << __LINE__);
                     return false;
                 }
 
                 Cpl::FileData fd;
-                ok &= Cpl::ReadFile(tempfilename, fd);
-                ok &= fd.size() == sizeof(d) + (sizeof(d) / 2);
+                ok &= COMPARE_RESULT(Cpl::ReadFile(tempfilename, fd), 1);
+                ok &= COMPARE_RESULT(fd.size() == sizeof(d) + (sizeof(d) / 2), 1);
 
                 if (!ok) {
+                    CPL_LOG_SS(Error, "Create files test aborted " << __LINE__);
                     Cpl::DeleteFile(tempfilename);
                     return false;
                 }
 
                 for (size_t ind = 0; ind < sizeof(d); ind++) {
-                    ok &= fd.data()[ind] == d[ind];
+                    ok &= COMPARE_RESULT(fd.data()[ind] == d[ind], 1);
                 }
 
                 for (size_t ind = 0; ind < sizeof(d) / 2; ind++) {
-                    ok &= fd.data()[sizeof(d) + ind] == d[ind + 1];
+                    ok &= COMPARE_RESULT(fd.data()[sizeof(d) + ind] == d[ind + 1], 1);
                 }
             }
 
             {
                 //Case 3, rewrite
-                ok &= Cpl::WriteToFile(tempfilename, (const char *) d, sizeof(d));
+                ok &= COMPARE_RESULT(Cpl::WriteToFile(tempfilename, (const char *) d, sizeof(d)), 1);
                 size_t size = 0;
-                ok &= Cpl::FileSize(tempfilename, size);
+                ok &= COMPARE_RESULT(Cpl::FileSize(tempfilename, size), 1);
                 if (size != sizeof(d)) {
+                    CPL_LOG_SS(Error, "Create files test aborted " << __LINE__);
                     Cpl::DeleteFile(tempfilename);
                     return false;
                 }
 
                 Cpl::FileData fd;
-                ok &= Cpl::ReadFile(tempfilename, fd);
-                ok &= fd.size() == sizeof(d);
+                ok &= COMPARE_RESULT(Cpl::ReadFile(tempfilename, fd), 1);
+                ok &= COMPARE_RESULT(fd.size() == sizeof(d), 1);
 
                 if (!ok) {
+                    CPL_LOG_SS(Error, "Create files test aborted " << __LINE__);
                     Cpl::DeleteFile(tempfilename);
                     return false;
                 }
 
                 for (size_t ind = 0; ind < sizeof(d); ind++) {
-                    ok &= fd.data()[ind] == d[ind];
+                    ok &= COMPARE_RESULT(fd.data()[ind] == d[ind], 1);
                 }
             }
 
-            ok &= Cpl::DeleteFile(tempfilename);
+            ok &= COMPARE_RESULT(Cpl::DeleteFile(tempfilename), 1);
 
             return ok;
         }
@@ -420,12 +417,12 @@ namespace Test
                 for (const auto& elem : not_empty_files){
                     Cpl::FileData fd;
                     auto error = Cpl::ReadFile(elem.first, fd);
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::NoError;
-                    ok &= !fd.empty();
-                    ok &= fd.size() == elem.second;
+                    ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::NoError, 1);
+                    ok &= !COMPARE_RESULT(fd.empty(), 0);
+                    ok &= COMPARE_RESULT(fd.size() == elem.second, 1);
 
                     for (size_t ind = 0; ind < testString.size(); ind++) {
-                        ok &= fd.data()[ind] == testString.c_str()[ind];
+                        ok &= COMPARE_RESULT(fd.data()[ind] == testString.c_str()[ind], 1);
                     }
                 }
 
@@ -433,13 +430,13 @@ namespace Test
                 for (const auto& elem : not_empty_files){
                     Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
                     auto error = Cpl::ReadFile(elem.first, fd);
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::NoError;
-                    ok &= fd.size() == elem.second;
-                    ok &= !fd.empty();
-                    ok &= fd.data()[fd.size()] == 0;
+                    ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::NoError, 1);
+                    ok &= COMPARE_RESULT(fd.size() == elem.second, 1);
+                    ok &= !COMPARE_RESULT(fd.empty(), 0);
+                    ok &= COMPARE_RESULT(fd.data()[fd.size()] == 0, 1);
 
                     for (size_t ind = 0; ind < testString.size(); ind++) {
-                        ok &= fd.data()[ind] == testString.c_str()[ind];
+                        ok &= COMPARE_RESULT(fd.data()[ind] == testString.c_str()[ind], 1);
                     }
                 }
 
@@ -447,20 +444,20 @@ namespace Test
                 for (const auto& elem : empty_files){
                     Cpl::FileData fd;
                     auto error = Cpl::ReadFile(elem, fd);
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::NoError;
-                    ok &= fd.size() == 0;
-                    ok &= fd.empty();
-                    ok &= fd.data() == nullptr;
+                    ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::NoError, 1);
+                    ok &= COMPARE_RESULT(fd.size() == 0, 1);
+                    ok &= COMPARE_RESULT(fd.empty(), 1);
+                    ok &= COMPARE_RESULT(fd.data() == nullptr, 1);
                 }
 
                 //Test null terminated data of empty files
                 for (const auto& elem : empty_files){
                     Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
                     auto error = Cpl::ReadFile(elem, fd);
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::NoError;
-                    ok &= fd.size() == 0;
-                    ok &= fd.empty();
-                    ok &= fd.data() == nullptr;
+                    ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::NoError, 1);
+                    ok &= COMPARE_RESULT(fd.size() == 0, 1);
+                    ok &= COMPARE_RESULT(fd.empty(), 1);
+                    ok &= COMPARE_RESULT(fd.data() == nullptr, 1);
                 }
 
                 {
@@ -468,26 +465,26 @@ namespace Test
                     Cpl::FileData fd(Cpl::FileData::Type::Binary);
                     Cpl::FileData fd_empty(Cpl::FileData::Type::Binary);
                     auto error = Cpl::ReadFile(*not_existance_files.begin(), fd);
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::CommonFail;
-                    ok &= fd.size() == 0;
-                    ok &= fd.empty();
-                    ok &= fd.data() == nullptr;
-                    ok &= fd.size() == fd_empty.size();
-                    ok &= fd.empty() == fd_empty.empty();
-                    ok &= fd.data() == fd_empty.data();
+                    ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::CommonFail, 1);
+                    ok &= COMPARE_RESULT(fd.size() == 0, 1);
+                    ok &= COMPARE_RESULT(fd.empty(), 1);
+                    ok &= COMPARE_RESULT(fd.data() == nullptr, 1);
+                    ok &= COMPARE_RESULT(fd.size() == fd_empty.size(), 1);
+                    ok &= COMPARE_RESULT(fd.empty() == fd_empty.empty(), 1);
+                    ok &= COMPARE_RESULT(fd.data() == fd_empty.data(), 1);
                 }
 
                 {
                     //Existing file, binary format, budget less than file size
                     Cpl::FileData fd(Cpl::FileData::Type::Binary);
                     auto error = Cpl::ReadFile(not_empty_files[0].first, fd, 0, testString.size() - 1);
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::PartitialRead;
-                    ok &= fd.size() == testString.size() - 1;
-                    ok &= !fd.empty();
-                    ok &= fd.data() != nullptr;
+                    ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::PartitialRead, 1);
+                    ok &= COMPARE_RESULT(fd.size() == testString.size() - 1, 1);
+                    ok &= !COMPARE_RESULT(fd.empty(), 0);
+                    ok &= COMPARE_RESULT(fd.data() != nullptr, 1);
 
                     for (size_t ind = 0; ind < fd.size(); ind++) {
-                        ok &= fd.data()[ind] == testString.c_str()[ind];
+                        ok &= COMPARE_RESULT(fd.data()[ind] == testString.c_str()[ind], 1);
                     }
                 }
 
@@ -495,16 +492,16 @@ namespace Test
                     //Existing file, null terminated format, budget less than file size
                     Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
                     auto error = Cpl::ReadFile(not_empty_files[0].first, fd, 0, testString.size() - 1);
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::PartitialRead;
-                    ok &= fd.size() == testString.size() - 1;
-                    ok &= !fd.empty();
-                    ok &= fd.data() != nullptr;
+                    ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::PartitialRead, 1);
+                    ok &= COMPARE_RESULT(fd.size() == testString.size() - 1, 1);
+                    ok &= !COMPARE_RESULT(fd.empty(), 0);
+                    ok &= COMPARE_RESULT(fd.data() != nullptr, 1);
 
                     for (size_t ind = 0; ind < fd.size(); ind++) {
-                        ok &= fd.data()[ind] == testString.c_str()[ind];
+                        ok &= COMPARE_RESULT(fd.data()[ind] == testString.c_str()[ind], 1);
                     }
 
-                    ok &= fd.data()[fd.size()] == 0;
+                    ok &= COMPARE_RESULT(fd.data()[fd.size()] == 0, 1);
                 }
 
                 {
@@ -513,17 +510,17 @@ namespace Test
                     Cpl::FileData fd_empty(Cpl::FileData::Type::Binary);
                     auto error = Cpl::ReadFile(*all_folders.begin(), fd);
 #if __linux__
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::FailedToRead;
+                    ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::FailedToRead, 1);
 #elif _WIN32
-                    ok &= error.code == Cpl::FileData::Error::ReadFileError::CommonFail;
+                    ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::CommonFail, 1);
 #endif
 
-                    ok &= fd.size() == 0;
-                    ok &= fd.empty();
-                    ok &= fd.data() == nullptr;
-                    ok &= fd.size() == fd_empty.size();
-                    ok &= fd.empty() == fd_empty.empty();
-                    ok &= fd.data() == fd_empty.data();
+                    ok &= COMPARE_RESULT(fd.size() == 0, 1);
+                    ok &= COMPARE_RESULT(fd.empty(), 1);
+                    ok &= COMPARE_RESULT(fd.data() == nullptr, 1);
+                    ok &= COMPARE_RESULT(fd.size() == fd_empty.size(), 1);
+                    ok &= COMPARE_RESULT(fd.empty() == fd_empty.empty(), 1);
+                    ok &= COMPARE_RESULT(fd.data() == fd_empty.data(), 1);
 
                 }
             }
@@ -539,16 +536,16 @@ namespace Test
                 Cpl::DeleteFile(not_empty_files.front().first + "1");
             }
 
-            ok &= !Cpl::FileExists(not_empty_files.front().first + "1");
-            ok &= Cpl::Copy(not_empty_files.front().first, not_empty_files.front().first + "1");
+            ok &= !COMPARE_RESULT(Cpl::FileExists(not_empty_files.front().first + "1"), 0);
+            ok &= COMPARE_RESULT(Cpl::Copy(not_empty_files.front().first, not_empty_files.front().first + "1"), 1);
 
-            ok &= Cpl::FileExists(not_empty_files.front().first + "1");
+            ok &= COMPARE_RESULT(Cpl::FileExists(not_empty_files.front().first + "1"), 1);
 
             size_t size = 0;
-            ok &= Cpl::FileSize(not_empty_files.front().first + "1", size);
-            ok &= (size == not_empty_files.front().second);
-            ok &= Cpl::DeleteFile(not_empty_files.front().first + "1");
-            ok &= !Cpl::FileExists(not_empty_files.front().first + "1");
+            ok &= COMPARE_RESULT(Cpl::FileSize(not_empty_files.front().first + "1", size), 1);
+            ok &= COMPARE_RESULT((size == not_empty_files.front().second), 1);
+            ok &= COMPARE_RESULT(Cpl::DeleteFile(not_empty_files.front().first + "1"), 1);
+            ok &= !COMPARE_RESULT(Cpl::FileExists(not_empty_files.front().first + "1"), 0);
 
             //Copy folder
 
@@ -557,28 +554,28 @@ namespace Test
                 Cpl::DeleteDirectory(tdir);
             }
 
-            ok &= Cpl::Copy(testPath.c_str(), tdir.c_str());
+            ok &= COMPARE_RESULT(Cpl::Copy(testPath.c_str(), tdir.c_str()), 1);
 
             auto list1 = Cpl::GetFileList(testPath, "", true, true, true);
             auto list2 = Cpl::GetFileList(tdir, "", true, true, true);
 
-            ok &= list1.size() == list2.size();
+            ok &= COMPARE_RESULT(list1.size() == list2.size(), 1);
             if (list1.size() == list2.size()){
                 auto l1 = list1.begin();
                 auto l2 = list2.begin();
                 while (l1 != list1.end()){
-                    ok &= Cpl::FileNameByPath(*l1) == Cpl::FileNameByPath(*l2);
+                    ok &= COMPARE_RESULT(Cpl::FileNameByPath(*l1) == Cpl::FileNameByPath(*l2), 1);
                     l1++;
                     l2++;
                 }
             }
 
             size_t size1, size2;
-            ok &= Cpl::DirectorySize(testPath, size1);
-            ok &= Cpl::DirectorySize(tdir, size2);
-            ok &= size1 == size2;
+            ok &= COMPARE_RESULT(Cpl::DirectorySize(testPath, size1), 1);
+            ok &= COMPARE_RESULT(Cpl::DirectorySize(tdir, size2), 1);
+            ok &= COMPARE_RESULT(size1 == size2, 1);
 
-            ok &= Cpl::DeleteDirectory(tdir);
+            ok &= COMPARE_RESULT(Cpl::DeleteDirectory(tdir), 1);
 
             return ok;
         }
@@ -593,7 +590,7 @@ namespace Test
                 auto files = Cpl::GetFileList(testPath, "", true, false, false);
                 ok &= files.size() == 3;
                 for (const auto &concrete_filename_path: files) {
-                    ok &= !concrete_filename_path.empty();
+                    ok &= !COMPARE_RESULT(concrete_filename_path.empty(), 0);
                     auto directory = Cpl::DirectoryByPath(concrete_filename_path);
                     //TODO: fix comparison
                     ok &= COMPARE_RESULT(directory == testPath, 1);
@@ -601,7 +598,7 @@ namespace Test
 
 
                 auto filesRecursive = Cpl::GetFileList(testPath, "", true, false, true);
-                ok &= filesRecursive.size() == existance_files.size();
+                ok &= COMPARE_RESULT(filesRecursive.size() == existance_files.size(), 1);
 
                 auto dirs = Cpl::GetFileList(testPath, "", false, true, false);
                 ok &= COMPARE_RESULT(dirs.size() == 3, 1);
@@ -610,8 +607,6 @@ namespace Test
                 ok &= COMPARE_RESULT(dirsRecursive.size() == 4, 1);
 
             }
-
-
             return ok;
         }
 
@@ -619,23 +614,23 @@ namespace Test
             bool ok = true;
 
             auto folder = Cpl::FileNameByPath(testPath);
-            ok &= folder == "cpl";
+            ok &= COMPARE_RESULT(folder == "cpl", 1);
 
             folder = Cpl::FileNameByPath(testPath + Cpl::FolderSeparator());
 
-            ok &= folder == "cpl";
+            ok &= COMPARE_RESULT(folder == "cpl", 1);
 
-            ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::FolderSeparator())) == testPath;
-            ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::MakePath(Cpl::FolderSeparator(), " "))) == testPath;
-            ok &= Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::MakePath(Cpl::FolderSeparator(), Cpl::FolderSeparator()))) == testPath;
+            ok &= COMPARE_RESULT(Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::FolderSeparator())) == testPath, 1);
+            ok &= COMPARE_RESULT(Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::MakePath(Cpl::FolderSeparator(), " "))) == testPath, 1);
+            ok &= COMPARE_RESULT(Cpl::DirectoryPathRemoveAllLastDash(Cpl::MakePath(testPath, Cpl::MakePath(Cpl::FolderSeparator(), Cpl::FolderSeparator()))) == testPath, 1);
 
             for (const auto &file: existance_files) {
                 auto filename = Cpl::FileNameByPath(file);
                 auto filedir = Cpl::DirectoryByPath(file);
 
-                ok &= Cpl::MakePath(filedir, filename) == file;
-                ok &= Cpl::FileExists(Cpl::MakePath(filedir, filename));
-                ok &= Cpl::FileExists(Cpl::MakePath(Cpl::MakePath(filedir, ""), filename));
+                ok &= COMPARE_RESULT(Cpl::MakePath(filedir, filename) == file, 1);
+                ok &= COMPARE_RESULT(Cpl::FileExists(Cpl::MakePath(filedir, filename)), 1);
+                ok &= COMPARE_RESULT(Cpl::FileExists(Cpl::MakePath(Cpl::MakePath(filedir, ""), filename)), 1);
             }
             return ok;
         }
@@ -643,79 +638,78 @@ namespace Test
         bool extension() {
             bool ok = true;
             //Test get extention
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("..", ""), "png") == Cpl::MakePath("..", "");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", ""), "png") == Cpl::MakePath(".", "");
-            ok &= Cpl::ChangeExtension(".......", "png") == ".......";
-            ok &= Cpl::ChangeExtension(".......jpeg", "png") == ".......png";
-
-            ok &= Cpl::ExtensionByPath("photo.jpeg") == ".jpeg";
-            ok &= Cpl::ExtensionByPath("photo").size() == 0;
-            ok &= Cpl::ExtensionByPath("photo.") == ".";
-            ok &= Cpl::ExtensionByPath(".b").size() == 0;
-            ok &= Cpl::ExtensionByPath("...b") == ".b";
-            ok &= Cpl::ExtensionByPath("..a.b") == ".b";
-
-
-            ok &= Cpl::RemoveExtension("photo.jpeg") == "photo";
-            ok &= Cpl::RemoveExtension("photo.") == "photo";
-            ok &= Cpl::RemoveExtension("photo") == "photo";
-            ok &= Cpl::RemoveExtension("") == "";
-            ok &= Cpl::RemoveExtension(".a") == ".a";
-            ok &= Cpl::RemoveExtension("...b") == "..";
-            ok &= Cpl::RemoveExtension("..a.b") == "..a";
-            ok &= Cpl::RemoveExtension("..a.b....zyx") == "..a.b...";
-
-            ok &= Cpl::ChangeExtension("photo.jpeg", "png") == "photo.png";
-            ok &= Cpl::ChangeExtension("photo.jpeg", ".png") == "photo.png";
-            ok &= Cpl::ChangeExtension("photo.", ".png") == "photo.png";
-            ok &= Cpl::ChangeExtension("test.photo.", ".png") == "test.photo.png";
-            ok &= Cpl::ChangeExtension("test.photo.", "png") == "test.photo.png";
-            ok &= Cpl::ChangeExtension("photo", ".png") == "photo.png";
-            ok &= Cpl::ChangeExtension("photo", "png") == "photo.png";
-            ok &= Cpl::ChangeExtension("", ".png") == "";
-            ok &= Cpl::ChangeExtension("", "png") == "";
-            ok &= Cpl::ChangeExtension(".a", ".png") == ".a.png";
-            ok &= Cpl::ChangeExtension(".a", "png") == ".a.png";
-
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), "png") == Cpl::MakePath(".", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), ".png") == Cpl::MakePath(".", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), "") == Cpl::MakePath(".", "a");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), " ") == Cpl::MakePath(".", "a");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a"), ".") == Cpl::MakePath(".", "a.");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "ab."), ".") == Cpl::MakePath(".", "ab.");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.z"), ".") == Cpl::MakePath(".", "a.");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.z"), ".random") == Cpl::MakePath(".", "a.random");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.z"), "random") == Cpl::MakePath(".", "a.random");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "abc.z"), "random") == Cpl::MakePath(".", "abc.random");
-
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.jpeg"), "png") ==  Cpl::MakePath(".", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", "a.jpeg"), ".png") ==  Cpl::MakePath(".", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath(".", ".jpeg"), ".png") ==  Cpl::MakePath(".", ".jpeg.png");
-
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("..", "a.jpeg"), "png") ==  Cpl::MakePath("..", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("..", "a.jpeg"), ".png") ==  Cpl::MakePath("..", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("..", ".jpeg"), ".png") ==  Cpl::MakePath("..", ".jpeg.png");
-
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("abc", "a.jpeg"), "png") ==  Cpl::MakePath("abc", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("abcz123", "a.jpeg"), ".png") ==  Cpl::MakePath("abcz123", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("poiabc", ".jpeg"), ".png") ==  Cpl::MakePath("poiabc", ".jpeg.png");
-
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("..", ""), "png") == Cpl::MakePath("..", ""), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", ""), "png") == Cpl::MakePath(".", ""), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(".......", "png") == ".......", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(".......jpeg", "png") == ".......png", 1);
+                  
+            ok &= COMPARE_RESULT(Cpl::ExtensionByPath("photo.jpeg") == ".jpeg", 1);
+            ok &= COMPARE_RESULT(Cpl::ExtensionByPath("photo").size() == 0, 1);
+            ok &= COMPARE_RESULT(Cpl::ExtensionByPath("photo.") == ".", 1);
+            ok &= COMPARE_RESULT(Cpl::ExtensionByPath(".b").size() == 0, 1);
+            ok &= COMPARE_RESULT(Cpl::ExtensionByPath("...b") == ".b", 1);
+            ok &= COMPARE_RESULT(Cpl::ExtensionByPath("..a.b") == ".b", 1);
+                  
+            ok &= COMPARE_RESULT(Cpl::RemoveExtension("photo.jpeg") == "photo", 1);
+            ok &= COMPARE_RESULT(Cpl::RemoveExtension("photo.") == "photo", 1);
+            ok &= COMPARE_RESULT(Cpl::RemoveExtension("photo") == "photo", 1);
+            ok &= COMPARE_RESULT(Cpl::RemoveExtension("") == "", 1);
+            ok &= COMPARE_RESULT(Cpl::RemoveExtension(".a") == ".a", 1);
+            ok &= COMPARE_RESULT(Cpl::RemoveExtension("...b") == "..", 1);
+            ok &= COMPARE_RESULT(Cpl::RemoveExtension("..a.b") == "..a", 1);
+            ok &= COMPARE_RESULT(Cpl::RemoveExtension("..a.b....zyx") == "..a.b...", 1);
+                  
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension("photo.jpeg", "png") == "photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension("photo.jpeg", ".png") == "photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension("photo.", ".png") == "photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension("test.photo.", ".png") == "test.photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension("test.photo.", "png") == "test.photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension("photo", ".png") == "photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension("photo", "png") == "photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension("", ".png") == "", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension("", "png") == "", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(".a", ".png") == ".a.png", 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(".a", "png") == ".a.png", 1);
+                  
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a"), "png") == Cpl::MakePath(".", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a"), ".png") == Cpl::MakePath(".", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a"), "") == Cpl::MakePath(".", "a"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a"), " ") == Cpl::MakePath(".", "a"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a"), ".") == Cpl::MakePath(".", "a."), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "ab."), ".") == Cpl::MakePath(".", "ab."), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a.z"), ".") == Cpl::MakePath(".", "a."), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a.z"), ".random") == Cpl::MakePath(".", "a.random"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a.z"), "random") == Cpl::MakePath(".", "a.random"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "abc.z"), "random") == Cpl::MakePath(".", "abc.random"), 1);
+                  
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a.jpeg"), "png") ==  Cpl::MakePath(".", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", "a.jpeg"), ".png") ==  Cpl::MakePath(".", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath(".", ".jpeg"), ".png") ==  Cpl::MakePath(".", ".jpeg.png"), 1);
+                  
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("..", "a.jpeg"), "png") ==  Cpl::MakePath("..", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("..", "a.jpeg"), ".png") ==  Cpl::MakePath("..", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("..", ".jpeg"), ".png") ==  Cpl::MakePath("..", ".jpeg.png"), 1);
+                  
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("abc", "a.jpeg"), "png") ==  Cpl::MakePath("abc", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("abcz123", "a.jpeg"), ".png") ==  Cpl::MakePath("abcz123", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("poiabc", ".jpeg"), ".png") ==  Cpl::MakePath("poiabc", ".jpeg.png"), 1);
+                  
             //Parent folder with dot
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("ab.c", "a.jpeg"), "png") ==  Cpl::MakePath("ab.c", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("abcz.123", "a.jpeg"), ".png") ==  Cpl::MakePath("abcz.123", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("poiab.c", ".jpeg"), ".png") ==  Cpl::MakePath("poiab.c", ".jpeg.png");
-
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("ab.c", "a.jpeg"), "png") ==  Cpl::MakePath("ab.c", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("abcz.123", "a.jpeg"), ".png") ==  Cpl::MakePath("abcz.123", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("poiab.c", ".jpeg"), ".png") ==  Cpl::MakePath("poiab.c", ".jpeg.png"), 1);
+                  
             //Full paths
-#ifdef _WIN32
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("C:", "a.jpeg"), "png") ==  Cpl::MakePath("C:", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("C:", Cpl::MakePath("folder1", "a.jpeg")), "png") ==  Cpl::MakePath("C:", Cpl::MakePath("folder1", "a.png"));
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("C:", Cpl::MakePath("fol.der1", "a.jpeg")), "png") ==  Cpl::MakePath("C:", Cpl::MakePath("fol.der1", "a.png"));
-#endif
-
-#ifdef __linux__
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("/tmp", "a.jpeg"), "png") ==  Cpl::MakePath("/tmp", "a.png");
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("/tmp", Cpl::MakePath("folder1", "a.jpeg")), "png") ==  Cpl::MakePath("/tmp", Cpl::MakePath("folder1", "a.png"));
-            ok &= Cpl::ChangeExtension(Cpl::MakePath("/tmp", Cpl::MakePath("fol.der1", "a.jpeg")), "png") ==  Cpl::MakePath("/tmp", Cpl::MakePath("fol.der1", "a.png"));
+#ifdef _WIN32 
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("C:", "a.jpeg"), "png") ==  Cpl::MakePath("C:", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("C:", Cpl::MakePath("folder1", "a.jpeg")), "png") ==  Cpl::MakePath("C:", Cpl::MakePath("folder1", "a.png")), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("C:", Cpl::MakePath("fol.der1", "a.jpeg")), "png") ==  Cpl::MakePath("C:", Cpl::MakePath("fol.der1", "a.png")), 1);
+#endif            
+                  
+#ifdef __linux__  
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("/tmp", "a.jpeg"), "png") ==  Cpl::MakePath("/tmp", "a.png"), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("/tmp", Cpl::MakePath("folder1", "a.jpeg")), "png") ==  Cpl::MakePath("/tmp", Cpl::MakePath("folder1", "a.png")), 1);
+            ok &= COMPARE_RESULT(Cpl::ChangeExtension(Cpl::MakePath("/tmp", Cpl::MakePath("fol.der1", "a.jpeg")), "png") ==  Cpl::MakePath("/tmp", Cpl::MakePath("fol.der1", "a.png")), 1);
 #endif
 
             return ok;
@@ -724,13 +718,13 @@ namespace Test
         bool pathing() {
             bool ok = true;
 
-            ok &= Cpl::FileNameByPath(Cpl::MakePath("", Cpl::MakePath("usr", Cpl::MakePath("local", "photo.png")))) == "photo.png";
-            ok &= Cpl::FileNameByPath("photo.png") == "photo.png";
-            ok &= Cpl::FileNameByPath(Cpl::MakePath(".", "photo.png")) == "photo.png";
-            ok &= Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("ab", Cpl::MakePath("..", "photo.png"))))) == "photo.png";
-            ok &= Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("a.b", Cpl::MakePath("..", "photo."))))) == "photo.";
-            ok &= Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("a.b", Cpl::MakePath("..", "photo"))))) == "photo";
-            ok &= Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("a.b", Cpl::MakePath("..", ".a"))))) == ".a";
+            ok &= COMPARE_RESULT(Cpl::FileNameByPath(Cpl::MakePath("", Cpl::MakePath("usr", Cpl::MakePath("local", "photo.png")))) == "photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::FileNameByPath("photo.png") == "photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::FileNameByPath(Cpl::MakePath(".", "photo.png")) == "photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("ab", Cpl::MakePath("..", "photo.png"))))) == "photo.png", 1);
+            ok &= COMPARE_RESULT(Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("a.b", Cpl::MakePath("..", "photo."))))) == "photo.", 1);
+            ok &= COMPARE_RESULT(Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("a.b", Cpl::MakePath("..", "photo"))))) == "photo", 1);
+            ok &= COMPARE_RESULT(Cpl::FileNameByPath(Cpl::MakePath("..", Cpl::MakePath(".", Cpl::MakePath("a.b", Cpl::MakePath("..", ".a"))))) == ".a", 1);
 
             return ok;
         }
@@ -755,8 +749,8 @@ namespace Test
 
                         if (iter != not_empty_files.end()) {
                             size_t size = 0;
-                            ok &= Cpl::FileSize(iter->first,size);
-                            ok &= size == iter->second;
+                            ok &= COMPARE_RESULT(Cpl::FileSize(iter->first,size), 1);
+                            ok &= COMPARE_RESULT(size == iter->second, 1);
                             continue;
                         }
                     }
@@ -765,8 +759,8 @@ namespace Test
                         auto empty_iter = empty_files.find(path);
                         if (empty_iter != empty_files.end()) {
                             size_t size = 0;
-                            ok &= Cpl::FileSize(*empty_iter, size);
-                            ok &= size == 0;
+                            ok &= COMPARE_RESULT(Cpl::FileSize(*empty_iter, size), 1);
+                            ok &= COMPARE_RESULT(size == 0, 1);
                             continue;
                         }
                     }
@@ -778,8 +772,8 @@ namespace Test
                     }
 
                     size_t size = 0;
-                    ok &= !Cpl::FileSize(path, size);
-                    ok &= size == 0;
+                    ok &= !COMPARE_RESULT(Cpl::FileSize(path, size), 0);
+                    ok &= COMPARE_RESULT(size == 0, 1);
                 }
 
                 return ok;
@@ -800,10 +794,10 @@ namespace Test
                 calc_size += path.second;
             }
 
-            ok &= Cpl::DirectorySize(testPath, size);
-            std::cout << "Dir size " << size << std::endl;
+            ok &= COMPARE_RESULT(Cpl::DirectorySize(testPath, size), 1);
+            CPL_LOG_SS(Info, "Dir size " << size);
 
-            ok &= size == calc_size;
+            ok &= COMPARE_RESULT(size == calc_size, 1);
 
             return ok;
         }
@@ -811,8 +805,8 @@ namespace Test
         bool system() {
             //TODO: add test of GetAbsolutePath with usage environment variable for check path
             bool ok = true;
-            ok &= Cpl::GetAbsolutePath(testPath) != testPath;
-            ok &= !Cpl::GetAbsolutePath(testPath).empty();
+            ok &= COMPARE_RESULT(Cpl::GetAbsolutePath(testPath) != testPath, 1);
+            ok &= COMPARE_RESULT(Cpl::GetAbsolutePath(testPath).empty(), 0);
             return ok;
         }
     }
@@ -821,14 +815,14 @@ namespace Test
     bool DoFileModifyTest() {
         bool ok = true;
         try {
-            std::cout << "Filesystem " << Cpl::FilesystemType() << std::endl;
-            std::cout << "Compiler type " << Cpl::CompilerType() << std::endl;
+            CPL_LOG_SS(Info, "Filesystem " << Cpl::FilesystemType());
+            CPL_LOG_SS(Info, "Compiler type " << Cpl::CompilerType());
 
             initializeTree();
-            ok &= Modify::folders();
-            ok &= Modify::createFiles();
-            ok &= Modify::readFormatsTest();
-            ok &= Modify::copy();
+            ok &= COMPARE_RESULT(Modify::folders(), 1);
+            ok &= COMPARE_RESULT(Modify::createFiles(), 1);
+            ok &= COMPARE_RESULT(Modify::readFormatsTest(), 1);
+            ok &= COMPARE_RESULT(Modify::copy(), 1);
 
             return ok;
         }
@@ -840,12 +834,12 @@ namespace Test
     bool DoFileExistanceTest() {
         bool ok = true;
         try {
-            std::cout << "Filesystem " << Cpl::FilesystemType() << std::endl;
-            std::cout << "Compiler type " << Cpl::CompilerType() << std::endl;
+            CPL_LOG_SS(Info, "Filesystem " << Cpl::FilesystemType());
+            CPL_LOG_SS(Info, "Compiler type " << Cpl::CompilerType());
 
             initializeTree();
-            ok &= Existance::testFileExists();
-            ok &= Existance::testFolderExists();
+            ok &= COMPARE_RESULT(Existance::testFileExists(), 1);
+            ok &= COMPARE_RESULT(Existance::testFolderExists(), 1);
 
             return ok;
         }
@@ -858,16 +852,16 @@ namespace Test
     bool DoFileInfoTest() {
         bool ok = true;
         try {
-            std::cout << "Filesystem " << Cpl::FilesystemType() << std::endl;
-            std::cout << "Compiler type " << Cpl::CompilerType() << std::endl;
+            CPL_LOG_SS(Info, "Filesystem " << Cpl::FilesystemType());
+            CPL_LOG_SS(Info, "Compiler type " << Cpl::CompilerType());
 
             initializeTree();
-            ok &= Info::fileList();
-            ok &= Info::naming();
-            ok &= Info::extension();
-            ok &= Info::pathing();
-            ok &= Info::fileSizing();
-            ok &= Info::directorySizing();
+            ok &= COMPARE_RESULT(Info::fileList(), 1);
+            ok &= COMPARE_RESULT(Info::naming(), 1);
+            ok &= COMPARE_RESULT(Info::extension(), 1);
+            ok &= COMPARE_RESULT(Info::pathing(), 1);
+            ok &= COMPARE_RESULT(Info::fileSizing(), 1);
+            ok &= COMPARE_RESULT(Info::directorySizing(), 1);
 
             return ok;
         }
