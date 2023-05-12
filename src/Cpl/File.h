@@ -1037,4 +1037,31 @@ namespace Cpl
 
         return FileData::Error::CommonFail;
     }
+
+    template<class T> inline bool LoadBinaryData(const String& path, std::vector<T>& data)
+    {
+        std::ifstream ifs(path.c_str(), std::ofstream::binary);
+        if (!ifs.is_open())
+            return false;
+        size_t beg = ifs.tellg();
+        ifs.seekg(0, std::ios::end);
+        size_t end = ifs.tellg();
+        ifs.seekg(0, std::ios::beg);
+        size_t size = (end - beg) / sizeof(T);
+        data.resize(size);
+        ifs.read((char*)data.data(), size * sizeof(T));
+        ifs.close();
+        return true;
+    }
+
+    template<class T> inline bool SaveBinaryData(const std::vector<T>& data, const String& path)
+    {
+        std::ofstream ofs(path.c_str(), std::ofstream::binary);
+        if (!ofs.is_open())
+            return false;
+        ofs.write((const char*)data.data(), data.size() * sizeof(T));
+        bool result = (bool)ofs;
+        ofs.close();
+        return result;
+    }
 }
