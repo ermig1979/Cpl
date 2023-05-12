@@ -530,6 +530,58 @@ namespace Test
 
             return ok;
         }
+
+        bool copy(){
+
+            //Copy file
+            bool ok = true;
+            if (Cpl::FileExists(not_empty_files.front().first + "1")){
+                Cpl::DeleteFile(not_empty_files.front().first + "1");
+            }
+
+            ok &= !Cpl::FileExists(not_empty_files.front().first + "1");
+            ok &= Cpl::Copy(not_empty_files.front().first, not_empty_files.front().first + "1");
+
+            ok &= Cpl::FileExists(not_empty_files.front().first + "1");
+
+            size_t size = 0;
+            ok &= Cpl::FileSize(not_empty_files.front().first + "1", size);
+            ok &= (size == not_empty_files.front().second);
+            ok &= Cpl::DeleteFile(not_empty_files.front().first + "1");
+            ok &= !Cpl::FileExists(not_empty_files.front().first + "1");
+
+            //Copy folder
+
+            auto tdir = Cpl::String(testPath + "1");
+            if (Cpl::DirectoryExists(tdir)){
+                Cpl::DeleteDirectory(tdir);
+            }
+
+            ok &= Cpl::Copy(testPath.c_str(), tdir.c_str());
+
+            auto list1 = Cpl::GetFileList(testPath, "", true, true, true);
+            auto list2 = Cpl::GetFileList(tdir, "", true, true, true);
+
+            ok &= list1.size() == list2.size();
+            if (list1.size() == list2.size()){
+                auto l1 = list1.begin();
+                auto l2 = list2.begin();
+                while (l1 != list1.end()){
+                    ok &= Cpl::FileNameByPath(*l1) == Cpl::FileNameByPath(*l2);
+                    l1++;
+                    l2++;
+                }
+            }
+
+            size_t size1, size2;
+            ok &= Cpl::DirectorySize(testPath, size1);
+            ok &= Cpl::DirectorySize(tdir, size2);
+            ok &= size1 == size2;
+
+            ok &= Cpl::DeleteDirectory(tdir);
+
+            return ok;
+        }
     }
 
     namespace Info {
@@ -766,28 +818,61 @@ namespace Test
     }
 
 
-    bool DoFileTest(){
+    bool DoFileModifyTest() {
         bool ok = true;
         try {
             std::cout << "Filesystem " << Cpl::FilesystemType() << std::endl;
+            std::cout << "Compiler type " << Cpl::CompilerType() << std::endl;
+
+            initializeTree();
+            ok &= Modify::folders();
+            ok &= Modify::createFiles();
+            ok &= Modify::readFormatsTest();
+            ok &= Modify::copy();
+
+            return ok;
+        }
+        catch (...) {
+        }
+        return false;
+    };
+
+    bool DoFileExistanceTest() {
+        bool ok = true;
+        try {
+            std::cout << "Filesystem " << Cpl::FilesystemType() << std::endl;
+            std::cout << "Compiler type " << Cpl::CompilerType() << std::endl;
+
             initializeTree();
             ok &= Existance::testFileExists();
             ok &= Existance::testFolderExists();
-            ok &= Modify::folders();
+
+            return ok;
+        }
+        catch (...) {
+        }
+        return false;
+    };
+
+
+    bool DoFileInfoTest() {
+        bool ok = true;
+        try {
+            std::cout << "Filesystem " << Cpl::FilesystemType() << std::endl;
+            std::cout << "Compiler type " << Cpl::CompilerType() << std::endl;
+
+            initializeTree();
             ok &= Info::fileList();
             ok &= Info::naming();
             ok &= Info::extension();
             ok &= Info::pathing();
             ok &= Info::fileSizing();
             ok &= Info::directorySizing();
-            ok &= Modify::createFiles();
-            ok &= Modify::readFormatsTest();
-        }
-        catch(...){
-            std::cerr << "File test exception";
-            return false;
-        }
 
-        return ok;
-    }
+            return ok;
+        }
+        catch (...) {
+        }
+        return false;
+    };
 }

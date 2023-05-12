@@ -626,7 +626,14 @@ namespace Cpl
 #endif
     }
 
-    CPL_INLINE bool Copy(const String& src, const String& dst, bool recursive = true)
+/*!
+* \fn   bool Copy(const String& src, const String& dst)
+* \brief Copy recursively files/dirs. Return true if success
+* \param [in] src - source path
+* \param [in] dst - destination path
+*/
+
+    CPL_INLINE bool Copy(const String& src, const String& dst)
     {
         if (src == dst) {
             return true;
@@ -643,18 +650,24 @@ namespace Cpl
 #elif _WIN32
         try
         {
+            String srcc = src;
+            String dstc = dst;
+
+            //double null termitaion
+            srcc.push_back(0);
+            dstc.push_back(0);
+
             SHFILEOPSTRUCT s { };
             s.hwnd = 0;
             s.wFunc = FO_COPY;
             s.fFlags = FOF_SILENT;
-            s.pTo = dst.c_str();
-            s.pFrom = src.c_str();;
-            SHFileOperation(&s);
+            s.pTo = dstc.c_str();
+            s.pFrom = srcc.c_str();;
+            return SHFileOperation(&s) == 0;
         }
         catch (...){
-            return false;
         }
-        return true;
+        return false;
 #elif __linux__
         String com = String("cp -R ") + src + " " + dst;
         return std::system(com.c_str()) == 0;
