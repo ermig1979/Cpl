@@ -569,11 +569,11 @@ namespace Cpl
         const String filename = path.substr(filenamePos);
 
         auto countDigit = std::count_if(filename.begin(), filename.end(), [](const char ch) {
-            return std::isdigit(ch);
+            return isdigit(ch);
         });
 
         auto countLetter = std::count_if(filename.begin(), filename.end(), [](const char ch) {
-            return std::isalpha(ch);
+            return isalpha(ch);
         });
 
         if (countDigit == 0 && countLetter == 0){
@@ -582,7 +582,7 @@ namespace Cpl
 
         String extFixed = ext;
         extFixed.erase(std::remove_if(extFixed.begin(), extFixed.end(), [](const char c){
-            if (std::isspace(c))
+            if (isspace(c))
                 return true;
 
             auto iter = std::find(forbiddenSymbols.begin(), forbiddenSymbols.end(), c);
