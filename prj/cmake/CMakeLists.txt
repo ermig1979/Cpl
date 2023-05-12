@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 project(Cpl)
 
-set(CMAKE_CXX_STANDARD 11)
 set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
 include_directories(${ROOT_DIR}/src)
