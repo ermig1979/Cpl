@@ -30,6 +30,43 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: ./Test
 
+  build_and_test_mingw:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+            
+    - name: Setup MSYS
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        install: git mingw-w64-ucrt-x86_64-gcc git make
+        pacboy: toolchain:p cmake:p ninja:p
+
+    - name: Host properties
+      run: wmic cpu get /format:value
+
+    - name: Configure CMake
+      run: cmake ./prj/cmake -B build -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+
+    - name: Build
+      run: cmake --build build --config ${{matrix.build_type}} --parallel$(nproc)
+
+    - name: Test
+      working-directory: build
+      run: ./Test.exe
+
+
   build_and_test_clang:
     runs-on: ubuntu-latest
 
