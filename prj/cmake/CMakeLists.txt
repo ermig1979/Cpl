@@ -7,5 +7,9 @@ include_directories(${ROOT_DIR}/src)
 
 file(GLOB_RECURSE TEST_SRC ${ROOT_DIR}/src/Test/Test*.cpp)
 add_executable(Test ${TEST_SRC})
-target_link_libraries(Test -ldl -lpthread -lstdc++)
 
+target_link_libraries(Test -lpthread -lstdc++ -lstdc++fs)
+
+if(UNIX)
+target_link_libraries(Test -ldl)
+endif()

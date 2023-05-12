@@ -92,6 +92,9 @@ namespace Test
     TEST_ADD(YamlParam);
 
     TEST_ADD(XmlAllocateString);
+    TEST_ADD(DoFileModify);
+    TEST_ADD(DoFileExistance);
+    TEST_ADD(DoFileInfo);
 
     struct Options : public Cpl::ArgsParser
     {
