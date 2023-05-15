@@ -2,7 +2,8 @@
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
 * Copyright (c) 2021-2022 Yermalayeu Ihar,
-*               2021-2022 Andrey Drogolyub.
+*               2021-2022 Andrey Drogolyub,
+*               2023-2023 Daniil Germanenko.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -872,7 +873,7 @@ namespace Cpl
     struct FileData {
         enum class Type {
             Binary,
-            BinaryToNullTerminatedText
+            BinaryNullTerminated
         };
 
 
@@ -902,9 +903,9 @@ namespace Cpl
                 , _size(0)
         {};
 
-        unsigned const char* data() const {
+        const char* data() const {
             if (_holder)
-                return _holder.get();
+                return reinterpret_cast<const char*>(_holder.get());
             else
                 return nullptr;
         }
@@ -934,7 +935,7 @@ namespace Cpl
 
         bool recreateHolder() {
             try {
-                if (_type == Type::BinaryToNullTerminatedText) {
+                if (_type == Type::BinaryNullTerminated) {
                     //_holder = std::make_unique<unsigned char[]>(_size + 1);
                     _holder = std::unique_ptr<unsigned char[]>(new unsigned char[_size + 1]);
                     _holder.get()[_size] = 0;
