@@ -1,8 +1,7 @@
 /*
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar,
-*               2023-2023 Daniil Germanenko.
+* Copyright (c) 2023-2023 Daniil Germanenko.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +62,7 @@ namespace Test
 #ifdef __linux__
         return a + "/" + b;
 #elif _WIN32
-        return a + "\\" + b;
+        return a + '\\' + b;
 #endif
     }
 #ifdef __linux__
@@ -345,7 +344,7 @@ namespace Test
                     return false;
                 }
                 for (size_t ind = 0; ind < sizeof(d); ind++) {
-                    COMPARE_RESULT(ok &= fd.data()[ind] == d[ind], 1);
+                    COMPARE_RESULT(ok &= (uint8_t) fd.data()[ind] == d[ind], 1);
                 }
             }
             {
@@ -370,11 +369,11 @@ namespace Test
                 }
 
                 for (size_t ind = 0; ind < sizeof(d); ind++) {
-                    ok &= COMPARE_RESULT(fd.data()[ind] == d[ind], 1);
+                    ok &= COMPARE_RESULT((uint8_t) fd.data()[ind] == d[ind], 1);
                 }
 
                 for (size_t ind = 0; ind < sizeof(d) / 2; ind++) {
-                    ok &= COMPARE_RESULT(fd.data()[sizeof(d) + ind] == d[ind + 1], 1);
+                    ok &= COMPARE_RESULT((uint8_t) fd.data()[sizeof(d) + ind] == d[ind + 1], 1);
                 }
             }
 
@@ -400,7 +399,7 @@ namespace Test
                 }
 
                 for (size_t ind = 0; ind < sizeof(d); ind++) {
-                    ok &= COMPARE_RESULT(fd.data()[ind] == d[ind], 1);
+                    ok &= COMPARE_RESULT((uint8_t) fd.data()[ind] == d[ind], 1);
                 }
             }
 
@@ -428,7 +427,7 @@ namespace Test
 
                 //Test null terminated data
                 for (const auto& elem : not_empty_files){
-                    Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
+                    Cpl::FileData fd(Cpl::FileData::Type::BinaryNullTerminated);
                     auto error = Cpl::ReadFile(elem.first, fd);
                     ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::NoError, 1);
                     ok &= COMPARE_RESULT(fd.size() == elem.second, 1);
@@ -452,7 +451,7 @@ namespace Test
 
                 //Test null terminated data of empty files
                 for (const auto& elem : empty_files){
-                    Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
+                    Cpl::FileData fd(Cpl::FileData::Type::BinaryNullTerminated);
                     auto error = Cpl::ReadFile(elem, fd);
                     ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::NoError, 1);
                     ok &= COMPARE_RESULT(fd.size() == 0, 1);
@@ -490,7 +489,7 @@ namespace Test
 
                 {
                     //Existing file, null terminated format, budget less than file size
-                    Cpl::FileData fd(Cpl::FileData::Type::BinaryToNullTerminatedText);
+                    Cpl::FileData fd(Cpl::FileData::Type::BinaryNullTerminated);
                     auto error = Cpl::ReadFile(not_empty_files[0].first, fd, 0, testString.size() - 1);
                     ok &= COMPARE_RESULT(error.code == Cpl::FileData::Error::ReadFileError::PartitialRead, 1);
                     ok &= COMPARE_RESULT(fd.size() == testString.size() - 1, 1);
