@@ -32,6 +32,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <string>
 #include <cstring>
 #include <queue>
@@ -49,22 +50,18 @@
 #include <sys/stat.h>
 #endif
 
-#if (defined(__GNUC__) && (__GNUC__ < 8) || ( defined(__clang__) &&  __clang_major__ < 5) || __cplusplus < 201402L)
-//No filesystem
-#elif (((defined(__GNUC__) && (__GNUC__ >= 8 )) || defined(_MSC_VER)) &&  __cplusplus < 201703L) 
-#define CPL_FILE_USE_FILESYSTEM 1
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#elif (((defined(__GNUC__) && (__GNUC__ > 10) ) || defined(__clang__)) && __cplusplus >= 201703L || (defined(_MSC_VER)) && __cplusplus >= 201402L)
-#define CPL_FILE_USE_FILESYSTEM 2
-#include <filesystem>
-namespace fs = std::filesystem;
-#elif defined(_MSC_VER) && _MSC_VER <= 1900
+#if defined(_MSC_VER) && _MSC_VER <= 1900
 #define CPL_FILE_USE_FILESYSTEM 1
 #include <filesystem>
 namespace fs = std::tr2::sys;
-#else
-#error Unknow system
+#elif (__cplusplus >= 201703L)
+#define CPL_FILE_USE_FILESYSTEM 2
+#include <filesystem>
+namespace fs = std::filesystem;
+#elif (__cplusplus == 201402L)
+#define CPL_FILE_USE_FILESYSTEM 1
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
 #endif
 
 namespace
@@ -167,15 +164,7 @@ namespace Cpl
 #endif
     }
 
-    namespace {
-        CPL_INLINE Cpl::String MakePathImpl(const Cpl::String& a, const Cpl::String& b)
-        {
-            if (a.empty())
-                return b;
-            auto sep = Cpl::FolderSeparator();
-            return a + (a[a.size() - 1] == sep[0] ? "" : sep) + b;
-        }
-
+    namespace PathDetail{
         CPL_INLINE bool DirectoryIsDrive(const Cpl::String& path) {
 #ifdef __linux__
             return false;
@@ -193,7 +182,15 @@ namespace Cpl
     template<typename T, typename S>
     CPL_INLINE String MakePath(const T& a, const S& b)
     {
-        return MakePathImpl(a, b);
+        std::stringstream stream;
+        stream << a;
+
+        if (!stream.str().empty() && stream.str().back() != Cpl::FolderSeparator().back()){
+            stream << Cpl::FolderSeparator();
+        }
+
+        stream << b;
+        return stream.str();
     }
 
     template<typename T, typename S, typename... Ts>
@@ -212,7 +209,7 @@ namespace Cpl
         const String path = DirectoryPathRemoveAllLastDash(path_);
         size_t pos = path.find_last_of(FolderSeparator());
         String substr = path.substr(0, pos);
-        if (DirectoryIsDrive(path))
+        if (PathDetail::DirectoryIsDrive(path))
             return MakePath(path, FolderSeparator());
 
         return substr;
@@ -329,7 +326,7 @@ namespace Cpl
     {
         if (DirectoryExists(path))
             return true;
-        if (DirectoryIsDrive(path))
+        if (PathDetail::DirectoryIsDrive(path))
             return false;
 
 #ifdef CPL_FILE_USE_FILESYSTEM
@@ -612,22 +609,47 @@ namespace Cpl
 
 /*!
 * \fn   String GetAbsolutePath(const String& path)
-* \brief Returns the absolute path corresponding to the given relative path
-* \param [in] path - relative path
+* \brief Returns the absolute path corresponding to the given relative path. If basePath is empty, result will
+*        be relative to cwd directory. Otherwise path is relative to basePath.
+* \param [in] path      - relative path
+* \param [in] basePath  - relative path base
 */
-    CPL_INLINE String GetAbsolutePath(const String& path)
+
+    CPL_INLINE String GetAbsolutePath(const String& path, const String& basePath = "")
     {
+        if (basePath.empty()) {
 #ifdef _WIN32
-        std::array<char, MAX_PATH> buffer;
-        const char* end = _fullpath(buffer.data(), path.c_str(), MAX_PATH);
-        return String(buffer.data());
+            std::array<char, MAX_PATH> buffer;
+            const char* end = _fullpath(buffer.data(), path.c_str(), MAX_PATH);
+            return String(buffer.data());
 #elif __linux__
-        char resolved_path[PATH_MAX];
-        realpath(path.c_str(), resolved_path);
-        return String(resolved_path);
+            char resolved_path[PATH_MAX];
+            realpath(path.c_str(), resolved_path);
+            return String(resolved_path);
 #else
 #error Not supported system
 #endif
+        } else {
+#ifdef CPL_FILE_USE_FILESYSTEM
+            if (path.empty())
+                return path;
+            if (fs::path(path).is_absolute())
+                return path;
+            fs::path p;
+            if (fs::is_directory(basePath))
+                p = fs::path(basePath) / path;
+            else
+                p = fs::path(basePath).parent_path() / path;
+            p = fs::canonical(p);
+            return fs::absolute(p).string();
+#else
+            auto pos = path.find(path);
+            if (pos == String::npos || path.length() == path.length()) {
+                return {};
+            }
+            return path.substr(pos + path.length() + 1, path.length() - 1);
+#endif
+        }
     }
 
 /*!
@@ -694,7 +716,7 @@ namespace Cpl
         std::error_code code;
         bool ret = fs::remove(filename, code);
         return ret;
-#elif _WIN32 
+#elif _WIN32
         return ::DeleteFile(filename.c_str());
 #elif __linux__
         return unlink(filename.c_str()) == 0;
@@ -1042,7 +1064,7 @@ namespace Cpl
         return FileData::Error::CommonFail;
     }
 
-    template<class T> inline bool LoadBinaryData(const String& path, std::vector<T>& data)
+    template<class T> CPL_INLINE bool LoadBinaryData(const String& path, std::vector<T>& data)
     {
         std::ifstream ifs(path.c_str(), std::ofstream::binary);
         if (!ifs.is_open())
@@ -1058,7 +1080,7 @@ namespace Cpl
         return true;
     }
 
-    template<class T> inline bool SaveBinaryData(const std::vector<T>& data, const String& path)
+    template<class T> CPL_INLINE bool SaveBinaryData(const std::vector<T>& data, const String& path)
     {
         std::ofstream ofs(path.c_str(), std::ofstream::binary);
         if (!ofs.is_open())
@@ -1067,5 +1089,33 @@ namespace Cpl
         bool result = (bool)ofs;
         ofs.close();
         return result;
+    }
+
+
+    /*          Deprecated block        */
+
+    CPL_INLINE bool FileIsReadable(const String& path) {
+        static std::once_flag onceFlag;
+        std::call_once ( onceFlag, [ ]{
+            CPL_LOG(Warning, "Cpl::FileIsReadable is deprecated, will be removed soon, please use Cpl::FileExists instead");
+        } );
+        return FileExists(path);
+    }
+
+    CPL_INLINE String GetNameByPath(const String& path_) {
+        static std::once_flag onceFlag;
+        std::call_once ( onceFlag, [ ]{
+            CPL_LOG(Warning, "Cpl::GetNameByPath is deprecated, will be removed soon, please use Cpl::FileNameByPath instead");
+        } );
+
+        return FileNameByPath(path_);
+    }
+
+    CPL_INLINE bool CopyDirectory(const String& src, const String& dst) {
+        static std::once_flag onceFlag;
+        std::call_once ( onceFlag, [ ]{
+            CPL_LOG(Warning, "Cpl::CopyDirectory is deprecated, will be removed soon, please use Cpl::Copy instead");
+        } );
+        return Copy(src, dst);
     }
 }
