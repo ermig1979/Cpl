@@ -847,18 +847,16 @@ namespace Cpl
                 this->RemoveAllNodes();
                 this->RemoveAllAttributes();
                 ParseBom<Flags>(text);
-                while (1)
+                while (length - size_t(text - startPos) > 1 && *text != 0)
                 {
                     Skip<Whitespace, Flags>(text);
-                    if (*text == 0 || size_t(text - startPos) >= length)
-                        break;
                     if (*text == Ch('<'))
                     {
                         ++text;
                         if (XmlNode<Ch> *node = ParseNode<Flags>(text))
                             this->AppendNode(node);
                     }
-                    else
+                    else if (*text != 0)
                         throw ParseError("expected <", text);
                 }
             }
