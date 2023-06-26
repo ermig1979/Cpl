@@ -61,7 +61,64 @@ namespace Test
             if (!equals(test, testCase.second))
             {
                 CPL_LOG_SS(Error, testCase.first << " -> " << test[0] << ", "
-                    << test[1] << ", " << test[2] << ", " << test[3] << ", ");
+                    << test[1] << ", " << test[2] << ", " << test[3]);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool SeparateStringTest()
+    {
+        std::vector<std::tuple<Cpl::String, Cpl::String, std::vector<Cpl::String>>> testCases =
+        {
+            {"abcd", "", {"a", "b", "c", "d"}},
+            {"++a+++bb++", "+", {"a", "bb"}},
+            {"", "", {""}},
+            {"", "+", {""}},
+            {"a aa aaa aaaa", " ", {"a", "aa", "aaa", "aaaa"}},
+            {" a aa", " ", {"a", "aa"}},
+            {" a a  af f f  ", "  ", {" a a", "af f f"}},
+            {" a a ", " " {"a", "a"}},
+            {"bababaab", "b", {"a", "a", "aa"}},
+            {"bbabbabbaabb", "bb", {"a", "a", "aa"}},
+            {" ba bc bdd b", " b", {"a", "c", "dd"}}
+        };
+
+        for (const auto& testCase : testCases)
+        {
+            auto test = Cpl::Separate(std::get<0>(testCase), std::get<1>(testCase));
+            if (!equals(test, std::get<2>(testCase)))
+            {
+                CPL_LOG_SS(Error, std::get<0>(testCase) << " with delimiter " << std::get<1>(testCase));
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool SeparateStringMultuTest()
+    {
+        std::vector<std::tuple<Cpl::String, std::vector<Cpl::String>, std::vector<Cpl::String>>> testCases =
+        {
+            {"a aa aaa aaaa", {" ", "+"}, {"a", "aa", "aaa", "aaaa"}},
+            {"a aa aaa aaaa", {" ", " "}, {"a", "aa", "aaa", "aaaa"}},
+            {"a aa aaa aaaa", {}, {"a", " ", "aa", " ", "aaa", " ", "aaaa"}},
+            {"a aa aaa aaaa", {""}, {"a", " ", "aa", " ", "aaa", " ", "aaaa"}},
+            {"a aa aaa ", {"", " "}, {"a", "a", "a", "a", "a", "a"}},
+            {"a aa aaa ", {" ", ""}, {"a", "a", "a", "a", "a", "a"}},
+            {"a  b+c  d++ee  ffff", {"  ", "+"}, {"a", "b", "c", "d", "ee", "ffff"}},
+            {"a  a+a  a+,+aa  aaaa", {"  ", "+", ","}, {"a", "a","a","a", "aa", "aaaa"}},
+        };
+
+        for (const auto& testCase : testCases)
+        {
+            auto test = Cpl::Separate(std::get<0>(testCase), std::get<1>(testCase));
+            if (!equals(test, std::get<2>(testCase)))
+            {
+                CPL_LOG_SS(Error, std::get<0>(testCase) << " with delimiter " << std::get<1>(testCase));
                 return false;
             }
         }

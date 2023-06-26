@@ -54,6 +54,9 @@ namespace Test
 
     TEST_ADD(ParseUri);
 
+    TEST_ADD(SepatareString);
+    TEST_ADD(SepatareStringMulti);
+
     TEST_ADD(PolygonHasPoint);
     TEST_ADD(PolygonOverlapsRectangle);
     TEST_ADD(PolygonOverlapsRectangleFloat);
