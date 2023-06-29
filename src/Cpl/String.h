@@ -193,6 +193,15 @@ namespace Cpl
     {
         size_t current = 0;
         Strings result;
+        if (str.empty())
+            return { "" };
+        if (delimiter.empty())
+        {
+            result.reserve(str.size());
+            for (const auto& s : str)
+                result.emplace_back(&s, 1);
+            return result;
+        }
         while (current != String::npos)
         {
             size_t next = str.find(delimiter, current);
@@ -266,7 +275,7 @@ namespace Cpl
     CPL_INLINE Strings Separate(const String& str0, const Strings& delimiters)
     {
         if (delimiters.empty())
-            return Separate(str0, "");
+            return {str0};
         String str = str0;
         String nonEmptyDelimiter;
         for (const auto& del : delimiters)
