@@ -30,8 +30,9 @@
 
 #include <cstdlib>
 #include <cassert>
+#include <iterator>
 #include <new>
-#include <exception> 
+#include <exception>
 
 namespace Cpl
 {
@@ -847,7 +848,7 @@ namespace Cpl
                 this->RemoveAllNodes();
                 this->RemoveAllAttributes();
                 ParseBom<Flags>(text);
-                while (length - size_t(text - startPos) > 1 && *text != 0)
+                while (length - size_t(text - startPos) && *text != 0)
                 {
                     Skip<Whitespace, Flags>(text);
                     if (*text == Ch('<'))
@@ -2193,16 +2194,24 @@ namespace Cpl
 
             File(const Ch * data, size_t size)
             {
-                _data.assign(data, data + size);
+                _data.resize(size + 1);
+                std::copy(data, data + size, std::begin(_data));
+                _data[size] = 0;
             }
 
             File(std::basic_istream<Ch> & is)
             {
+                decltype(_data) tdata;
                 is.unsetf(std::ios::skipws);
-                _data.assign(std::istreambuf_iterator<Ch>(is), std::istreambuf_iterator<Ch>());
+                is.seekg(0, std::ios::end);
+                size_t size = is.tellg();
+                tdata.resize(size + 1);
+                is.seekg(0, std::ios::beg);
+                std::copy(std::istreambuf_iterator<Ch>(is), std::istreambuf_iterator<Ch>(), std::begin(tdata));
                 if (is.fail() || is.bad())
                     throw std::runtime_error("error reading stream");
-                _data.push_back(0);
+                tdata[size] = 0;
+                _data = std::move(tdata);
             }
 
             bool Open(const char * fileName)
