@@ -390,7 +390,7 @@ namespace Cpl
 * \param [in] directories - do count folders or do skip
 * \param [in] recursive - do recursive observation
 */
-    inline StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive) {
+    inline StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive = false) {
         std::list<String> names;
 #if CPL_FILE_USE_FILESYSTEM
         if (!Cpl::DirectoryExists(directory)) {
