@@ -129,6 +129,16 @@ namespace Cpl
         return (::access(path.c_str(), F_OK) != -1);
 #endif	//_MSC_VER
     }
+    CPL_INLINE bool FileIsReadable(const String& path)
+    {
+#if defined(_MSC_VER)
+        return FileExists(path);
+        //return (::_access(path.c_str(), 4) != -1);
+#else
+        return (::access(path.c_str(), R_OK) != -1);
+#endif	//_MSC_VER
+    }
+
 
     // only $USER is currently supported
     CPL_INLINE String SubstituteEnv(const String& path)
