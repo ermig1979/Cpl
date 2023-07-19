@@ -1104,9 +1104,13 @@ namespace Cpl
 
     CPL_INLINE bool FileIsWritable(const String& path) {
         try {
+            if (!FileExists(path)){
+                return false;
+            }
+
             bool state = false;
             //Combination std::ios_base::in | std::ios_base::out does not create a file, try to open already exist
-            std::fstream file(path.c_str(), std::ios_base::in | std::ios_base::out );
+            std::fstream file(path.c_str(), std::ios_base::app | std::ios_base::out );
             if (file.is_open()) {
                 state = file.good();
                 file.close();
