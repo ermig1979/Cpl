@@ -1091,16 +1091,38 @@ namespace Cpl
         return result;
     }
 
+    CPL_INLINE bool FileIsReadable(const String& path) {
+        try {
+            std::ifstream file(path.c_str());
+            const bool state = file.good();
+            file.close();
+            return state;
+        }
+        catch (...) {}
+        return false;
+    }
+
+    CPL_INLINE bool FileIsWritable(const String& path) {
+        try {
+            if (!FileExists(path)){
+                return false;
+            }
+
+            bool state = false;
+            //Combination std::ios_base::in | std::ios_base::out does not create a file, try to open already exist
+            std::fstream file(path.c_str(), std::ios_base::app | std::ios_base::out );
+            if (file.is_open()) {
+                state = file.good();
+                file.close();
+            }
+            return state;
+        }
+        catch (...) {}
+        return false;
+    }
 
     /*          Deprecated block        */
 
-    CPL_INLINE bool FileIsReadable(const String& path) {
-        static std::once_flag onceFlag;
-        std::call_once ( onceFlag, [ ]{
-            CPL_LOG(Warning, "Cpl::FileIsReadable is deprecated, will be removed soon, please use Cpl::FileExists instead");
-        } );
-        return FileExists(path);
-    }
 
     CPL_INLINE String GetNameByPath(const String& path_) {
         static std::once_flag onceFlag;
