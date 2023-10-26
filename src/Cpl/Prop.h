@@ -1,8 +1,9 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar,
-*               2021-2022 Andrey Drogolyub.
+* Copyright (c) 2021-2023 Yermalayeu Ihar,
+*               2021-2022 Andrey Drogolyub,
+*               2023-2023 Daniil Germanenko.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -225,7 +226,7 @@ struct Param_##name : public Cpl::ParamProp<type> \
     typedef Cpl::ParamProp<type> Base; \
     Param_##name() : Base(#name) { this->_value = this->Default(); } \
     type Default() const override { return value; } \
-    String Description() const override { return descr; } \
+    Cpl::String Description() const override { return descr; } \
 } name;
 
 #define CPL_PROP_EX(type, name, value, min, max, descr) \
@@ -236,7 +237,7 @@ struct Param_##name : public Cpl::ParamProp<type> \
     type Default() const override { return value; } \
     type Min() const override { return min; } \
     type Max() const override { return max; } \
-    String Description() const override { return descr; } \
+    Cpl::String Description() const override { return descr; } \
     bool Limited() const override { return true; } \
 } name;
 

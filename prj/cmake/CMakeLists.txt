@@ -6,7 +6,10 @@ set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 include_directories(${ROOT_DIR}/src)
 
 file(GLOB_RECURSE TEST_SRC ${ROOT_DIR}/src/Test/Test*.cpp)
-#set_source_files_properties(${TEST_SRC} PROPERTIES COMPILE_FLAGS "${COMMON_CXX_FLAGS} -g")
 add_executable(Test ${TEST_SRC})
-target_link_libraries(Test -ldl -lpthread)
 
+target_link_libraries(Test -lpthread -lstdc++ -lstdc++fs)
+
+if(UNIX)
+target_link_libraries(Test -ldl)
+endif()

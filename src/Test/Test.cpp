@@ -2,7 +2,8 @@
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
 * Copyright (c) 2021-2023 Yermalayeu Ihar,
-*               2021-2022 Andrey Drogolyub.
+*               2021-2022 Andrey Drogolyub,
+*               2023-2023 Daniil Germanenko.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -52,6 +53,9 @@ namespace Test
     bool name##AddToList(){ g_groups.push_back(Group(#name, name##Test)); return true; } \
     bool name##AtList = name##AddToList();
 
+    TEST_ADD(LogCallback);
+    TEST_ADD(LogCallbackRaw);
+
     TEST_ADD(ParseUri);
 
     TEST_ADD(StartsWith);
@@ -92,6 +96,11 @@ namespace Test
 
     TEST_ADD(YamlSimple);
     TEST_ADD(YamlParam);
+
+    TEST_ADD(XmlAllocateString);
+    TEST_ADD(DoFileModify);
+    TEST_ADD(DoFileExistance);
+    TEST_ADD(DoFileInfo);
 
     struct Options : public Cpl::ArgsParser
     {
