@@ -184,6 +184,11 @@ namespace Cpl
             }
         }
 
+        Level MaxLevel() const
+        {
+            return _levelMax;
+        }
+
         static Log& Global()
         {
             static Log log;

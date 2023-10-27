@@ -58,6 +58,12 @@ namespace Test
 
     TEST_ADD(ParseUri);
 
+    TEST_ADD(StartsWith);
+    TEST_ADD(EndsWith);
+
+    TEST_ADD(SeparateString);
+    TEST_ADD(SeparateStringMulti);
+
     TEST_ADD(PolygonHasPoint);
     TEST_ADD(PolygonOverlapsRectangle);
     TEST_ADD(PolygonOverlapsRectangleFloat);

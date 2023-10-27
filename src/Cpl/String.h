@@ -158,6 +158,11 @@ namespace Cpl
         return dst;
     }
 
+    CPL_INLINE bool StartsWith(const String& str, const String& prefix)
+    {
+        return str.size() >= prefix.size() && 0 == str.compare(0, prefix.size(), prefix);
+    }
+
     CPL_INLINE bool EndsWith(const String& str, const String& suffix)
     {
         return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
@@ -187,19 +192,28 @@ namespace Cpl
 
     //-----------------------------------------------------------------------------------
 
-    CPL_INLINE Strings Separate(const String& str, const String& delimeter)
+    CPL_INLINE Strings Separate(const String& str, const String& delimiter)
     {
         size_t current = 0;
         Strings result;
+        if (str.empty())
+            return { "" };
+        if (delimiter.empty())
+        {
+            result.reserve(str.size());
+            for (const auto& s : str)
+                result.emplace_back(&s, 1);
+            return result;
+        }
         while (current != String::npos)
         {
-            size_t next = str.find(delimeter, current);
+            size_t next = str.find(delimiter, current);
             String value = str.substr(current, next - current);
             if(!value.empty())
                 result.push_back(value);
             current = next;
             if (current != String::npos)
-                current += delimeter.size();
+                current += delimiter.size();
         }
         return result;
     }
@@ -238,7 +252,9 @@ namespace Cpl
         return ss.str();
     }
 
-    CPL_INLINE void ReplaceAllInplace(String& str, const String& pattern, const std::string& repl) 
+    //-----------------------------------------------------------------------------------
+    
+    CPL_INLINE void ReplaceAllInplace(String& str, const String& pattern, const std::string& repl)
     {
         size_t pos = 0;
         auto plen = pattern.length();
@@ -255,6 +271,33 @@ namespace Cpl
         String res = str;
         ReplaceAllInplace(res, pattern, repl);
         return res;
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE Strings Separate(const String& str0, const Strings& delimiters)
+    {
+        if (delimiters.empty())
+            return {str0};
+        String str = str0;
+        String nonEmptyDelimiter;
+        for (const auto& del : delimiters)
+        {
+            if (del.empty())
+            {
+                for (const auto& d : delimiters)
+                {
+                    if (!d.empty())
+                        ReplaceAllInplace(str, d, "");
+                }
+                return Separate(str, "");
+            }
+            if (nonEmptyDelimiter.empty())
+                nonEmptyDelimiter = del;
+        }
+        for (const auto& del : delimiters)
+            ReplaceAllInplace(str, del, nonEmptyDelimiter);
+        return Separate(str, nonEmptyDelimiter);
     }
 
 #ifdef _MSC_VER
