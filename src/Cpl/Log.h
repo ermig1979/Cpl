@@ -62,6 +62,8 @@ namespace Cpl
 
         typedef void(*CallbackRaw)(Level level, const char* msg, void* userData);
 
+        typedef void(*CallbackRawFunc)(int level, const char* msg, void* userData);
+
         Log()
             : _levelMax(None)
             , _flags(DefaultFlags)
@@ -73,7 +75,7 @@ namespace Cpl
         int AddWriter(Level level, Callback callback, void* userData)
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            _writers[++_writerId] = Writer(level, callback, NULL, userData);
+            _writers[++_writerId] = Writer(level, callback, NULL, NULL, userData);
             _levelMax = std::max(_levelMax, level);
             _rawOnly = false;
             return _writerId;
@@ -82,7 +84,15 @@ namespace Cpl
         int AddWriter(Level level, CallbackRaw callbackRaw, void* userData)
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            _writers[++_writerId] = Writer(level, NULL, callbackRaw, userData);
+            _writers[++_writerId] = Writer(level, NULL, callbackRaw, NULL, userData);
+            _levelMax = std::max(_levelMax, level);
+            return _writerId;
+        }
+
+        int AddWriter(Level level, CallbackRawFunc callbackRaw, void* userData)
+        {
+            std::lock_guard<std::mutex> lock(_mutex);
+            _writers[++_writerId] = Writer(level, NULL, NULL, callbackRaw, userData);
             _levelMax = std::max(_levelMax, level);
             return _writerId;
         }
@@ -178,6 +188,8 @@ namespace Cpl
                         writer.callback(ss.str().c_str(), writer.userData);
                     else if (writer.callbackRaw)
                         writer.callbackRaw(level, message.c_str(), writer.userData);
+                    else if (writer.callbackRawFunc)
+                        writer.callbackRawFunc(level, message.c_str(), writer.userData);
                     else
                         assert(0);
                 }
@@ -201,12 +213,14 @@ namespace Cpl
             Level level;
             Callback callback;
             CallbackRaw callbackRaw;
+            CallbackRawFunc callbackRawFunc;
             void* userData;
 
-            Writer(Level l = None, Callback c = NULL, CallbackRaw cr = NULL, void* ud = NULL)
+            Writer(Level l = None, Callback c = NULL, CallbackRaw cr = NULL, CallbackRawFunc crf = NULL, void* ud = NULL)
                 : level(l)
                 , callback(c)
                 , callbackRaw(cr)
+                , callbackRawFunc(crf)
                 , userData(ud)
             {
             }
