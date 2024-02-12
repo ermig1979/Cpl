@@ -61,6 +61,12 @@ namespace Test
         CPL_PERF_PAUSE(pm);
     }
 
+    static void TestFuncV4()
+    {
+        CPL_PERF_FUNCFH(0, 100);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
     bool PerformanceSimpleTest()
     {
 #if defined(CPL_PERF_ENABLE)
@@ -77,13 +83,17 @@ namespace Test
 
         for (size_t i = 0; i < 5; ++i)
             TestFuncV3();
+
+        for (size_t i = 0; i < 50; ++i)
+            TestFuncV4();
+
 #if defined(CPL_PERF_ENABLE)
         CPL_LOG_SS(Verbose, std::endl << Cpl::PerformanceStorage::Global().Report());
 #endif
         return true;
     }
 
-    static void TestFuncV4()
+    static void TestFuncV5()
     {
         std::stringstream ss;
         ss << std::this_thread::get_id();
@@ -104,7 +114,7 @@ namespace Test
         for (size_t j = 0; j < t; ++j)
         {
             for (size_t i = 0; i < n; ++i)
-                threads.push_back(Thread(&TestFuncV4));
+                threads.push_back(Thread(&TestFuncV5));
 
             for (size_t i = 0; i < threads.size(); ++i)
                 if (threads[i].joinable())
@@ -117,13 +127,13 @@ namespace Test
     }
 
 #if defined(CPL_TEST_NORETURN)
-    static void* TestFuncV5(void*)
+    static void* TestFuncV6(void*)
     {
     }
 
     bool PerformanceNoReturnTest()
     {
-        TestFuncV5(NULL);
+        TestFuncV6(NULL);
 
         return true;
     }
@@ -135,7 +145,7 @@ namespace Test
 
 namespace Test
 {
-    static void* TestFuncV6(void*)
+    static void* TestFuncV7(void*)
     {
         CPL_PERF_FUNC();
         return 0;
@@ -149,7 +159,7 @@ namespace Test
         for (int i = 0; i < 1; ++i)
         {
             pthread_t thread_run;
-            pthread_create(&thread_run, NULL, TestFuncV6, NULL);
+            pthread_create(&thread_run, NULL, TestFuncV7, NULL);
             pthread_join(thread_run, NULL);
         }
 #if defined(CPL_PERF_ENABLE)

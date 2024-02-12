@@ -49,6 +49,8 @@
     <ClInclude Include="..\..\src\Cpl\Prop.h" />
     <ClInclude Include="..\..\src\Cpl\String.h" />
     <ClInclude Include="..\..\src\Cpl\Table.h" />
+    <ClInclude Include="..\..\src\Cpl\Time.h" />
+    <ClInclude Include="..\..\src\Cpl\Utils.h" />
     <ClInclude Include="..\..\src\Cpl\Xml.h" />
     <ClInclude Include="..\..\src\Cpl\Yaml.h" />
     <ClInclude Include="..\..\src\Test\Test.h" />
