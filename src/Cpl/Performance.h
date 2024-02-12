@@ -118,7 +118,9 @@ namespace Cpl
             uint64_t step = uint64_t(1) << _shift;
             if (index == _histogram.size())
                 return Miliseconds(_histogram.size() * step);
-            uint64_t value = index * step + (threshold - lower) * step / (upper - lower);
+            uint64_t value = index * step;
+            if (upper > lower)
+                value += (threshold - lower) * step / (upper - lower);
             return Miliseconds(value);
         }
     };

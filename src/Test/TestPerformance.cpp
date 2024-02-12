@@ -97,7 +97,7 @@ namespace Test
     {
         std::stringstream ss;
         ss << std::this_thread::get_id();
-        CPL_PERF_BEG(ss.str());
+        CPL_PERF_BEGFH(ss.str(), 0, 100);
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
