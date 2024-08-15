@@ -93,6 +93,7 @@ namespace Test
 #endif
 
     TEST_ADD(TableSimple);
+    TEST_ADD(TableSortable);
 
     TEST_ADD(YamlSimple);
     TEST_ADD(YamlParam);

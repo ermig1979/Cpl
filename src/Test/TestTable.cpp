@@ -30,25 +30,54 @@ namespace Test
 {
     bool TableSimpleTest()
     {
-        Cpl::Table table(2, 2);
+        Cpl::Table simple_table(2, 2, false);
 
-        table.SetHeader(0, "name", true);
-        table.SetHeader(1, "value", true, Cpl::Table::Center);
+        simple_table.SetHeader(0, "name", true);
+        simple_table.SetHeader(1, "value", true, Cpl::Table::Center);
 
-        table.SetRowProp(0, false, true);
-        table.SetRowProp(1);
+        simple_table.SetRowProp(0, false, true);
+        simple_table.SetRowProp(1);
 
-        table.SetCell(0, 0, "0-0");
-        table.SetCell(1, 0, "black");
-        table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
-        table.SetCell(1, 1, "red", Cpl::Table::Red);
+        simple_table.SetCell(0, 0, "0-0");
+        simple_table.SetCell(1, 0, "black");
+        simple_table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
+        simple_table.SetCell(1, 1, "red", Cpl::Table::Red);
 
-        CPL_LOG_SS(Info, std::endl << table.GenerateText());
+        CPL_LOG_SS(Info, std::endl << simple_table.GenerateText());
 
-        std::ofstream ofs("table.html");
+        std::ofstream ofs("simple_table.html");
         if (ofs.is_open())
         {
-            ofs << table.GenerateHtml();
+            ofs << "simple table" << std::endl;
+            ofs << simple_table.GenerateHtml();
+            ofs.close();
+        }
+
+        return true;
+    }
+
+    bool TableSortableTest()
+    {
+        Cpl::Table sortable_table(2, 2, true);
+
+        sortable_table.SetHeader(0, "name", true);
+        sortable_table.SetHeader(1, "value", true, Cpl::Table::Center);
+
+        sortable_table.SetRowProp(0, false, true);
+        sortable_table.SetRowProp(1);
+
+        sortable_table.SetCell(0, 0, "0-0");
+        sortable_table.SetCell(1, 0, "black");
+        sortable_table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
+        sortable_table.SetCell(1, 1, "red", Cpl::Table::Red);
+
+        CPL_LOG_SS(Info, std::endl << sortable_table.GenerateText());
+
+        std::ofstream ofs("sortable_table.html");
+        if (ofs.is_open())
+        {
+            ofs << "sortable table" << std::endl;
+            ofs << sortable_table.GenerateHtml();
             ofs.close();
         }
 

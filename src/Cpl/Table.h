@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
 * Copyright (c) 2021-2022 Yermalayeu Ihar.
@@ -45,9 +45,10 @@ namespace Cpl
             Red,
         };
 
-        Table(size_t width, size_t height)
+        Table(size_t width, size_t height, bool sortable = false)
             : _width(width)
             , _height(height)
+            , _sortable(sortable)
         {
             Init();
         }
@@ -117,21 +118,30 @@ namespace Cpl
             return table.str();
         }
 
-        String GenerateHtml(size_t indent = 0)
+        String GenerateHtml(size_t indent = 0, bool first = true)
         {
             std::stringstream stream;
             Html html(stream, indent);
 
-            html.WriteBegin("style", Html::Attr("type", "text/css"), true, true);
-            html.WriteText("th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 1px solid #0;}", true, true);
-            html.WriteText("th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 1px solid #0;}", true, true);
-            html.WriteText("td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:#0;}", true, true);
-            html.WriteText("td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:#0;}", true, true);
-            html.WriteText("td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:red;}", true, true);
-            html.WriteText("td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:red;}", true, true);
-            html.WriteEnd("style", true, true);
+            if (first)
+            {
+                html.WriteBegin("style", Html::Attr("type", "text/css"), true, true);
+                if (_sortable)
+                    SetSortableStype(html);
+                else
+                    SetSimpleStype(html);
+                html.WriteEnd("style", true, true);
+                if (_sortable)
+                {
+                    html.WriteBegin("script", Html::Attr("language", "JavaScript", "type", "text/javascript"), true, true);
+                    SetSortableScript(html);
+                    html.WriteEnd("script", true, true);
+                }
+            }
 
             Html::Attributes attributes;
+            if(_sortable)
+                attributes.push_back(Html::Attribute("class", "sortable"));
             attributes.push_back(Html::Attribute("align", "center"));
             attributes.push_back(Html::Attribute("cellpadding", "2"));
             attributes.push_back(Html::Attribute("cellspacing", "0"));
@@ -141,11 +151,34 @@ namespace Cpl
             attributes.push_back(Html::Attribute("style", "border-collapse:collapse"));
             html.WriteBegin("table", attributes, true, true);
 
-            html.WriteBegin("tr", Html::Attr("style", "background-color:#e0e0e0; font-weight:bold;"), true, false);
+            html.WriteBegin("thead", Html::Attr(), true, false);
+            html.WriteBegin("tr", Html::Attr("style", "background-color:#e0e0e0; font-weight:bold;"), false, true);
             for (size_t col = 0; col < _width; ++col)
-                html.WriteValue("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator)), _headers[col].name, false);
-            html.WriteEnd("tr", true, true);
+            {
+                if (_sortable)
+                {
+                    //if(col)
+                    //    html.WriteBegin("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator)), true, false);
+                    //else
+                    //    html.WriteBegin("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator), "aria-sort", "ascending"), true, false);
+                    if (col)
+                        html.WriteBegin("th", Html::Attr(), true, false);
+                    else
+                        html.WriteBegin("th", Html::Attr("aria-sort", "ascending"), true, false);
 
+                    html.WriteBegin("button", Html::Attr(), true, false);
+                    html.WriteText(_headers[col].name, false, false, true);
+                    html.WriteValue("span", Html::Attr("aria-hidden", "true"), "", false);
+                    html.WriteEnd("button", true, false);
+                    html.WriteEnd("th", true, true);
+                }
+                else
+                    html.WriteValue("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator)), _headers[col].name, false);
+            }
+            html.WriteEnd("tr", true, false);
+            html.WriteEnd("thead", false, true);
+
+            html.WriteBegin("tbody", Html::Attr(), true, true);
             for (size_t row = 0; row < _height; ++row)
             {
                 std::stringstream style;
@@ -155,7 +188,8 @@ namespace Cpl
                 for (size_t col = 0; col < _width; ++col)
                 {
                     const Cell& cell = _cells[row * _width + col];
-                    html.WriteBegin("td", Html::Attr("class", String("td") + Cpl::ToStr(_headers[col].separator) + ToStr(cell.color)), false, false);
+                    //html.WriteBegin("td", Html::Attr("class", String("td") + Cpl::ToStr(_headers[col].separator) + ToStr(cell.color)), false, false);
+                    html.WriteBegin("td", Html::Attr(), false, false);
                     if(cell.link.size())
                         html.WriteBegin("a", Html::Attr("href", cell.link), false, false);
                     html.WriteText(cell.value, false, false);
@@ -165,6 +199,7 @@ namespace Cpl
                 }
                 html.WriteEnd("tr", true, true);
             }
+            html.WriteEnd("tbody", true, true);
 
             html.WriteEnd("table", true, true);
 
@@ -173,6 +208,7 @@ namespace Cpl
 
     private:
         size_t _height, _width;
+        bool _sortable;
 
         struct RowProp
         {
@@ -231,6 +267,286 @@ namespace Cpl
             case Red: return "r";
             default: return "";
             }
+        }
+
+        void SetSimpleStype(Html& html)
+        {
+            html.WriteText("th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 1px solid #0;}", true, true);
+            html.WriteText("th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 1px solid #0;}", true, true);
+            html.WriteText("td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:#0;}", true, true);
+            html.WriteText("td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:#0;}", true, true);
+            html.WriteText("td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:red;}", true, true);
+            html.WriteText("td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:red;}", true, true);
+        }
+
+        void SetSortableStype(Html& html)
+        {
+            //html.WriteText("table.sortable th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 1px solid #0;}", true, true);
+            //html.WriteText("table.sortable th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 1px solid #0;}", true, true);
+            static const char* style = R"scalable_style(
+table.sortable td,
+table.sortable th {
+    padding: 0.125em 0.25em;
+    width: 8em;
+}
+
+table.sortable th {
+    font-weight: bold;
+    border-bottom: thin solid #888;
+    position: relative;
+}
+
+table.sortable th.no-sort {
+    padding-top: 0.35em;
+}
+table.sortable th button {
+    padding: 4px;
+    margin: 1px;
+    font-size: 100%;
+    font-weight: bold;
+    background: transparent;
+    border: none;
+    display: inline;
+    right: 0;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    text-align: left;
+    outline: none;
+    cursor: pointer;
+}
+
+table.sortable th button span {
+    position: absolute;
+    right: 4px;
+}
+
+table.sortable th[aria-sort="descending"] span::after {
+    content: '\25BC';
+    color: currentcolor;
+    font-size: 100%;
+    top: 0;
+}
+
+table.sortable th[aria-sort="ascending"] span::after {
+    content: '\25B2';
+    color: currentcolor;
+    font-size: 100%;
+    top: 0;
+}
+
+table.show-unsorted-icon th:not([aria-sort]) button span::after {
+    content: '\25AD';
+    color: currentcolor;
+    font-size: 100%;
+    position: relative;
+    top: -3px;
+    left: -4px;
+}
+
+table.sortable td.num {
+    text-align: right;
+}
+
+table.sortable th button:focus,
+table.sortable th button:hover {
+    padding: 2px;
+    border: 2px solid currentcolor;
+    background-color: #e5f4ff;
+}
+
+table.sortable th button:focus span,
+table.sortable th button:hover span {
+    right: 2px;
+}
+
+table.sortable th:not([aria-sort]) button:focus span::after,
+table.sortable th:not([aria-sort]) button:hover span::after {
+    content: '\25BC';
+    color: currentcolor;
+    font-size: 100%;
+    top: 0;
+}
+)scalable_style";
+            html.WriteText(style, false, false, false);
+
+            //html.WriteText("td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:#0;}", true, true);
+            //html.WriteText("td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:#0;}", true, true);
+            //html.WriteText("td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:red;}", true, true);
+            //html.WriteText("td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:red;}", true, true);
+        }
+
+        void SetSortableScript(Html& html)
+        {
+            static const char * script = R"scalable_script(
+class SortableTable {
+    constructor(tableNode) {
+        this.tableNode = tableNode;
+
+        this.columnHeaders = tableNode.querySelectorAll('thead th');
+
+        this.sortColumns = [];
+
+        for (var i = 0; i < this.columnHeaders.length; i++) {
+            var ch = this.columnHeaders[i];
+            var buttonNode = ch.querySelector('button');
+            if (buttonNode) {
+                this.sortColumns.push(i);
+                buttonNode.setAttribute('data-column-index', i);
+                buttonNode.addEventListener('click', this.handleClick.bind(this));
+            }
+        }
+
+        this.optionCheckbox = document.querySelector(
+            'input[type="checkbox"][value="show-unsorted-icon"]'
+        );
+
+        if (this.optionCheckbox) {
+            this.optionCheckbox.addEventListener(
+                'change',
+                this.handleOptionChange.bind(this)
+            );
+            if (this.optionCheckbox.checked) {
+                this.tableNode.classList.add('show-unsorted-icon');
+            }
+        }
+    }
+
+    setColumnHeaderSort(columnIndex) {
+        if (typeof columnIndex === 'string') {
+            columnIndex = parseInt(columnIndex);
+        }
+
+        for (var i = 0; i < this.columnHeaders.length; i++) {
+            var ch = this.columnHeaders[i];
+            var buttonNode = ch.querySelector('button');
+            if (i === columnIndex) {
+                var value = ch.getAttribute('aria-sort');
+                if (value === 'descending') {
+                    ch.setAttribute('aria-sort', 'ascending');
+                    this.sortColumn(
+                        columnIndex,
+                        'ascending',
+                        ch.classList.contains('num')
+                    );
+                }
+                else {
+                    ch.setAttribute('aria-sort', 'descending');
+                    this.sortColumn(
+                        columnIndex,
+                        'descending',
+                        ch.classList.contains('num')
+                    );
+                }
+            }
+            else {
+                if (ch.hasAttribute('aria-sort') && buttonNode) {
+                    ch.removeAttribute('aria-sort');
+                }
+            }
+        }
+    }
+
+    sortColumn(columnIndex, sortValue, isNumber) {
+        function compareValues(a, b) {
+            if (sortValue === 'ascending') {
+                if (a.value === b.value) {
+                    return 0;
+                }
+                else {
+                    if (isNumber) {
+                        return a.value - b.value;
+                    }
+                    else {
+                        return a.value < b.value ? -1 : 1;
+                    }
+                }
+            }
+            else {
+                if (a.value === b.value) {
+                    return 0;
+                }
+                else {
+                    if (isNumber) {
+                        return b.value - a.value;
+                    }
+                    else {
+                        return a.value > b.value ? -1 : 1;
+                    }
+                }
+            }
+        }
+
+        if (typeof isNumber !== 'boolean') {
+            isNumber = false;
+        }
+
+        var tbodyNode = this.tableNode.querySelector('tbody');
+        var rowNodes = [];
+        var dataCells = [];
+
+        var rowNode = tbodyNode.firstElementChild;
+
+        var index = 0;
+        while (rowNode) {
+            rowNodes.push(rowNode);
+            var rowCells = rowNode.querySelectorAll('th, td');
+            var dataCell = rowCells[columnIndex];
+
+            var data = {};
+            data.index = index;
+            data.value = dataCell.textContent.toLowerCase().trim();
+            if (isNumber) {
+                data.value = parseFloat(data.value);
+            }
+            dataCells.push(data);
+            rowNode = rowNode.nextElementSibling;
+            index += 1;
+        }
+
+        dataCells.sort(compareValues);
+
+        // remove rows
+        while (tbodyNode.firstChild) {
+            tbodyNode.removeChild(tbodyNode.lastChild);
+        }
+
+        // add sorted rows
+        for (var i = 0; i < dataCells.length; i += 1) {
+            tbodyNode.appendChild(rowNodes[dataCells[i].index]);
+        }
+    }
+
+    /* EVENT HANDLERS */
+
+    handleClick(event) {
+        var tgt = event.currentTarget;
+        this.setColumnHeaderSort(tgt.getAttribute('data-column-index'));
+    }
+
+    handleOptionChange(event) {
+        var tgt = event.currentTarget;
+
+        if (tgt.checked) {
+            this.tableNode.classList.add('show-unsorted-icon');
+        }
+        else {
+            this.tableNode.classList.remove('show-unsorted-icon');
+        }
+    }
+}
+
+// Initialize sortable table buttons
+window.addEventListener('load', function() {
+    var sortableTables = document.querySelectorAll('table.sortable');
+    for (var i = 0; i < sortableTables.length; i++) {
+        new SortableTable(sortableTables[i]);
+    }
+});
+)scalable_script";
+
+            html.WriteText(script, false, false, false);
         }
     };
 }
