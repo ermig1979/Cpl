@@ -98,5 +98,11 @@
     <ClInclude Include="..\..\src\Cpl\Prop.h">
       <Filter>Cpl</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Cpl\Time.h">
+      <Filter>Cpl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Cpl\Utils.h">
+      <Filter>Cpl</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -26,16 +26,12 @@
 #pragma once
 
 #include "Cpl/Defs.h"
+#include "Cpl/Utils.h"
 
 #include <math.h>
 
 namespace Cpl
 {
-    CPL_INLINE int Round(double value)
-    {
-        return (int)(value + (value >= 0 ? 0.5 : -0.5));
-    }
-
     template <class TD, class TS>
     CPL_INLINE TD Convert(TS src)
     {

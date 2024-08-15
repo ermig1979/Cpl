@@ -1,7 +1,7 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2021 Yermalayeu Ihar.
+* Copyright (c) 2021-2024 Yermalayeu Ihar.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,8 @@
 #pragma once
 
 #include "Cpl/Defs.h"
+#include "Cpl/Time.h"
+#include "Cpl/Utils.h"
 #include "Cpl/String.h"
 
 #include <mutex>
@@ -46,52 +48,84 @@
 #if defined(CPL_PERF_ENABLE)
 namespace Cpl
 {
-#if defined(_MSC_VER)
-    CPL_INLINE int64_t TimeCounter()
+    class PerformanceHistogram
     {
-        LARGE_INTEGER counter;
-        QueryPerformanceCounter(&counter);
-        return counter.QuadPart;
-    }
+        typedef std::vector<uint64_t> Histogram;
 
-    CPL_INLINE int64_t TimeFrequency()
-    {
-        LARGE_INTEGER frequency;
-        QueryPerformanceFrequency(&frequency);
-        return frequency.QuadPart;
-    }
-#elif defined(__GNUC__)
-    CPL_INLINE int64_t TimeCounter()
-    {
-        timespec t;
-        clock_gettime(CLOCK_REALTIME, &t);
-        return int64_t(t.tv_sec) * int64_t(1000000000) + int64_t(t.tv_nsec);
-    }
+        uint64_t _shift, _max;
+        Histogram _histogram;
 
-    CPL_INLINE int64_t TimeFrequency()
-    {
-        return int64_t(1000000000);
-    }
-#else
-#error Platform is not supported!
-#endif
+        CPL_INLINE void Expand()
+        {
+            size_t o = 0;
+            for (size_t i = 0; i < _histogram.size(); i += 2, o += 1)
+                _histogram[o] = _histogram[i + 0] + _histogram[i + 1];
+            for (; o < _histogram.size(); o += 1)
+                _histogram[0] = 0;
+            _shift++;
+            _max *= 2;
+        }
 
-    CPL_INLINE double Seconds(int64_t count)
-    {
-        return double(count) / double(TimeFrequency());
-    }
+    public:
+        CPL_INLINE PerformanceHistogram(uint32_t size = 0)
+            : _shift(0)
+            , _max(size)
+            , _histogram(AlignHi(size, 2), 0)
+        {
+        }
 
-    CPL_INLINE double Miliseconds(int64_t count)
-    {
-        return double(count) / double(TimeFrequency()) * 1000.0;
-    }
+        CPL_INLINE PerformanceHistogram(const PerformanceHistogram& hs)
+            : _shift(hs._shift)
+            , _max(hs._max)
+            , _histogram(hs._histogram)
+        {
+        }
 
-    CPL_INLINE double Time()
-    {
-        return double(TimeCounter()) / double(TimeFrequency());
-    }
+        CPL_INLINE bool Enable() const
+        {
+            return _histogram.size() > 0;
+        }
 
-    //---------------------------------------------------------------------------------------------
+        CPL_INLINE void Add(uint64_t value)
+        {
+            while (value >= _max)
+                Expand();
+            _histogram[value >> _shift]++;
+        }
+
+        CPL_INLINE void Merge(const PerformanceHistogram& other)
+        {
+            assert(_histogram.size() == other._histogram.size());
+            while (other._shift > _shift)
+                Expand();
+            size_t step = size_t(1) << (_shift - other._shift);
+            for (size_t o = 0, t = 0; o < other._histogram.size(); t++, o += step)
+            {
+                for (size_t i = o, n = std::min(o + step, other._histogram.size()); i < n; ++i)
+                    _histogram[t] += other._histogram[i];
+            }
+        }
+
+        CPL_INLINE double Quantile(double quantile) const
+        {
+            quantile = std::max(0.0, std::min(quantile, 100.0));
+            uint64_t total = 0, max = 0;
+            for (size_t i = 0; i < _histogram.size(); i++)
+                total += _histogram[i];
+            uint64_t threshold = uint64_t(quantile * total / 100.0), lower = 0, upper = 0;
+            size_t index = 0;
+            for (; index < _histogram.size() && upper < threshold; index++, lower = upper, upper += _histogram[index]);
+            uint64_t step = uint64_t(1) << _shift;
+            if (index == _histogram.size())
+                return Miliseconds(_histogram.size() * step);
+            uint64_t value = index * step;
+            if (upper > lower)
+                value += (threshold - lower) * step / (upper - lower);
+            return Miliseconds(value);
+        }
+    };
+
+    //-----------------------------------------------------------------------------------------------------
 
     class PerformanceMeasurer
     {
@@ -99,9 +133,10 @@ namespace Cpl
         int64_t _start, _current, _total, _min, _max;
         int64_t _count, _flop;
         bool _entered, _paused;
+        PerformanceHistogram _histogram;
 
     public:
-        CPL_INLINE PerformanceMeasurer(const String& name, int64_t flop = 0)
+        CPL_INLINE PerformanceMeasurer(const String& name, int64_t flop = 0, uint32_t hist = 0)
             : _name(name)
             , _flop(flop)
             , _count(0)
@@ -112,6 +147,7 @@ namespace Cpl
             , _max(std::numeric_limits<int64_t>::min())
             , _entered(false)
             , _paused(false)
+            , _histogram(hist)
         {
         }
 
@@ -126,6 +162,7 @@ namespace Cpl
             , _max(pm._max)
             , _entered(pm._entered)
             , _paused(pm._paused)
+            , _histogram(pm._histogram)
         {
         }
 
@@ -154,6 +191,8 @@ namespace Cpl
                     _min = std::min(_min, _current);
                     _max = std::max(_max, _current);
                     ++_count;
+                    if (_histogram.Enable())
+                        _histogram.Add(_current);
                     _current = 0;
                 }
                 _paused = pause;
@@ -167,6 +206,8 @@ namespace Cpl
             _total += other._total;
             _min = std::min(_min, other._min);
             _max = std::max(_max, other._max);
+            if (_histogram.Enable())
+                _histogram.Merge(other._histogram);
         }
 
         CPL_INLINE double Average() const
@@ -189,6 +230,11 @@ namespace Cpl
             return _count ? Miliseconds(_max) : 0.0;
         }
 
+        CPL_INLINE double Quantile(double quantile) const
+        {
+            return _count && _histogram.Enable() ? _histogram.Quantile(quantile) : 0.0;
+        }
+
         CPL_INLINE double Total() const
         {
             return Miliseconds(_total);
@@ -208,14 +254,22 @@ namespace Cpl
         {
             std::stringstream ss;
             ss << Cpl::ToStr(Total(), 0) << " ms" << " / " << Count() << " = " << Cpl::ToStr(Average(), 3) << " ms";
-            ss << " {min=" << Cpl::ToStr(Min(), 3) << "; max=" << Cpl::ToStr(Max(), 3) << "}";
+            ss << " {min = " << Cpl::ToStr(Min(), 3);
+            ss << "; max = " << Cpl::ToStr(Max(), 3);
+            if (_histogram.Enable())
+            {
+                ss << "; q50 = " << Cpl::ToStr(Quantile(50.0), 3);
+                ss << "; q90 = " << Cpl::ToStr(Quantile(90.0), 3);
+                ss << "; q99 = " << Cpl::ToStr(Quantile(99.0), 3);
+            }
+            ss << "}";
             if (_flop)
                 ss << " " << Cpl::ToStr(GFlops(), 1) << " GFlops";
             return ss.str();
         }
     };
 
-    //---------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------
 
     class PerformanceHolder
     {
@@ -248,7 +302,7 @@ namespace Cpl
         }
     };
 
-    //---------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------
 
     class PerformanceStorage
     {
@@ -263,14 +317,14 @@ namespace Cpl
         {
         }
 
-        CPL_INLINE PerformanceMeasurer* Get(const String& name, int64_t flop = 0)
+        CPL_INLINE PerformanceMeasurer* Get(const String& name, int64_t flop = 0, uint32_t hist = 0)
         {
             FunctionMap& thread = ThisThread();
             PerformanceMeasurer* pm = NULL;
             FunctionMap::iterator it = thread.find(name);
             if (it == thread.end())
             {
-                pm = new PerformanceMeasurer(name, flop);
+                pm = new PerformanceMeasurer(name, flop, hist);
                 thread[name].reset(pm);
             }
             else
@@ -278,9 +332,9 @@ namespace Cpl
             return pm;
         }
 
-        CPL_INLINE PerformanceMeasurer* Get(const String func, const String& desc, int64_t flop = 0)
+        CPL_INLINE PerformanceMeasurer* Get(const String func, const String& desc, int64_t flop = 0, uint32_t hist = 0)
         {
-            return Get(func + "{ " + desc + " }", flop);
+            return Get(func + "{ " + desc + " }", flop, hist);
         }
 
         FunctionMap Merged() const
@@ -362,29 +416,47 @@ namespace Cpl
     };
 }
 
-#define CPL_PERF_FUNCF(flop) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)(Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, (int64_t)(flop)))
-#define CPL_PERF_FUNC() CPL_PERF_FUNCF(0)
-#define CPL_PERF_BEGF(desc, flop) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)(Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc, (int64_t)(flop)))
-#define CPL_PERF_BEG(desc) CPL_PERF_BEGF(desc, 0)
-#define CPL_PERF_IFF(cond, desc, flop) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)((cond) ? Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc, (int64_t)(flop)) : NULL)
-#define CPL_PERF_IF(cond, desc) CPL_PERF_IFF(cond, desc, 0)
+#define CPL_PERF_FUNCFH(flop, hist) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)(Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, (int64_t)(flop), (hist)))
+#define CPL_PERF_FUNCF(flop) CPL_PERF_FUNCFH(flop, 0)
+#define CPL_PERF_FUNC() CPL_PERF_FUNCFH(0, 0)
+
+#define CPL_PERF_BEGFH(desc, flop, hist) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)(Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc, (int64_t)(flop), (hist)))
+#define CPL_PERF_BEGF(desc, flop) CPL_PERF_BEGFH(desc, flop, 0)
+#define CPL_PERF_BEG(desc) CPL_PERF_BEGFH(desc, 0, 0)
+
+#define CPL_PERF_IFFH(cond, desc, flop, hist) Cpl::PerformanceHolder CPL_CAT(__ph, __LINE__)((cond) ? Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc, (int64_t)(flop), (hist)) : NULL)
+#define CPL_PERF_IFF(cond, desc, flop) CPL_PERF_IFFH(cond, desc, flop, 0)
+#define CPL_PERF_IF(cond, desc) CPL_PERF_IFFH(cond, desc, 0, 0)
+
 #define CPL_PERF_END(desc) Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc)->Leave();
-#define CPL_PERF_INITF(name, desc, flop) Cpl::PerformanceHolder name(Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc, (int64_t)(flop)), false);
-#define CPL_PERF_INIT(name, desc)  CPL_PERF_INITF(name, desc, 0);
+
+#define CPL_PERF_INITFH(name, desc, flop, hist) Cpl::PerformanceHolder name(Cpl::PerformanceStorage::Global().Get(CPL_FUNCTION, desc, (int64_t)(flop), (hist)), false);
+#define CPL_PERF_INITF(name, desc, flop) CPL_PERF_INITFH(name, desc, flop, 0);
+#define CPL_PERF_INIT(name, desc) CPL_PERF_INITFH(name, desc, 0, 0);
+
 #define CPL_PERF_START(name) name.Enter(); 
 #define CPL_PERF_PAUSE(name) name.Leave(true);
 
 #else
 
+#define CPL_PERF_FUNCFH(flop, hist)
 #define CPL_PERF_FUNCF(flop)
 #define CPL_PERF_FUNC()
+
+#define CPL_PERF_BEGFH(desc, flop, hist)
 #define CPL_PERF_BEGF(desc, flop)
 #define CPL_PERF_BEG(desc)
+
+#define CPL_PERF_IFFH(cond, desc, flop, hist)
 #define CPL_PERF_IFF(cond, desc, flop)
 #define CPL_PERF_IF(cond, desc)
+
 #define CPL_PERF_END(desc)
+
+#define CPL_PERF_INITFH(name, desc, flop, hist)
 #define CPL_PERF_INITF(name, desc, flop)
 #define CPL_PERF_INIT(name, desc)
+
 #define CPL_PERF_START(name)
 #define CPL_PERF_PAUSE(name)
 
