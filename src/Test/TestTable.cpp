@@ -34,7 +34,7 @@ namespace Test
 
         table.SetHeader(0, "name", true);
         table.SetHeader(1, "value", false, Cpl::Table::Center);
-        table.SetHeader(2, "descr.", true, Cpl::Table::Center);
+        table.SetHeader(2, "description", true, Cpl::Table::Center);
 
         table.SetRowProp(0);
         table.SetRowProp(1);
@@ -67,7 +67,7 @@ namespace Test
 
         table.SetHeader(0, "name", true);
         table.SetHeader(1, "value", false, Cpl::Table::Center);
-        table.SetHeader(2, "descr.", true, Cpl::Table::Center);
+        table.SetHeader(2, "description", true, Cpl::Table::Center);
 
         table.SetRowProp(0);
         table.SetRowProp(1);

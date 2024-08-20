@@ -282,15 +282,15 @@ table.sortable td.td0b { border-left: 0px; border-top: 0px; border-right: 0px so
 table.sortable td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:black;}
 table.sortable td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 0px; color:red;}
 table.sortable td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:red;}
-table.sortable th { position: relative;}
+table.sortable th { position: relative; padding: 0px; text-align: match-parent;}
 table.sortable th.no-sort { padding-top: 0.35em;}
-table.sortable th button { padding: 4px; margin: 1px; font-size: 100%; font-weight: bold; background: transparent; border: none; display: inline; right: 0; left: 0; top: 0; bottom: 0; width: 100%; text-align: left; outline: none; cursor: pointer;}
+table.sortable th button { padding: 2px; font-size: 100%; font-weight: bold; background: transparent; border: none; display: inline; right: 0; left: 0; top: 0; bottom: 0; width: 100%; text-align: match-parent; outline: none; cursor: pointer;}
 table.sortable th button span { position: absolute; right: 4px;}
 table.sortable th[aria-sort="descending"] span::after { content: '\25BC'; color: currentcolor; font-size: 100%; top: 0;}
 table.sortable th[aria-sort="ascending"] span::after { content: '\25B2'; color: currentcolor; font-size: 100%; top: 0; }
 table.show-unsorted-icon th:not([aria-sort]) button span::after { content: '\25AD'; color: currentcolor; font-size: 100%; position: relative; top: -3px; left: -4px;}
 table.sortable td.num { text-align: right;}
-table.sortable th button:focus, table.sortable th button:hover { padding: 2px; border: 2px solid currentcolor; background-color: #e5f4ff;}
+table.sortable th button:focus, table.sortable th button:hover { padding: 2px; border: 0px solid currentcolor; background-color: #f7f7f7;}
 table.sortable th button:focus span, table.sortable th button:hover span {right: 2px;}
 table.sortable th:not([aria-sort]) button:focus span::after, table.sortable th:not([aria-sort]) button:hover span::after { content: '\25BC'; color: currentcolor; font-size: 100%; top: 0;}
 )sortable_style";
