@@ -125,7 +125,7 @@ namespace Cpl
 
             if (first)
             {
-                html.WriteBegin("style", Html::Attr("type", "text/css"), true, true);
+                html.WriteBegin("style", Html::Attr("type", "text/css"), true, false);
                 if (_sortable)
                     SetSortableStype(html);
                 else
@@ -152,20 +152,12 @@ namespace Cpl
             html.WriteBegin("table", attributes, true, true);
 
             html.WriteBegin("thead", Html::Attr(), true, false);
-            html.WriteBegin("tr", Html::Attr("style", "background-color:#e0e0e0; font-weight:bold;"), false, true);
+            html.WriteBegin("tr", Html::Attr("style", "background-color:#e0e0e0; font-weight:bold;"), false, false);
             for (size_t col = 0; col < _width; ++col)
             {
                 if (_sortable)
                 {
-                    //if(col)
-                    //    html.WriteBegin("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator)), true, false);
-                    //else
-                    //    html.WriteBegin("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator), "aria-sort", "ascending"), true, false);
-                    if (col)
-                        html.WriteBegin("th", Html::Attr(), true, false);
-                    else
-                        html.WriteBegin("th", Html::Attr("aria-sort", "ascending"), true, false);
-
+                    html.WriteBegin("th", Html::Attr(), true, false);
                     html.WriteBegin("button", Html::Attr(), true, false);
                     html.WriteText(_headers[col].name, false, false, true);
                     html.WriteValue("span", Html::Attr("aria-hidden", "true"), "", false);
@@ -188,8 +180,10 @@ namespace Cpl
                 for (size_t col = 0; col < _width; ++col)
                 {
                     const Cell& cell = _cells[row * _width + col];
-                    //html.WriteBegin("td", Html::Attr("class", String("td") + Cpl::ToStr(_headers[col].separator) + ToStr(cell.color)), false, false);
-                    html.WriteBegin("td", Html::Attr(), false, false);
+                    if(_sortable)
+                        html.WriteBegin("td", Html::Attr(), false, false);
+                    else
+                        html.WriteBegin("td", Html::Attr("class", String("td") + Cpl::ToStr(_headers[col].separator) + ToStr(cell.color)), false, false);
                     if(cell.link.size())
                         html.WriteBegin("a", Html::Attr("href", cell.link), false, false);
                     html.WriteText(cell.value, false, false);
@@ -271,19 +265,20 @@ namespace Cpl
 
         void SetSimpleStype(Html& html)
         {
-            html.WriteText("th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 1px solid #0;}", true, true);
-            html.WriteText("th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 1px solid #0;}", true, true);
-            html.WriteText("td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:#0;}", true, true);
-            html.WriteText("td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:#0;}", true, true);
-            html.WriteText("td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:red;}", true, true);
-            html.WriteText("td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:red;}", true, true);
+            static const char* style = R"simple_style(
+th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 1px solid #0;}
+th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 1px solid #0;}
+td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:#0;}
+td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:#0;}
+td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:red;}
+td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:red;}
+)simple_style";
+            html.WriteText(style, false, false, false);
         }
 
         void SetSortableStype(Html& html)
         {
-            //html.WriteText("table.sortable th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 1px solid #0;}", true, true);
-            //html.WriteText("table.sortable th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 1px solid #0;}", true, true);
-            static const char* style = R"scalable_style(
+            static const char* style = R"sortable_style(
 table.sortable td,
 table.sortable th {
     padding: 0.125em 0.25em;
@@ -291,7 +286,6 @@ table.sortable th {
 }
 
 table.sortable th {
-    font-weight: bold;
     border-bottom: thin solid #888;
     position: relative;
 }
@@ -368,18 +362,13 @@ table.sortable th:not([aria-sort]) button:hover span::after {
     font-size: 100%;
     top: 0;
 }
-)scalable_style";
+)sortable_style";
             html.WriteText(style, false, false, false);
-
-            //html.WriteText("td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:#0;}", true, true);
-            //html.WriteText("td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:#0;}", true, true);
-            //html.WriteText("td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:red;}", true, true);
-            //html.WriteText("td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:red;}", true, true);
         }
 
         void SetSortableScript(Html& html)
         {
-            static const char * script = R"scalable_script(
+            static const char * script = R"sortable_script(
 class SortableTable {
     constructor(tableNode) {
         this.tableNode = tableNode;
@@ -507,18 +496,14 @@ class SortableTable {
 
         dataCells.sort(compareValues);
 
-        // remove rows
         while (tbodyNode.firstChild) {
             tbodyNode.removeChild(tbodyNode.lastChild);
         }
 
-        // add sorted rows
         for (var i = 0; i < dataCells.length; i += 1) {
             tbodyNode.appendChild(rowNodes[dataCells[i].index]);
         }
     }
-
-    /* EVENT HANDLERS */
 
     handleClick(event) {
         var tgt = event.currentTarget;
@@ -537,14 +522,13 @@ class SortableTable {
     }
 }
 
-// Initialize sortable table buttons
 window.addEventListener('load', function() {
     var sortableTables = document.querySelectorAll('table.sortable');
     for (var i = 0; i < sortableTables.length; i++) {
         new SortableTable(sortableTables[i]);
     }
 });
-)scalable_script";
+)sortable_script";
 
             html.WriteText(script, false, false, false);
         }

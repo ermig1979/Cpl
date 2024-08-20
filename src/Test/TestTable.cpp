@@ -30,26 +30,31 @@ namespace Test
 {
     bool TableSimpleTest()
     {
-        Cpl::Table simple_table(2, 2, false);
+        Cpl::Table table(3, 2, false);
 
-        simple_table.SetHeader(0, "name", true);
-        simple_table.SetHeader(1, "value", true, Cpl::Table::Center);
+        table.SetHeader(0, "name", true);
+        table.SetHeader(1, "value", false, Cpl::Table::Center);
+        table.SetHeader(2, "descr.", true, Cpl::Table::Center);
 
-        simple_table.SetRowProp(0, false, true);
-        simple_table.SetRowProp(1);
+        table.SetRowProp(0);
+        table.SetRowProp(1);
 
-        simple_table.SetCell(0, 0, "0-0");
-        simple_table.SetCell(1, 0, "black");
-        simple_table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
-        simple_table.SetCell(1, 1, "red", Cpl::Table::Red);
+        table.SetCell(0, 0, "0-0");
+        table.SetCell(1, 0, "black");
+        table.SetCell(2, 0, "night");
+        table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
+        table.SetCell(1, 1, "red", Cpl::Table::Red);
+        table.SetCell(2, 1, "apple");
 
-        CPL_LOG_SS(Info, std::endl << simple_table.GenerateText());
+        CPL_LOG_SS(Info, std::endl << table.GenerateText());
 
         std::ofstream ofs("simple_table.html");
         if (ofs.is_open())
         {
-            ofs << "simple table" << std::endl;
-            ofs << simple_table.GenerateHtml();
+            ofs << "<html><body>" << std::endl;
+            ofs << "<h2>simple table</h2>" << std::endl;
+            ofs << table.GenerateHtml();
+            ofs << "</body></html>" << std::endl;
             ofs.close();
         }
 
@@ -58,26 +63,31 @@ namespace Test
 
     bool TableSortableTest()
     {
-        Cpl::Table sortable_table(2, 2, true);
+        Cpl::Table table(3, 2, true);
 
-        sortable_table.SetHeader(0, "name", true);
-        sortable_table.SetHeader(1, "value", true, Cpl::Table::Center);
+        table.SetHeader(0, "name", true);
+        table.SetHeader(1, "value", false, Cpl::Table::Center);
+        table.SetHeader(2, "descr.", true, Cpl::Table::Center);
 
-        sortable_table.SetRowProp(0, false, true);
-        sortable_table.SetRowProp(1);
+        table.SetRowProp(0);
+        table.SetRowProp(1);
 
-        sortable_table.SetCell(0, 0, "0-0");
-        sortable_table.SetCell(1, 0, "black");
-        sortable_table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
-        sortable_table.SetCell(1, 1, "red", Cpl::Table::Red);
+        table.SetCell(0, 0, "0-0");
+        table.SetCell(1, 0, "black");
+        table.SetCell(2, 0, "night");
+        table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
+        table.SetCell(1, 1, "red", Cpl::Table::Red);
+        table.SetCell(2, 1, "apple");
 
-        CPL_LOG_SS(Info, std::endl << sortable_table.GenerateText());
+        CPL_LOG_SS(Info, std::endl << table.GenerateText());
 
         std::ofstream ofs("sortable_table.html");
         if (ofs.is_open())
         {
-            ofs << "sortable table" << std::endl;
-            ofs << sortable_table.GenerateHtml();
+            ofs << "<html><body>" << std::endl;
+            ofs << "<h2>sortable table</h2>" << std::endl;
+            ofs << table.GenerateHtml();
+            ofs << "</body></html>" << std::endl;
             ofs.close();
         }
 
