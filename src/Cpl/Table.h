@@ -1,7 +1,7 @@
 ﻿/*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar.
+* Copyright (c) 2021-2024 Yermalayeu Ihar.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -133,7 +133,7 @@ namespace Cpl
                 html.WriteEnd("style", true, true);
                 if (_sortable)
                 {
-                    html.WriteBegin("script", Html::Attr("language", "JavaScript", "type", "text/javascript"), true, true);
+                    html.WriteBegin("script", Html::Attr("language", "JavaScript", "type", "text/javascript"), true, false);
                     SetSortableScript(html);
                     html.WriteEnd("script", true, true);
                 }
@@ -152,12 +152,12 @@ namespace Cpl
             html.WriteBegin("table", attributes, true, true);
 
             html.WriteBegin("thead", Html::Attr(), true, false);
-            html.WriteBegin("tr", Html::Attr("style", "background-color:#e0e0e0; font-weight:bold;"), false, false);
+            html.WriteBegin("tr", Html::Attr("style", "background-color:#e0e0e0; font-weight:bold;"), false, _sortable);
             for (size_t col = 0; col < _width; ++col)
             {
                 if (_sortable)
                 {
-                    html.WriteBegin("th", Html::Attr(), true, false);
+                    html.WriteBegin("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator)), true, false);
                     html.WriteBegin("button", Html::Attr(), true, false);
                     html.WriteText(_headers[col].name, false, false, true);
                     html.WriteValue("span", Html::Attr("aria-hidden", "true"), "", false);
@@ -180,10 +180,7 @@ namespace Cpl
                 for (size_t col = 0; col < _width; ++col)
                 {
                     const Cell& cell = _cells[row * _width + col];
-                    if(_sortable)
-                        html.WriteBegin("td", Html::Attr(), false, false);
-                    else
-                        html.WriteBegin("td", Html::Attr("class", String("td") + Cpl::ToStr(_headers[col].separator) + ToStr(cell.color)), false, false);
+                    html.WriteBegin("td", Html::Attr("class", String("td") + Cpl::ToStr(_headers[col].separator) + ToStr(cell.color)), false, false);
                     if(cell.link.size())
                         html.WriteBegin("a", Html::Attr("href", cell.link), false, false);
                     html.WriteText(cell.value, false, false);
@@ -266,12 +263,12 @@ namespace Cpl
         void SetSimpleStype(Html& html)
         {
             static const char* style = R"simple_style(
-th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 1px solid #0;}
-th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 1px solid #0;}
-td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:#0;}
-td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:#0;}
-td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #0; border-bottom: 0px; color:red;}
-td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-bottom: 0px; color:red;}
+th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 1px solid #000000;}
+th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 1px solid #000000;}
+td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 0px; color:black;}
+td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:black;}
+td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 0px; color:red;}
+td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:red;}
 )simple_style";
             html.WriteText(style, false, false, false);
         }
@@ -279,89 +276,23 @@ td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #0; border-
         void SetSortableStype(Html& html)
         {
             static const char* style = R"sortable_style(
-table.sortable td,
-table.sortable th {
-    padding: 0.125em 0.25em;
-    width: 8em;
-}
-
-table.sortable th {
-    border-bottom: thin solid #888;
-    position: relative;
-}
-
-table.sortable th.no-sort {
-    padding-top: 0.35em;
-}
-table.sortable th button {
-    padding: 4px;
-    margin: 1px;
-    font-size: 100%;
-    font-weight: bold;
-    background: transparent;
-    border: none;
-    display: inline;
-    right: 0;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 100%;
-    text-align: left;
-    outline: none;
-    cursor: pointer;
-}
-
-table.sortable th button span {
-    position: absolute;
-    right: 4px;
-}
-
-table.sortable th[aria-sort="descending"] span::after {
-    content: '\25BC';
-    color: currentcolor;
-    font-size: 100%;
-    top: 0;
-}
-
-table.sortable th[aria-sort="ascending"] span::after {
-    content: '\25B2';
-    color: currentcolor;
-    font-size: 100%;
-    top: 0;
-}
-
-table.show-unsorted-icon th:not([aria-sort]) button span::after {
-    content: '\25AD';
-    color: currentcolor;
-    font-size: 100%;
-    position: relative;
-    top: -3px;
-    left: -4px;
-}
-
-table.sortable td.num {
-    text-align: right;
-}
-
-table.sortable th button:focus,
-table.sortable th button:hover {
-    padding: 2px;
-    border: 2px solid currentcolor;
-    background-color: #e5f4ff;
-}
-
-table.sortable th button:focus span,
-table.sortable th button:hover span {
-    right: 2px;
-}
-
-table.sortable th:not([aria-sort]) button:focus span::after,
-table.sortable th:not([aria-sort]) button:hover span::after {
-    content: '\25BC';
-    color: currentcolor;
-    font-size: 100%;
-    top: 0;
-}
+table.sortable th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 1px solid #000000;}
+table.sortable th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 1px solid #000000;}
+table.sortable td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 0px; color:black;}
+table.sortable td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:black;}
+table.sortable td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 0px; color:red;}
+table.sortable td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:red;}
+table.sortable th { position: relative;}
+table.sortable th.no-sort { padding-top: 0.35em;}
+table.sortable th button { padding: 4px; margin: 1px; font-size: 100%; font-weight: bold; background: transparent; border: none; display: inline; right: 0; left: 0; top: 0; bottom: 0; width: 100%; text-align: left; outline: none; cursor: pointer;}
+table.sortable th button span { position: absolute; right: 4px;}
+table.sortable th[aria-sort="descending"] span::after { content: '\25BC'; color: currentcolor; font-size: 100%; top: 0;}
+table.sortable th[aria-sort="ascending"] span::after { content: '\25B2'; color: currentcolor; font-size: 100%; top: 0; }
+table.show-unsorted-icon th:not([aria-sort]) button span::after { content: '\25AD'; color: currentcolor; font-size: 100%; position: relative; top: -3px; left: -4px;}
+table.sortable td.num { text-align: right;}
+table.sortable th button:focus, table.sortable th button:hover { padding: 2px; border: 2px solid currentcolor; background-color: #e5f4ff;}
+table.sortable th button:focus span, table.sortable th button:hover span {right: 2px;}
+table.sortable th:not([aria-sort]) button:focus span::after, table.sortable th:not([aria-sort]) button:hover span::after { content: '\25BC'; color: currentcolor; font-size: 100%; top: 0;}
 )sortable_style";
             html.WriteText(style, false, false, false);
         }
@@ -370,163 +301,116 @@ table.sortable th:not([aria-sort]) button:hover span::after {
         {
             static const char * script = R"sortable_script(
 class SortableTable {
-    constructor(tableNode) {
-        this.tableNode = tableNode;
-
-        this.columnHeaders = tableNode.querySelectorAll('thead th');
-
-        this.sortColumns = [];
-
-        for (var i = 0; i < this.columnHeaders.length; i++) {
-            var ch = this.columnHeaders[i];
-            var buttonNode = ch.querySelector('button');
-            if (buttonNode) {
-                this.sortColumns.push(i);
-                buttonNode.setAttribute('data-column-index', i);
-                buttonNode.addEventListener('click', this.handleClick.bind(this));
-            }
-        }
-
-        this.optionCheckbox = document.querySelector(
-            'input[type="checkbox"][value="show-unsorted-icon"]'
-        );
-
-        if (this.optionCheckbox) {
-            this.optionCheckbox.addEventListener(
-                'change',
-                this.handleOptionChange.bind(this)
-            );
-            if (this.optionCheckbox.checked) {
-                this.tableNode.classList.add('show-unsorted-icon');
-            }
-        }
+  constructor(tableNode) {
+    this.tableNode = tableNode;
+    this.columnHeaders = tableNode.querySelectorAll('thead th');
+    this.sortColumns = [];
+    for (var i = 0; i < this.columnHeaders.length; i++) {
+      var ch = this.columnHeaders[i];
+      var buttonNode = ch.querySelector('button');
+      if (buttonNode) {
+        this.sortColumns.push(i);
+        buttonNode.setAttribute('data-column-index', i);
+        buttonNode.addEventListener('click', this.handleClick.bind(this));
+      }
     }
-
-    setColumnHeaderSort(columnIndex) {
-        if (typeof columnIndex === 'string') {
-            columnIndex = parseInt(columnIndex);
-        }
-
-        for (var i = 0; i < this.columnHeaders.length; i++) {
-            var ch = this.columnHeaders[i];
-            var buttonNode = ch.querySelector('button');
-            if (i === columnIndex) {
-                var value = ch.getAttribute('aria-sort');
-                if (value === 'descending') {
-                    ch.setAttribute('aria-sort', 'ascending');
-                    this.sortColumn(
-                        columnIndex,
-                        'ascending',
-                        ch.classList.contains('num')
-                    );
-                }
-                else {
-                    ch.setAttribute('aria-sort', 'descending');
-                    this.sortColumn(
-                        columnIndex,
-                        'descending',
-                        ch.classList.contains('num')
-                    );
-                }
-            }
-            else {
-                if (ch.hasAttribute('aria-sort') && buttonNode) {
-                    ch.removeAttribute('aria-sort');
-                }
-            }
-        }
+    this.optionCheckbox = document.querySelector('input[type="checkbox"][value="show-unsorted-icon"]');
+    if (this.optionCheckbox) {
+      this.optionCheckbox.addEventListener('change', this.handleOptionChange.bind(this));
+      if (this.optionCheckbox.checked)
+        this.tableNode.classList.add('show-unsorted-icon');
     }
+  }
 
-    sortColumn(columnIndex, sortValue, isNumber) {
-        function compareValues(a, b) {
-            if (sortValue === 'ascending') {
-                if (a.value === b.value) {
-                    return 0;
-                }
-                else {
-                    if (isNumber) {
-                        return a.value - b.value;
-                    }
-                    else {
-                        return a.value < b.value ? -1 : 1;
-                    }
-                }
-            }
-            else {
-                if (a.value === b.value) {
-                    return 0;
-                }
-                else {
-                    if (isNumber) {
-                        return b.value - a.value;
-                    }
-                    else {
-                        return a.value > b.value ? -1 : 1;
-                    }
-                }
-            }
+  setColumnHeaderSort(columnIndex) {
+    if (typeof columnIndex === 'string')
+      columnIndex = parseInt(columnIndex);
+    for (var i = 0; i < this.columnHeaders.length; i++) {
+      var ch = this.columnHeaders[i];
+      var buttonNode = ch.querySelector('button');
+      if (i === columnIndex) {
+        var value = ch.getAttribute('aria-sort');
+        if (value === 'descending') {
+          ch.setAttribute('aria-sort', 'ascending');
+          this.sortColumn(columnIndex, 'ascending', ch.classList.contains('num'));
+        } else {
+          ch.setAttribute('aria-sort', 'descending');
+          this.sortColumn(columnIndex, 'descending', ch.classList.contains('num'));
         }
-
-        if (typeof isNumber !== 'boolean') {
-            isNumber = false;
-        }
-
-        var tbodyNode = this.tableNode.querySelector('tbody');
-        var rowNodes = [];
-        var dataCells = [];
-
-        var rowNode = tbodyNode.firstElementChild;
-
-        var index = 0;
-        while (rowNode) {
-            rowNodes.push(rowNode);
-            var rowCells = rowNode.querySelectorAll('th, td');
-            var dataCell = rowCells[columnIndex];
-
-            var data = {};
-            data.index = index;
-            data.value = dataCell.textContent.toLowerCase().trim();
-            if (isNumber) {
-                data.value = parseFloat(data.value);
-            }
-            dataCells.push(data);
-            rowNode = rowNode.nextElementSibling;
-            index += 1;
-        }
-
-        dataCells.sort(compareValues);
-
-        while (tbodyNode.firstChild) {
-            tbodyNode.removeChild(tbodyNode.lastChild);
-        }
-
-        for (var i = 0; i < dataCells.length; i += 1) {
-            tbodyNode.appendChild(rowNodes[dataCells[i].index]);
-        }
+      } else {
+        if (ch.hasAttribute('aria-sort') && buttonNode)
+          ch.removeAttribute('aria-sort');
+      }
     }
+  }
 
-    handleClick(event) {
-        var tgt = event.currentTarget;
-        this.setColumnHeaderSort(tgt.getAttribute('data-column-index'));
-    }
-
-    handleOptionChange(event) {
-        var tgt = event.currentTarget;
-
-        if (tgt.checked) {
-            this.tableNode.classList.add('show-unsorted-icon');
-        }
+  sortColumn(columnIndex, sortValue, isNumber) {
+    function compareValues(a, b) {
+      if (sortValue === 'ascending') {
+        if (a.value === b.value)
+          return 0;
         else {
-            this.tableNode.classList.remove('show-unsorted-icon');
+          if (isNumber)
+            return a.value - b.value;
+          else
+            return a.value < b.value ? -1 : 1;
         }
+      } else {
+        if (a.value === b.value)
+          return 0;
+        else {
+          if (isNumber)
+            return b.value - a.value;
+          else
+            return a.value > b.value ? -1 : 1;
+        }
+      }
     }
+    if (typeof isNumber !== 'boolean') 
+      isNumber = false;
+    var tbodyNode = this.tableNode.querySelector('tbody');
+    var rowNodes = [];
+    var dataCells = [];
+    var rowNode = tbodyNode.firstElementChild;
+    var index = 0;
+    while (rowNode) {
+      rowNodes.push(rowNode);
+      var rowCells = rowNode.querySelectorAll('th, td');
+      var dataCell = rowCells[columnIndex];
+      var data = {};
+      data.index = index;
+      data.value = dataCell.textContent.toLowerCase().trim();
+      if (isNumber)
+        data.value = parseFloat(data.value);
+      dataCells.push(data);
+      rowNode = rowNode.nextElementSibling;
+      index += 1;
+    }
+    dataCells.sort(compareValues);
+    while (tbodyNode.firstChild)
+      tbodyNode.removeChild(tbodyNode.lastChild);
+    for (var i = 0; i < dataCells.length; i += 1)
+      tbodyNode.appendChild(rowNodes[dataCells[i].index]);
+  }
+
+  handleClick(event) {
+    var tgt = event.currentTarget;
+    this.setColumnHeaderSort(tgt.getAttribute('data-column-index'));
+  }
+
+  handleOptionChange(event) {
+    var tgt = event.currentTarget;
+      if (tgt.checked)
+        this.tableNode.classList.add('show-unsorted-icon');
+      else
+        this.tableNode.classList.remove('show-unsorted-icon');
+  }
 }
 
 window.addEventListener('load', function() {
-    var sortableTables = document.querySelectorAll('table.sortable');
-    for (var i = 0; i < sortableTables.length; i++) {
-        new SortableTable(sortableTables[i]);
-    }
+  var sortableTables = document.querySelectorAll('table.sortable');
+  for (var i = 0; i < sortableTables.length; i++)
+    new SortableTable(sortableTables[i]);
 });
 )sortable_script";
 
