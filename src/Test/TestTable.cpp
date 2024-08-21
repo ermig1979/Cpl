@@ -28,9 +28,9 @@
 
 namespace Test
 {
-    bool TableSimpleTest()
+    Cpl::Table GetTestTable()
     {
-        Cpl::Table table(3, 2, false);
+        Cpl::Table table(3, 2);
 
         table.SetHeader(0, "name", true);
         table.SetHeader(1, "value", false, Cpl::Table::Center);
@@ -39,12 +39,18 @@ namespace Test
         table.SetRowProp(0);
         table.SetRowProp(1);
 
-        table.SetCell(0, 0, "0-0");
+        table.SetCell(0, 0, "10");
         table.SetCell(1, 0, "black");
         table.SetCell(2, 0, "night");
         table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
         table.SetCell(1, 1, "red", Cpl::Table::Red);
         table.SetCell(2, 1, "apple");
+        return table;
+    }
+
+    bool TableSimpleTest()
+    {
+        Cpl::Table table = GetTestTable();
 
         CPL_LOG_SS(Info, std::endl << table.GenerateText());
 
@@ -63,21 +69,7 @@ namespace Test
 
     bool TableSortableTest()
     {
-        Cpl::Table table(3, 2, true);
-
-        table.SetHeader(0, "name", true);
-        table.SetHeader(1, "value", false, Cpl::Table::Center);
-        table.SetHeader(2, "description", true, Cpl::Table::Center);
-
-        table.SetRowProp(0);
-        table.SetRowProp(1);
-
-        table.SetCell(0, 0, "0-0");
-        table.SetCell(1, 0, "black");
-        table.SetCell(2, 0, "night");
-        table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
-        table.SetCell(1, 1, "red", Cpl::Table::Red);
-        table.SetCell(2, 1, "apple");
+        Cpl::Table table = GetTestTable();
 
         CPL_LOG_SS(Info, std::endl << table.GenerateText());
 
@@ -86,7 +78,7 @@ namespace Test
         {
             ofs << "<html><body>" << std::endl;
             ofs << "<h2>sortable table</h2>" << std::endl;
-            ofs << table.GenerateHtml();
+            ofs << table.GenerateHtml(0, true, true, true);
             ofs << "</body></html>" << std::endl;
             ofs.close();
         }

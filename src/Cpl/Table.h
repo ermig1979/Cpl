@@ -45,10 +45,9 @@ namespace Cpl
             Red,
         };
 
-        Table(size_t width, size_t height, bool sortable = false)
+        Table(size_t width, size_t height)
             : _width(width)
             , _height(height)
-            , _sortable(sortable)
         {
             Init();
         }
@@ -118,20 +117,19 @@ namespace Cpl
             return table.str();
         }
 
-        String GenerateHtml(size_t indent = 0, bool first = true)
+        String GenerateHtml(size_t indent = 0, bool firstTime = true, bool sortable = false, bool ignoreAlignment = false)
         {
             std::stringstream stream;
             Html html(stream, indent);
 
-            if (first)
+            if (firstTime)
             {
                 html.WriteBegin("style", Html::Attr("type", "text/css"), true, false);
-                if (_sortable)
+                SetSimpleStype(html);
+                if (sortable)
                     SetSortableStype(html);
-                else
-                    SetSimpleStype(html);
                 html.WriteEnd("style", true, true);
-                if (_sortable)
+                if (sortable)
                 {
                     html.WriteBegin("script", Html::Attr("language", "JavaScript", "type", "text/javascript"), true, false);
                     SetSortableScript(html);
@@ -140,9 +138,8 @@ namespace Cpl
             }
 
             Html::Attributes attributes;
-            if(_sortable)
+            if(sortable)
                 attributes.push_back(Html::Attribute("class", "sortable"));
-            attributes.push_back(Html::Attribute("align", "center"));
             attributes.push_back(Html::Attribute("cellpadding", "2"));
             attributes.push_back(Html::Attribute("cellspacing", "0"));
             attributes.push_back(Html::Attribute("border", "1"));
@@ -152,20 +149,21 @@ namespace Cpl
             html.WriteBegin("table", attributes, true, true);
 
             html.WriteBegin("thead", Html::Attr(), true, false);
-            html.WriteBegin("tr", Html::Attr("style", "background-color:#e0e0e0; font-weight:bold;"), false, _sortable);
+            html.WriteBegin("tr", Html::Attr("style", "background-color:#e0e0e0; font-weight:bold;"), false, sortable);
             for (size_t col = 0; col < _width; ++col)
             {
-                if (_sortable)
+                const Header& h = _headers[col];
+                if (sortable)
                 {
-                    html.WriteBegin("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator)), true, false);
-                    html.WriteBegin("button", Html::Attr(), true, false);
-                    html.WriteText(_headers[col].name, false, false, true);
+                    html.WriteBegin("th", Html::Attr("class", h.separator ? "sep" : "non"), true, false);
+                    html.WriteBegin("button", Html::Attr("class", AlignmentClass(h.alignment, true, ignoreAlignment)), true, false);
+                    html.WriteText(h.name, false, false, true);
                     html.WriteValue("span", Html::Attr("aria-hidden", "true"), "", false);
                     html.WriteEnd("button", true, false);
                     html.WriteEnd("th", true, true);
                 }
                 else
-                    html.WriteValue("th", Html::Attr("class", String("th") + Cpl::ToStr(_headers[col].separator)), _headers[col].name, false);
+                    html.WriteValue("th", Html::Attr("class", AlignmentClass(h.alignment, false, ignoreAlignment) + (h.separator ? " sep" : " non")), h.name, false);
             }
             html.WriteEnd("tr", true, false);
             html.WriteEnd("thead", false, true);
@@ -176,15 +174,17 @@ namespace Cpl
                 std::stringstream style;
                 if (_rows[row].bold)
                     style << "font-weight: bold; background-color:#f0f0f0";
-                html.WriteBegin("tr", Html::Attr("align", "center", "style", style.str()), true, false);
+                html.WriteBegin("tr", Html::Attr("style", style.str()), true, false);
                 for (size_t col = 0; col < _width; ++col)
                 {
-                    const Cell& cell = _cells[row * _width + col];
-                    html.WriteBegin("td", Html::Attr("class", String("td") + Cpl::ToStr(_headers[col].separator) + ToStr(cell.color)), false, false);
-                    if(cell.link.size())
-                        html.WriteBegin("a", Html::Attr("href", cell.link), false, false);
-                    html.WriteText(cell.value, false, false);
-                    if (cell.link.size())
+                    const Header& h = _headers[col];
+                    const Cell& c = _cells[row * _width + col];
+                    String classes = AlignmentClass(h.alignment, sortable, ignoreAlignment) + (h.separator ? " sep" : " non") + (c.color == Black ? " blk" : " red");
+                    html.WriteBegin("td", Html::Attr("class", classes), false, false);
+                    if(c.link.size())
+                        html.WriteBegin("a", Html::Attr("href", c.link), false, false);
+                    html.WriteText(c.value, false, false);
+                    if (c.link.size())
                         html.WriteEnd("a", false, false);
                     html.WriteEnd("td", false, false);
                 }
@@ -199,7 +199,6 @@ namespace Cpl
 
     private:
         size_t _height, _width;
-        bool _sortable;
 
         struct RowProp
         {
@@ -250,46 +249,44 @@ namespace Cpl
             _rows.resize(_height);
         }
 
-        String ToStr(Color color) const
+        String AlignmentClass(Alignment alignment, bool sortable, bool ignore) const
         {
-            switch (color)
-            {
-            case Black: return "b";
-            case Red: return "r";
-            default: return "";
-            }
+            if (ignore)
+                return "cnt";
+            else if (sortable || alignment != Right)
+                return alignment == Left ? "lft" : "cnt";
+            else
+                return "rgt";
         }
 
-        void SetSimpleStype(Html& html)
+        static void SetSimpleStype(Html& html)
         {
             static const char* style = R"simple_style(
-th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 1px solid #000000;}
-th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 1px solid #000000;}
-td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 0px; color:black;}
-td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:black;}
-td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 0px; color:red;}
-td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:red;}
+th { border-left: 0px; border-top: 0px; border-bottom: 1px solid #000000;}
+td { border-left: 0px; border-top: 0px; border-bottom: 0px solid #000000;}
+td.blk { color:black; }
+td.red { color:red; }
+td.lft, th.lft { text-align: left; }
+td.cnt, th.cnt { text-align: center; }
+td.rgt, th.rgt { text-align: right; }
+td.non, th.non { border-right: 0px solid #000000; }
+td.sep, th.sep { border-right: 1px solid #000000; }
 )simple_style";
             html.WriteText(style, false, false, false);
         }
 
-        void SetSortableStype(Html& html)
+        static void SetSortableStype(Html& html)
         {
             static const char* style = R"sortable_style(
-table.sortable th.th0 { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 1px solid #000000;}
-table.sortable th.th1 { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 1px solid #000000;}
-table.sortable td.td0b { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 0px; color:black;}
-table.sortable td.td1b { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:black;}
-table.sortable td.td0r { border-left: 0px; border-top: 0px; border-right: 0px solid #000000; border-bottom: 0px; color:red;}
-table.sortable td.td1r { border-left: 0px; border-top: 0px; border-right: 1px solid #000000; border-bottom: 0px; color:red;}
-table.sortable th { position: relative; padding: 0px; text-align: match-parent;}
+table.sortable th button.lft { text-align: left; }
+table.sortable th button.cnt { text-align: center; }
+table.sortable th { position: relative; }
 table.sortable th.no-sort { padding-top: 0.35em;}
-table.sortable th button { padding: 2px; font-size: 100%; font-weight: bold; background: transparent; border: none; display: inline; right: 0; left: 0; top: 0; bottom: 0; width: 100%; text-align: match-parent; outline: none; cursor: pointer;}
+table.sortable th button { padding: 2px; font-size: 100%; font-weight: bold; background: transparent; border: none; display: inline; right: 0; left: 0; top: 0; bottom: 0; width: 100%; outline: none; cursor: pointer;}
 table.sortable th button span { position: absolute; right: 4px;}
 table.sortable th[aria-sort="descending"] span::after { content: '\25BC'; color: currentcolor; font-size: 100%; top: 0;}
 table.sortable th[aria-sort="ascending"] span::after { content: '\25B2'; color: currentcolor; font-size: 100%; top: 0; }
 table.show-unsorted-icon th:not([aria-sort]) button span::after { content: '\25AD'; color: currentcolor; font-size: 100%; position: relative; top: -3px; left: -4px;}
-table.sortable td.num { text-align: right;}
 table.sortable th button:focus, table.sortable th button:hover { padding: 2px; border: 0px solid currentcolor; background-color: #f7f7f7;}
 table.sortable th button:focus span, table.sortable th button:hover span {right: 2px;}
 table.sortable th:not([aria-sort]) button:focus span::after, table.sortable th:not([aria-sort]) button:hover span::after { content: '\25BC'; color: currentcolor; font-size: 100%; top: 0;}
@@ -297,7 +294,7 @@ table.sortable th:not([aria-sort]) button:focus span::after, table.sortable th:n
             html.WriteText(style, false, false, false);
         }
 
-        void SetSortableScript(Html& html)
+        static void SetSortableScript(Html& html)
         {
             static const char * script = R"sortable_script(
 class SortableTable {
@@ -413,7 +410,6 @@ window.addEventListener('load', function() {
     new SortableTable(sortableTables[i]);
 });
 )sortable_script";
-
             html.WriteText(script, false, false, false);
         }
     };
