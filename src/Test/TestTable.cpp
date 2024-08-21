@@ -30,7 +30,7 @@ namespace Test
 {
     Cpl::Table GetTestTable()
     {
-        Cpl::Table table(3, 2);
+        Cpl::Table table(3, 3);
 
         table.SetHeader(0, "name", true);
         table.SetHeader(1, "value", false, Cpl::Table::Center);
@@ -39,12 +39,15 @@ namespace Test
         table.SetRowProp(0);
         table.SetRowProp(1);
 
-        table.SetCell(0, 0, "10");
-        table.SetCell(1, 0, "black");
-        table.SetCell(2, 0, "night");
+        table.SetCell(0, 0, "July");
         table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
-        table.SetCell(1, 1, "red", Cpl::Table::Red);
-        table.SetCell(2, 1, "apple");
+        table.SetCell(0, 2, "August");
+        table.SetCell(1, 0, "8");
+        table.SetCell(1, 1, "9");
+        table.SetCell(1, 2, "10", Cpl::Table::Red);
+        table.SetCell(2, 0, "night");
+        table.SetCell(2, 1, "sun", Cpl::Table::Red);
+        table.SetCell(2, 2, "day");
         return table;
     }
 

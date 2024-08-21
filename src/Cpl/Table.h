@@ -155,7 +155,7 @@ namespace Cpl
                 const Header& h = _headers[col];
                 if (sortable)
                 {
-                    html.WriteBegin("th", Html::Attr("class", h.separator ? "sep" : "non"), true, false);
+                    html.WriteBegin("th", Html::Attr("class", String(h.separator ? "sep" : "non") + (IsNum(col) ? " num" : "")), true, false);
                     html.WriteBegin("button", Html::Attr("class", AlignmentClass(h.alignment, true, ignoreAlignment)), true, false);
                     html.WriteText(h.name, false, false, true);
                     html.WriteValue("span", Html::Attr("aria-hidden", "true"), "", false);
@@ -257,6 +257,19 @@ namespace Cpl
                 return alignment == Left ? "lft" : "cnt";
             else
                 return "rgt";
+        }
+
+        bool IsNum(size_t col) const
+        {
+            for (size_t row = 0; row < _height; ++row)
+            {
+                std::istringstream iss(_cells[row * _width + col].value);
+                double value;
+                iss >> std::noskipws >> value;
+                if (!iss.eof() || iss.fail())
+                    return false;
+            }
+            return true;
         }
 
         static void SetSimpleStype(Html& html)
