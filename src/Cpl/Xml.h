@@ -1,7 +1,7 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar,
+* Copyright (c) 2021-2024 Yermalayeu Ihar,
 *               2021-2022 Andrey Drogolyub,
 *               2023-2023 Daniil Germanenko.
 *
@@ -162,8 +162,8 @@ namespace Cpl
         template<class Ch = char> class MemoryPool
         {
         public:
-            typedef void *(alloc_func)(size_t);
-            typedef void (free_func)(void *); 
+            typedef void *(AllocFunc)(size_t);
+            typedef void (FreeFunc)(void *); 
 
             MemoryPool()
                 : _allocFunc(0)
@@ -221,14 +221,6 @@ namespace Cpl
                 return attribute;
             }
 
-            /*!
-            * \fn Ch * AllocateString(const Ch *source = 0, size_t size = 0)
-            *
-            * \brief Allocate string function. Always return null terminated string of need size or actual source string size
-            *
-            * @param [in] source - pointer to c-style string
-            * @param [in] size - length of c-style string
-            */
 #if __cplusplus >= 201703L
             [[nodiscard]] 
 #endif
@@ -287,9 +279,9 @@ namespace Cpl
                 Init();
             }
 
-            void SetAllocator(alloc_func *af, free_func *ff)
+            void SetAllocator(AllocFunc *af, FreeFunc *ff)
             {
-                assert(_begin == _staticMemory && _ptr == Align(_begin));    // Verify that no memory is allocated yet
+                assert(_begin == _staticMemory && _ptr == Align(_begin));
                 _allocFunc = af;
                 _freeFunc = ff;
             }
@@ -357,8 +349,8 @@ namespace Cpl
             char * _ptr; 
             char * _end;
             char _staticMemory[STATIC_POOL_SIZE];
-            alloc_func *_allocFunc; 
-            free_func *_freeFunc;
+            AllocFunc *_allocFunc; 
+            FreeFunc *_freeFunc;
         };
 
         template<class Ch = char> class XmlBase
@@ -1153,7 +1145,7 @@ namespace Cpl
                         255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,  // 0
                         255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,  // 1
                         255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,  // 2
-                        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,255,255,255,255,255,255,  // 3
+                          0,  1,  2,  3,  4,  5,  6,  7,  8,  9,255,255,255,255,255,255,  // 3
                         255, 10, 11, 12, 13, 14, 15,255,255,255,255,255,255,255,255,255,  // 4
                         255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,  // 5
                         255, 10, 11, 12, 13, 14, 15,255,255,255,255,255,255,255,255,255,  // 6
