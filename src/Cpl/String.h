@@ -300,6 +300,46 @@ namespace Cpl
         return Separate(str, nonEmptyDelimiter);
     }
 
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE Strings Split(const String& str0, const Strings& delimiters)
+    {
+        return Separate(str0, delimiters);
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE Strings Split(const String& str0, const String& delimiter)
+    {
+        return Separate(str0, delimiter);
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE void TrimLeftInplace(String& str)
+    {
+        str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+            }));
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE void TrimRightInplace(String& str)
+    {
+        str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+            }).base(), str.end());
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE void TrimInplace(String& str)
+    {
+        TrimRightInplace(str);
+        TrimLeftInplace(str);
+    }
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4996)
