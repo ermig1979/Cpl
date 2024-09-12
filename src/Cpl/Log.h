@@ -54,6 +54,8 @@ namespace Cpl
             WritePrefix = 1 << 1,
             PrettyThreadId = 1 << 2,
             ColorezedPrefix = 1 << 3,
+            WriteDate = 1 << 4,
+            WriteTime = 1 << 5,
             DefaultFlags = WriteThreadId | WritePrefix | PrettyThreadId,
             BashFlags = WriteThreadId | WritePrefix | PrettyThreadId | ColorezedPrefix,
         };
@@ -127,6 +129,11 @@ namespace Cpl
             _flags = flags;
         }
 
+        Flags GetFlags() const
+        {
+            return _flags;
+        }
+
         CPL_INLINE bool Enable(Level level) const
         {
             return level != None && _levelMax >= level;
@@ -142,8 +149,22 @@ namespace Cpl
             if (!_rawOnly)
             {
                 bool pref = false;
+                if (_flags & WriteDate)
+                {
+                    ss << CurrentDateTimeString(true, false);
+                    pref = true;
+                }
+                if (_flags & WriteTime)
+                {
+                    if (pref)
+                        ss << " ";
+                    ss << CurrentDateTimeString(false, true);
+                    pref = true;
+                }
                 if (_flags & WriteThreadId)
                 {
+                    if (pref)
+                        ss << " ";
                     std::thread::id id = std::this_thread::get_id();
                     if (_flags & PrettyThreadId)
                     {
