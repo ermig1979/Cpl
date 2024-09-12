@@ -68,4 +68,29 @@ namespace Test
 
         return true;
     }
+
+    //-------------------------------------------------------------------------------------------------
+
+    bool LogDateTimeTest()
+    {
+        Cpl::Log::Flags flags = Cpl::Log::Global().GetFlags();
+
+        Cpl::Log::Global().SetFlags(Cpl::Log::Flags(flags | Cpl::Log::WriteDate));
+
+        CPL_LOG(Info, "Write date in message");
+
+        Cpl::Log::Global().SetFlags(Cpl::Log::Flags(flags | Cpl::Log::WriteTime));
+
+        CPL_LOG(Info, "Write time in message");
+
+        Cpl::Log::Global().SetFlags(Cpl::Log::Flags(flags | Cpl::Log::WriteDate | Cpl::Log::WriteTime));
+
+        CPL_LOG(Info, "Write date and time in message");
+
+        Cpl::Log::Global().SetFlags(flags);
+
+        CPL_LOG(Info, "Write no date or time in message");
+
+        return true;
+    }
 }
