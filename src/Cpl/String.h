@@ -362,13 +362,29 @@ namespace Cpl
 #pragma warning(pop)
 #endif
 
-    CPL_INLINE String TimeToStr(double time)
+    CPL_INLINE String TimeToStr(double time, bool cutTo24h = false)
     {
         std::stringstream ss;
-        ss << ToStr(int(time) / 60 / 60, 2)
-            << ":" << ToStr(int(time) / 60 % 60, 2)
-            << ":" << ToStr(int(time) % 60, 2)
-            << "." << ToStr(int(time * 1000) % 1000, 3);
+        double hours = time / 3600;
+        (void)modf(hours, &hours);
+
+        time -= hours * 3600;
+
+        if (cutTo24h)
+        {
+            double r = 0;
+            (void)modf(hours / 24, &r);
+            hours = hours - r * 24;
+        }
+
+        if (hours < 10)
+            ss << ToStr((size_t)hours, 2);
+        else
+            ss << ToStr((size_t)hours);
+
+        ss << ":" << ToStr(size_t(time) / 60 % 60, 2)
+            << ":" << ToStr(size_t(time) % 60, 2)
+            << "." << ToStr(size_t((time - (size_t)time) * 1000), 3);
         return ss.str();
     }
 
