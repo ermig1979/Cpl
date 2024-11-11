@@ -216,6 +216,56 @@ namespace Test
 
         return true;
     }
+
+    bool TimeToStrTest()
+    {
+        std::vector<std::pair<double, std::pair<Cpl::String, Cpl::String>>> testCases =
+        {
+            {0, {"00:00:00.000", "00:00:00.000"}},
+            {3640.9911, {"01:00:40.991", "01:00:40.991"}},
+            {99.*3600 + 0.9911, {"99:00:00.991", "03:00:00.991"}},
+            {65.2, {"00:01:05.200", "00:01:05.200"}},
+            {3662.15, {"01:01:02.150", "01:01:02.150"}},
+            {86400.1, {"24:00:00.100", "00:00:00.100"}},
+            {86400*2 + 182.1501, {"48:03:02.150", "00:03:02.150"}},
+            {86400*2 + 182.1501, {"48:03:02.150", "00:03:02.150"}},
+            {23897.1231, {"06:38:17.123", "06:38:17.123"}},
+            {66797.1231, {"18:33:17.123", "18:33:17.123"}},
+            {4294967295.0 + 12 * 3600 + 5 * 60 + 2.1231, {"1193058:33:17.123", "18:33:17.123"}}
+            
+        };
+
+        size_t i = 0;
+        for (const auto& testCase : testCases)
+        {
+            auto s = Cpl::TimeToStr(testCase.first, false);
+            if (s != testCase.second.first)
+            {
+                CPL_LOG_SS(Error, "Test case " << i << ": 'TimeToStr(" << testCase.first << ", false)=='" << s << "' instead of '" << testCase.second.first << "'");
+                return false;
+            }
+
+            s = Cpl::TimeToStr(testCase.first, true);
+            if (s != testCase.second.second)
+            {
+                CPL_LOG_SS(Error, "Test case " << i << ": 'TimeToStr(" << testCase.first << ", true)=='" << s << "' instead of '" << testCase.second.second << "'");
+                return false;
+            }
+
+            if (testCase.second.first != testCase.second.second)
+            {
+                if (Cpl::TimeToStr(testCase.first) != Cpl::TimeToStr(testCase.first, false))
+                {
+                    CPL_LOG_SS(Error, "Test case " << i << ": 'TimeToStr(" << testCase.first << "). Default flag must be 'false', not 'true'");
+                    return false;
+                }
+            }
+
+            ++i;
+        }
+
+        return true;
+    }
 }
 
 
