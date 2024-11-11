@@ -362,7 +362,10 @@ namespace Cpl
 #pragma warning(pop)
 #endif
 
-    CPL_INLINE String TimeToStr(double time, bool cutTo24h = false)
+    //-----------------------------------------------------------------------------------
+
+    // Prints time in seconds as 'hh:mm:ss.zzz'
+    CPL_INLINE String TimeToStr(double time, bool cutTo24hours = false)
     {
         std::stringstream ss;
         double hours = time / 3600;
@@ -387,6 +390,8 @@ namespace Cpl
             << "." << ToStr(size_t((time - (size_t)time) * 1000), 3);
         return ss.str();
     }
+
+    //-----------------------------------------------------------------------------------
 
     // prefix, login, password, path
     CPL_INLINE std::array<String, 4> ParseUri(const String& uri)
