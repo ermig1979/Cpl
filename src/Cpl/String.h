@@ -373,7 +373,7 @@ namespace Cpl
 
         time -= hours * 3600;
 
-        if (cutTo24h)
+        if (cutTo24hours)
         {
             double r = 0;
             (void)modf(hours / 24, &r);
