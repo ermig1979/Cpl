@@ -29,6 +29,7 @@
 #include "Cpl/Defs.h"
 
 #include <array>
+#include <cmath>
 #include <memory>
 #include <cstddef>
 
