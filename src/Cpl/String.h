@@ -29,9 +29,10 @@
 #include "Cpl/Defs.h"
 
 #include <array>
+#include <cctype>
 #include <cmath>
-#include <memory>
 #include <cstddef>
+#include <memory>
 
 namespace Cpl
 {
