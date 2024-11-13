@@ -29,8 +29,10 @@
 #include "Cpl/Defs.h"
 
 #include <array>
-#include <memory>
+#include <cctype>
+#include <cmath>
 #include <cstddef>
+#include <memory>
 
 namespace Cpl
 {
@@ -300,6 +302,46 @@ namespace Cpl
         return Separate(str, nonEmptyDelimiter);
     }
 
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE Strings Split(const String& str0, const Strings& delimiters)
+    {
+        return Separate(str0, delimiters);
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE Strings Split(const String& str0, const String& delimiter)
+    {
+        return Separate(str0, delimiter);
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE void TrimLeftInplace(String& str)
+    {
+        str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+            }));
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE void TrimRightInplace(String& str)
+    {
+        str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+            }).base(), str.end());
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    CPL_INLINE void TrimInplace(String& str)
+    {
+        TrimRightInplace(str);
+        TrimLeftInplace(str);
+    }
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4996)
@@ -322,15 +364,36 @@ namespace Cpl
 #pragma warning(pop)
 #endif
 
-    CPL_INLINE String TimeToStr(double time)
+    //-----------------------------------------------------------------------------------
+
+    // Prints time in seconds as 'hh:mm:ss.zzz'
+    CPL_INLINE String TimeToStr(double time, bool cutTo24hours = false)
     {
         std::stringstream ss;
-        ss << ToStr(int(time) / 60 / 60, 2)
-            << ":" << ToStr(int(time) / 60 % 60, 2)
-            << ":" << ToStr(int(time) % 60, 2)
-            << "." << ToStr(int(time * 1000) % 1000, 3);
+        double hours = time / 3600;
+        (void)modf(hours, &hours);
+
+        time -= hours * 3600;
+
+        if (cutTo24hours)
+        {
+            double r = 0;
+            (void)modf(hours / 24, &r);
+            hours = hours - r * 24;
+        }
+
+        if (hours < 10)
+            ss << ToStr((size_t)hours, 2);
+        else
+            ss << ToStr((size_t)hours);
+
+        ss << ":" << ToStr(size_t(time) / 60 % 60, 2)
+            << ":" << ToStr(size_t(time) % 60, 2)
+            << "." << ToStr(size_t((time - (size_t)time) * 1000), 3);
         return ss.str();
     }
+
+    //-----------------------------------------------------------------------------------
 
     // prefix, login, password, path
     CPL_INLINE std::array<String, 4> ParseUri(const String& uri)

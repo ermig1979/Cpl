@@ -64,6 +64,7 @@ namespace Test
 
     TEST_ADD(SeparateString);
     TEST_ADD(SeparateStringMulti);
+    TEST_ADD(TimeToStr);
 
     TEST_ADD(PolygonHasPoint);
     TEST_ADD(PolygonOverlapsRectangle);

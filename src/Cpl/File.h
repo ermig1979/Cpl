@@ -624,7 +624,8 @@ namespace Cpl
             return String(buffer.data());
 #elif __linux__
             char resolved_path[PATH_MAX];
-            realpath(path.c_str(), resolved_path);
+            if (!realpath(path.c_str(), resolved_path))
+                return String();
             return String(resolved_path);
 #else
 #error Not supported system
