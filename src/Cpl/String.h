@@ -34,6 +34,84 @@
 #include <cstddef>
 #include <memory>
 
+#if _WIN32
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#include "windows.h"
+#include "winsock.h"
+
+#define CPL_CURRENT_DATE_TIME_PRECISION 3
+
+namespace
+{
+    // PostgreSQL's implementation of gettimeofday for Windows
+    /*
+     * gettimeofday.c
+     *    Win32 gettimeofday() replacement
+     *
+     * src/port/gettimeofday.c
+     *
+     * Copyright (c) 2003 SRA, Inc.
+     * Copyright (c) 2003 SKC, Inc.
+     *
+     * Permission to use, copy, modify, and distribute this software and
+     * its documentation for any purpose, without fee, and without a
+     * written agreement is hereby granted, provided that the above
+     * copyright notice and this paragraph and the following two
+     * paragraphs appear in all copies.
+     *
+     * IN NO EVENT SHALL THE AUTHOR BE LIABLE TO ANY PARTY FOR DIRECT,
+     * INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING
+     * LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+     * DOCUMENTATION, EVEN IF THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED
+     * OF THE POSSIBILITY OF SUCH DAMAGE.
+     *
+     * THE AUTHOR SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT
+     * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+     * A PARTICULAR PURPOSE.  THE SOFTWARE PROVIDED HEREUNDER IS ON AN "AS
+     * IS" BASIS, AND THE AUTHOR HAS NO OBLIGATIONS TO PROVIDE MAINTENANCE,
+     * SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+     */
+
+    /* FILETIME of Jan 1 1970 00:00:00. */
+    static const unsigned __int64 epoch = ((unsigned __int64)116444736000000000ULL);
+
+    /*
+     * timezone information is stored outside the kernel so tzp isn't used anymore.
+     *
+     * Note: this function is not for Win32 high precision timing purpose. See
+     * elapsed_time().
+     */
+    int gettimeofday(struct timeval* tp, struct timezone* tzp)
+    {
+        FILETIME    file_time;
+        SYSTEMTIME  system_time;
+        ULARGE_INTEGER ularge;
+
+        GetSystemTime(&system_time);
+        SystemTimeToFileTime(&system_time, &file_time);
+        ularge.LowPart = file_time.dwLowDateTime;
+        ularge.HighPart = file_time.dwHighDateTime;
+
+        tp->tv_sec = (long)((ularge.QuadPart - epoch) / 10000000L);
+        tp->tv_usec = (long)(system_time.wMilliseconds * 1000);
+
+        return 0;
+    }
+}
+
+#elif __linux__
+#include <sys/time.h>
+
+#define CPL_CURRENT_DATE_TIME_PRECISION 6
+
+#endif
+
+
+
 namespace Cpl
 {
     template<class T> CPL_INLINE  String ToStr(const T& value)
@@ -360,18 +438,32 @@ namespace Cpl
 #pragma warning(push)
 #pragma warning(disable: 4996)
 #endif
-    CPL_INLINE String CurrentDateTimeString(bool date = true, bool time = true)
+    // For Windows time precision is milliseconds
+    CPL_INLINE String CurrentDateTimeString(bool date = true, bool time = true, size_t msDigits = CPL_CURRENT_DATE_TIME_PRECISION)
     {
         std::time_t t;
         std::time(&t);
         std::tm* tm = ::localtime(&t);
+        struct timeval current_time;
+        gettimeofday(&current_time, NULL);
         std::stringstream ss;
+        
         if (date)
             ss << ToStr(tm->tm_year + 1900, 4) << "."  << ToStr(tm->tm_mon + 1, 2) << "." << ToStr(tm->tm_mday, 2);
         if (date && time)
             ss << " ";
-        if(time)
+        if (time)
+        {
             ss << ToStr(tm->tm_hour, 2) << ":" << ToStr(tm->tm_min, 2) << ":" << ToStr(tm->tm_sec, 2);
+            if (msDigits > 0)
+            {
+                if (msDigits > CPL_CURRENT_DATE_TIME_PRECISION)
+                    msDigits = CPL_CURRENT_DATE_TIME_PRECISION;
+                // 6 because we are working with microseconds
+                auto sInt = static_cast<decltype(current_time.tv_usec)>((double)current_time.tv_usec * pow(10, (int)msDigits - 6));
+                ss << "." << ToStr(sInt, msDigits);
+            }
+        }
         return ss.str();
     }
 #ifdef _MSC_VER
