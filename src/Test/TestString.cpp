@@ -217,6 +217,24 @@ namespace Test
         return true;
     }
 
+    bool ToStrTest()
+    {
+        std::tuple vals = { 
+            (size_t)1, 
+            (int)(-1),
+            (unsigned int)1,
+            (long int)(-1),
+            (unsigned long int)1,
+        };
+
+        std::apply([](auto&&...elems)
+            { 
+                Cpl::String s;
+                ((s = Cpl::ToStr(elems)), ...); 
+            }, vals);
+
+        return true;
+    }
     bool TimeToStrTest()
     {
         std::vector<std::pair<double, std::pair<Cpl::String, Cpl::String>>> testCases =
