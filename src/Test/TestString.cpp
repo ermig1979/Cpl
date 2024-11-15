@@ -235,6 +235,65 @@ namespace Test
 
         return true;
     }
+
+    bool CurrentDateTimeStringTest()
+    {
+        std::vector<std::pair<Cpl::String, size_t>> testCases = 
+        { 
+#if _WIN32
+            {Cpl::CurrentDateTimeString(true, false), 10},
+            {Cpl::CurrentDateTimeString(false, true), 12},
+            {Cpl::CurrentDateTimeString(false, true, 0), 8},
+            {Cpl::CurrentDateTimeString(false, true, 1), 10},
+            {Cpl::CurrentDateTimeString(false, true, 2), 11},
+            {Cpl::CurrentDateTimeString(false, true, 3), 12},
+            {Cpl::CurrentDateTimeString(false, true, 4), 12},
+            {Cpl::CurrentDateTimeString(true, true), 23},
+            {Cpl::CurrentDateTimeString(true, true, 0), 19},
+            {Cpl::CurrentDateTimeString(true, true, 1), 21},
+            {Cpl::CurrentDateTimeString(true, true, 2), 22},
+            {Cpl::CurrentDateTimeString(true, true, 3), 23},
+#elif __linux__
+            {Cpl::CurrentDateTimeString(true, false), 10},
+            {Cpl::CurrentDateTimeString(false, true), 15},
+            {Cpl::CurrentDateTimeString(false, true, 0), 8},
+            {Cpl::CurrentDateTimeString(false, true, 1), 10},
+            {Cpl::CurrentDateTimeString(false, true, 2), 11},
+            {Cpl::CurrentDateTimeString(false, true, 3), 12},
+            {Cpl::CurrentDateTimeString(false, true, 4), 13},
+            {Cpl::CurrentDateTimeString(false, true, 5), 14},
+            {Cpl::CurrentDateTimeString(false, true, 6), 15},
+            {Cpl::CurrentDateTimeString(false, true, 10), 15},
+            {Cpl::CurrentDateTimeString(true, true), 26},
+            {Cpl::CurrentDateTimeString(true, true, 0), 19},
+            {Cpl::CurrentDateTimeString(true, true, 1), 21},
+            {Cpl::CurrentDateTimeString(true, true, 2), 22},
+            {Cpl::CurrentDateTimeString(true, true, 3), 23},
+            {Cpl::CurrentDateTimeString(true, true, 4), 24},
+            {Cpl::CurrentDateTimeString(true, true, 5), 25},
+            {Cpl::CurrentDateTimeString(true, true, 6), 26},
+            {Cpl::CurrentDateTimeString(true, true, 10), 26},
+#endif
+        };
+
+        size_t i = 0;
+        for (const auto& testCase : testCases)
+        {
+            if (testCase.first.length() != testCase.second)
+            {
+                CPL_LOG_SS(Error, "Test case " << i << ": '" << testCase.first <<  "' has length " << testCase.first.length() << " instead of " << testCase.second);
+                return false;
+            }
+            else
+            {
+                CPL_LOG_SS(Info, "Test case " << i << ": '" << testCase.first << "' length " << testCase.second);
+            }
+            ++i;
+        }
+
+        return true;
+    }
+
     bool TimeToStrTest()
     {
         std::vector<std::pair<double, std::pair<Cpl::String, Cpl::String>>> testCases =

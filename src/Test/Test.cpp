@@ -62,6 +62,7 @@ namespace Test
     TEST_ADD(StartsWith);
     TEST_ADD(EndsWith);
 
+    TEST_ADD(CurrentDateTimeString);
     TEST_ADD(SeparateString);
     TEST_ADD(SeparateStringMulti);
     TEST_ADD(TimeToStr);
