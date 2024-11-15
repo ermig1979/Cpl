@@ -73,6 +73,20 @@ namespace Cpl
         return ss.str();
     }
 
+    CPL_INLINE String ToStr(unsigned int value, int width)
+    {
+        std::stringstream ss;
+        ss << std::setfill('0') << std::setw(width) << value;
+        return ss.str();
+    }
+
+    CPL_INLINE String ToStr(long int value, int width)
+    {
+        std::stringstream ss;
+        ss << std::setfill('0') << std::setw(width) << value;
+        return ss.str();
+    }
+
     CPL_INLINE String ToStr(size_t value, int width)
     {
         std::stringstream ss;
