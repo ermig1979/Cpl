@@ -225,6 +225,8 @@ namespace Test
             (unsigned int)1,
             (long int)(-1),
             (unsigned long int)1,
+            (float)1,
+            (double)1,
         };
 
         std::apply([](auto&&...elems)

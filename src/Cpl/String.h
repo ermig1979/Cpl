@@ -121,6 +121,13 @@ namespace Cpl
         return ss.str();
     }
 
+    template<class T> CPL_INLINE String ToStr(T value, int width)
+    {
+        std::stringstream ss;
+        ss << std::setfill('0') << std::setw(width) << value;
+        return ss.str();
+    }
+
     template<> CPL_INLINE String ToStr<size_t>(const size_t& value)
     {
         return ToStr((ptrdiff_t)value);
@@ -143,34 +150,6 @@ namespace Cpl
     }
 
     //-----------------------------------------------------------------------------------
-
-    CPL_INLINE String ToStr(int value, int width)
-    {
-        std::stringstream ss;
-        ss << std::setfill('0') << std::setw(width) << value;
-        return ss.str();
-    }
-
-    CPL_INLINE String ToStr(unsigned int value, int width)
-    {
-        std::stringstream ss;
-        ss << std::setfill('0') << std::setw(width) << value;
-        return ss.str();
-    }
-
-    CPL_INLINE String ToStr(long int value, int width)
-    {
-        std::stringstream ss;
-        ss << std::setfill('0') << std::setw(width) << value;
-        return ss.str();
-    }
-
-    CPL_INLINE String ToStr(size_t value, int width)
-    {
-        std::stringstream ss;
-        ss << std::setfill('0') << std::setw(width) << value;
-        return ss.str();
-    }
 
     CPL_INLINE String ToStr(double value, int precision, bool zero = true)
     {
@@ -439,7 +418,7 @@ namespace Cpl
 #pragma warning(disable: 4996)
 #endif
     // For Windows time precision is milliseconds
-    CPL_INLINE String CurrentDateTimeString(bool date = true, bool time = true, size_t msDigits = CPL_CURRENT_DATE_TIME_PRECISION)
+    CPL_INLINE String CurrentDateTimeString(bool date = true, bool time = true, int msDigits = CPL_CURRENT_DATE_TIME_PRECISION)
     {
         std::time_t t;
         std::time(&t);
