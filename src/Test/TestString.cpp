@@ -217,24 +217,42 @@ namespace Test
         return true;
     }
 
+    template <typename T>
+    void toStrTestImpl(const T& x) {
+        Cpl::String s = Cpl::ToStr(x);
+        std::cout << "  ToStr((" << typeid(T).name() << ")" << x << ")='" << s << "'" << std::endl;
+    };
+
+    template <typename TupleT, std::size_t... Is>
+    void toStrTestTuple(const TupleT& tp, std::index_sequence<Is...>) {
+        (toStrTestImpl(std::get<Is>(tp)), ...);
+    }
+
+    template <typename TupleT, std::size_t TupSize = std::tuple_size_v<TupleT>>
+    void toStrTestTupleHelper(const TupleT& tp) {
+        toStrTestTuple(tp, std::make_index_sequence<TupSize>{});
+    }
+
     bool ToStrTest()
     {
-        std::tuple vals = { 
-            (size_t)1, 
-            (int)(-1),
-            (unsigned int)1,
-            (long int)(-1),
-            (unsigned long int)1,
-            (float)1,
-            (double)1,
+        std::tuple<size_t, int, unsigned int, long int, unsigned long int, float, double> vals = { };
+
+        /*
+        This approach is used to maintain compatibility for old compilers.
+        Modern approach would be:
+        std::tuple vals = {
+            (size_t)1, (int)(-1), (unsigned int)1, (long int)(-1),
+            (unsigned long int)1, (float)1, (double)1,
         };
 
         std::apply([](auto&&...elems)
-            { 
+            {
                 Cpl::String s;
-                ((s = Cpl::ToStr(elems)), ...); 
+                ((s = Cpl::ToStr(elems)), ...);
             }, vals);
-
+        */
+        toStrTestTupleHelper(vals);
+        
         return true;
     }
 
