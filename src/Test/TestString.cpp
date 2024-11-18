@@ -217,21 +217,6 @@ namespace Test
         return true;
     }
 
-    /*template <typename T>
-    void toStrTestImpl(const T& x) {
-        Cpl::String s = Cpl::ToStr(x);
-        std::cout << "  ToStr((" << typeid(T).name() << ")" << x << ")='" << s << "'" << std::endl;
-    };
-
-    template <typename TupleT, std::size_t... Is>
-    void toStrTestTuple(const TupleT& tp, std::index_sequence<Is...>) {
-        (toStrTestImpl(std::get<Is>(tp)), ...);
-    }
-
-    template <typename TupleT, std::size_t TupSize = std::tuple_size_v<TupleT>>
-    void toStrTestTupleHelper(const TupleT& tp) {
-        toStrTestTuple(tp, std::make_index_sequence<TupSize>{});
-    }*/
     template <typename T>
     void toStrTestImpl(const T& x) {
         Cpl::String s = Cpl::ToStr(x);
