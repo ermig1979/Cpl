@@ -217,7 +217,7 @@ namespace Test
         return true;
     }
 
-    template <typename T>
+    /*template <typename T>
     void toStrTestImpl(const T& x) {
         Cpl::String s = Cpl::ToStr(x);
         std::cout << "  ToStr((" << typeid(T).name() << ")" << x << ")='" << s << "'" << std::endl;
@@ -231,12 +231,20 @@ namespace Test
     template <typename TupleT, std::size_t TupSize = std::tuple_size_v<TupleT>>
     void toStrTestTupleHelper(const TupleT& tp) {
         toStrTestTuple(tp, std::make_index_sequence<TupSize>{});
-    }
+    }*/
+    template <typename T>
+    void toStrTestImpl(const T& x) {
+        Cpl::String s = Cpl::ToStr(x);
+        std::cout << "  ToStr((" << typeid(T).name() << ")" << x << ")='" << s << "'" << std::endl;
+    };
+    template<typename T, typename... Ts>
+    void toStrTestImpl(const T& x, Ts... ts) {
+        toStrTestImpl(x);
+        toStrTestImpl(ts...);
+    };
 
     bool ToStrTest()
     {
-        std::tuple<size_t, int, unsigned int, long int, unsigned long int, float, double> vals = { };
-
         /*
         This approach is used to maintain compatibility for old compilers.
         Modern approach would be:
@@ -251,7 +259,14 @@ namespace Test
                 ((s = Cpl::ToStr(elems)), ...);
             }, vals);
         */
-        toStrTestTupleHelper(vals);
+        toStrTestImpl(
+            (size_t)1, 
+            (int)(-1), 
+            (unsigned int)1, 
+            (long int)(-1),
+            (unsigned long int)1, 
+            (float)1, 
+            (double)1);
         
         return true;
     }
