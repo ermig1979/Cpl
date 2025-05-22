@@ -136,14 +136,27 @@ namespace Cpl
     template<> CPL_INLINE String ToStr<float>(const float& value)
     {
         std::stringstream ss;
-        int digits = std::numeric_limits<float>::digits10 + 1;
+        int digits = std::numeric_limits<float>::digits10 + 1, extra = 0;
         float abs = std::abs(value);
         if (abs < 1.0f)
-            digits -= (int)std::floor(std::log10(abs));
-        if (digits > 10)
-            ss << std::defaultfloat;
-        else
-            ss << std::fixed << std::setprecision(digits);
+            extra = -(int)std::floor(std::log10(abs));
+        if (extra < 5)
+            ss << std::fixed;
+        ss << std::setprecision(digits + extra);
+        ss << value;
+        return ss.str();
+    }
+
+    template<> CPL_INLINE String ToStr<double>(const double& value)
+    {
+        std::stringstream ss;
+        int digits = std::numeric_limits<double>::digits10 + 1, extra = 0;
+        double abs = std::abs(value);
+        if (abs < 1.0)
+            extra = -(int)std::floor(std::log10(abs));
+        if (extra < 8)
+            ss << std::fixed;
+        ss << std::setprecision(digits + extra);
         ss << value;
         return ss.str();
     }
