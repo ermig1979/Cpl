@@ -249,7 +249,7 @@ namespace Cpl
         fs::path fspath(filePath);
         return fs::exists(filePath) && (fs::is_regular_file(filePath) || fs::is_symlink(filePath));
 #elif _WIN32
-        DWORD fileAttribute = ::GetFileAttributes(filePath.c_str());
+        DWORD fileAttribute = ::GetFileAttributesA(filePath.c_str());
         return (fileAttribute != INVALID_FILE_ATTRIBUTES) && !(fileAttribute & FILE_ATTRIBUTE_DIRECTORY);
 #elif __linux__
         struct stat buf;
@@ -303,7 +303,7 @@ namespace Cpl
             return false;
         }
 #elif _WIN32
-        DWORD fileAttribute = GetFileAttributes(path.c_str());
+        DWORD fileAttribute = GetFileAttributesA(path.c_str());
         return ((fileAttribute != INVALID_FILE_ATTRIBUTES) &&
                 (fileAttribute & FILE_ATTRIBUTE_DIRECTORY) != 0);
 #elif __linux__
@@ -340,7 +340,7 @@ namespace Cpl
 #elif defined(_WIN32) || defined (__linux__)
         auto createDirFunctor = [](const String& path) -> bool {
 #ifdef _WIN32
-            return CreateDirectory(path.c_str(), NULL);
+            return CreateDirectoryA(path.c_str(), NULL);
 #elif __linux__
             return mkdir(path.c_str(), 0777) == 0;
 #endif
@@ -434,7 +434,7 @@ namespace Cpl
         }
 
 #elif _WIN32
-        ::WIN32_FIND_DATA fd;
+        ::WIN32_FIND_DATAA fd;
         std::queue<String> queue;
 
         if (filter.empty())
@@ -446,7 +446,7 @@ namespace Cpl
             auto dir = std::move(queue.front());
             queue.pop();
 
-            ::HANDLE hFind = ::FindFirstFile(dir.c_str(), &fd);
+            ::HANDLE hFind = ::FindFirstFileA(dir.c_str(), &fd);
             if (hFind != INVALID_HANDLE_VALUE)
             {
                 do
@@ -461,7 +461,7 @@ namespace Cpl
                         if (recursive)
                             queue.push(MakePath(curDir, filter));
                     }
-                } while (::FindNextFile(hFind, &fd));
+                } while (::FindNextFileA(hFind, &fd));
                 ::FindClose(hFind);
             }
         }
@@ -684,13 +684,13 @@ namespace Cpl
             srcc.push_back(0);
             dstc.push_back(0);
 
-            SHFILEOPSTRUCT s { };
+            SHFILEOPSTRUCTA s { };
             s.hwnd = 0;
             s.wFunc = FO_COPY;
             s.fFlags = FOF_SILENT;
             s.pTo = dstc.c_str();
             s.pFrom = srcc.c_str();;
-            return SHFileOperation(&s) == 0;
+            return SHFileOperationA(&s) == 0;
         }
         catch (...){
         }
@@ -718,7 +718,7 @@ namespace Cpl
         bool ret = fs::remove(filename, code);
         return ret;
 #elif _WIN32
-        return ::DeleteFile(filename.c_str());
+        return ::DeleteFileA(filename.c_str());
 #elif __linux__
         return unlink(filename.c_str()) == 0;
 #else
@@ -756,7 +756,7 @@ namespace Cpl
 
         operation.pFrom = named.c_str();
 
-        return SHFileOperation( &operation ) == 0;
+        return SHFileOperationA( &operation ) == 0;
 
 #elif __linux__
         String com = String("rm -rf ") + dir;
@@ -778,7 +778,7 @@ namespace Cpl
 #if _WIN32
         std::string retval;
         char buf[MAX_PATH];
-        DWORD nSize = ::GetModuleFileName(NULL, buf, sizeof(buf));
+        DWORD nSize = ::GetModuleFileNameA(NULL, buf, sizeof(buf));
         if (nSize > 0) {
             retval = std::string(buf);
         }
@@ -842,7 +842,7 @@ namespace Cpl
             return false;
         }
 #elif _WIN32
-        ::WIN32_FIND_DATA data;
+        ::WIN32_FIND_DATAA data;
         HANDLE handle = NULL;
         std::queue<String> queue;
         const String filter = "*";
@@ -852,7 +852,7 @@ namespace Cpl
             auto dir = std::move(queue.front());
             queue.pop();
 
-            handle = FindFirstFile(MakePath(dir, filter).c_str(), &data);
+            handle = FindFirstFileA(MakePath(dir, filter).c_str(), &data);
             if (handle == INVALID_HANDLE_VALUE)
                 return false;
 
@@ -865,7 +865,7 @@ namespace Cpl
                         tsize += (size_t) (data.nFileSizeHigh * MAXDWORD + data.nFileSizeLow);
                 }
 
-            } while (FindNextFile(handle, &data));
+            } while (FindNextFileA(handle, &data));
         }
 
         FindClose(handle);
