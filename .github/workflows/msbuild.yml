@@ -22,18 +22,19 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2
 
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget restore ./prj/vs2022
 
     - name: Host properties
-      run: wmic cpu get /format:value
+      shell: powershell
+      run: echo "$((Get-CimInstance Win32_Processor).Name), $((Get-CimInstance Win32_Processor).NumberOfCores) cores, $((Get-CimInstance Win32_Processor).NumberOfLogicalProcessors) threads."
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: msbuild /m /p:Configuration=${{matrix.build_type}} /p:Platform=${{matrix.platform}} -maxCpuCount:2 ./prj/vs2022/Cpl.sln
+      run: msbuild /m /p:Configuration=${{matrix.build_type}} /p:Platform=${{matrix.platform}} -maxCpuCount:4 ./prj/vs2022/Cpl.sln
      
     - name: Test
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -51,18 +52,19 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v2
 
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: nuget restore ./prj/vs2019
 
     - name: Host properties
-      run: wmic cpu get /format:value
+      shell: powershell
+      run: echo "$((Get-CimInstance Win32_Processor).Name), $((Get-CimInstance Win32_Processor).NumberOfCores) cores, $((Get-CimInstance Win32_Processor).NumberOfLogicalProcessors) threads."
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: msbuild /m /p:Configuration=${{matrix.build_type}} /p:Platform=${{matrix.platform}} -maxCpuCount:2 ./prj/vs2019/Cpl.sln
+      run: msbuild /m /p:Configuration=${{matrix.build_type}} /p:Platform=${{matrix.platform}} -maxCpuCount:4 ./prj/vs2019/Cpl.sln
      
     - name: Test
       working-directory: ${{env.GITHUB_WORKSPACE}}
