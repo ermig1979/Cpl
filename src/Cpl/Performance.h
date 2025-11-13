@@ -375,7 +375,8 @@ namespace Cpl
         void Clear()
         {
             std::lock_guard<std::mutex> lock(_mutex);
-            _map.clear();
+            for (ThreadMap::iterator thread = _map.begin(); thread != _map.end(); ++thread)
+                thread->second.clear();
         }
 
         String Report() const

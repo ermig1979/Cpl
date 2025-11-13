@@ -89,6 +89,7 @@ namespace Test
 
     TEST_ADD(PerformanceSimple);
     TEST_ADD(PerformanceStdThread);
+    TEST_ADD(PerformanceClear);
 #if defined(CPL_TEST_NORETURN)
     TEST_ADD(PerformanceNoReturn);
 #endif

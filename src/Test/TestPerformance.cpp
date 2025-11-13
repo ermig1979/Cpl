@@ -106,6 +106,7 @@ namespace Test
 #if defined(CPL_PERF_ENABLE)
         Cpl::PerformanceStorage::Global().Clear();
 #endif
+
         const size_t n = 10, t = 10;
         typedef std::thread Thread;
         typedef std::vector<Thread> Threads;
@@ -125,6 +126,25 @@ namespace Test
 #endif
         return true;
     }
+
+    bool PerformanceClearTest()
+    {
+#if defined(CPL_PERF_ENABLE)
+        Cpl::PerformanceStorage::Global().Clear();
+#endif
+        TestFuncV0();
+#if defined(CPL_PERF_ENABLE)
+        CPL_LOG_SS(Verbose, std::endl << Cpl::PerformanceStorage::Global().Report());
+#endif
+#if defined(CPL_PERF_ENABLE)
+        Cpl::PerformanceStorage::Global().Clear();
+#endif
+        TestFuncV0();
+#if defined(CPL_PERF_ENABLE)
+        CPL_LOG_SS(Verbose, std::endl << Cpl::PerformanceStorage::Global().Report());
+#endif
+        return true;
+}
 
 #if defined(CPL_TEST_NORETURN)
     static void* TestFuncV6(void*)
