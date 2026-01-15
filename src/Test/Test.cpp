@@ -53,6 +53,10 @@ namespace Test
     bool name##AddToList(){ g_groups.push_back(Group(#name, name##Test)); return true; } \
     bool name##AtList = name##AddToList();
 
+    TEST_ADD(HasArg);
+    TEST_ADD(HasArg1);
+    TEST_ADD(HasArg2);
+
     TEST_ADD(LogCallback);
     TEST_ADD(LogCallbackRaw);
     TEST_ADD(LogDateTime);
