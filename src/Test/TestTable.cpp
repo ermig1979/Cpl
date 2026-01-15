@@ -38,6 +38,7 @@ namespace Test
 
         table.SetRowProp(0);
         table.SetRowProp(1);
+        table.SetRowProp(2, true, true);
 
         table.SetCell(0, 0, "July");
         table.SetCell(0, 1, "google.com", Cpl::Table::Black, "http://google.com");
@@ -57,14 +58,22 @@ namespace Test
 
         CPL_LOG_SS(Info, std::endl << table.GenerateText());
 
-        std::ofstream ofs("simple_table.html");
-        if (ofs.is_open())
+        std::ofstream ofsHtml("simple_table.html");
+        if (ofsHtml.is_open())
         {
-            ofs << "<html><body>" << std::endl;
-            ofs << "<h2>simple table</h2>" << std::endl;
-            ofs << table.GenerateHtml();
-            ofs << "</body></html>" << std::endl;
-            ofs.close();
+            ofsHtml << "<html><body>" << std::endl;
+            ofsHtml << "<h2>simple table</h2>" << std::endl;
+            ofsHtml << table.GenerateHtml();
+            ofsHtml << "</body></html>" << std::endl;
+            ofsHtml.close();
+        }
+
+        std::ofstream ofsText("simple_table.txt");
+        if (ofsText.is_open())
+        {
+            ofsText << "simple table" << std::endl << std::endl;
+            ofsText << table.GenerateText();
+            ofsText.close();
         }
 
         return true;

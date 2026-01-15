@@ -110,7 +110,7 @@ namespace Cpl
                         table << "|" << (col == _width - 1 ? "" : " ");
                 }
                 table << std::endl;
-                if (_rows[row].separator)
+                if (_rows[row].separator && row != _height - 1)
                     table << indent.str() << separator.str() << std::endl;
             }
             table << indent.str() << separator.str() << std::endl;
