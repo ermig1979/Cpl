@@ -144,7 +144,7 @@ namespace Cpl
 
         bool HasArg(const String& name) const
         {
-            return HasArg({ name });
+            return HasArg(Strings{ name });
         }
 
         bool HasArg(const String& name0, const String& name1) const
