@@ -41,9 +41,11 @@ namespace Test
     bool HasArgTest()
     {
         int argc = 2;
-        std::vector<char*> args = {"test", "-h"};
+        std::vector<std::string> args = {"test", "-h"};
 
-        TestArgs a(argc, args.data());
+        char* argv[] = { const_cast<char*>(args[0].c_str()), const_cast<char*>(args[1].c_str()) };
+
+        TestArgs a(argc, argv);
 
         return a.Check("-h");
     }   
@@ -51,9 +53,11 @@ namespace Test
     bool HasArg1Test()
     {
         int argc = 2;
-        std::vector<char*> args = { "test", "-h" };
+        std::vector<std::string> args = { "test", "-h" };
 
-        TestArgs a(argc, args.data());
+        char* argv[] = { const_cast<char*>(args[0].c_str()), const_cast<char*>(args[1].c_str()) };
+
+        TestArgs a(argc, argv);
 
         return !a.Check("-g");
     }
@@ -61,9 +65,11 @@ namespace Test
     bool HasArg2Test()
     {
         int argc = 2;
-        std::vector<char*> args = { "test", "-h" };
+        std::vector<std::string> args = { "test", "-h" };
 
-        TestArgs a(argc, args.data());
+        char* argv[] = { const_cast<char*>(args[0].c_str()), const_cast<char*>(args[1].c_str()) };
+
+        TestArgs a(argc, argv);
 
         return a.Check("-h", "-?");
     }
