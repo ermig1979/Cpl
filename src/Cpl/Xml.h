@@ -1774,7 +1774,7 @@ namespace Cpl
             NodeIterator operator++(int)
             {
                 NodeIterator tmp = *this;
-                ++this;
+                ++(*this);
                 return tmp;
             }
 
@@ -1788,7 +1788,7 @@ namespace Cpl
             NodeIterator operator--(int)
             {
                 NodeIterator tmp = *this;
-                ++this;
+                --(*this);
                 return tmp;
             }
 
@@ -1849,7 +1849,7 @@ namespace Cpl
             AttributeIterator operator++(int)
             {
                 AttributeIterator tmp = *this;
-                ++this;
+                ++(*this);
                 return tmp;
             }
 
@@ -1863,7 +1863,7 @@ namespace Cpl
             AttributeIterator operator--(int)
             {
                 AttributeIterator tmp = *this;
-                ++this;
+                --(*this);
                 return tmp;
             }
 

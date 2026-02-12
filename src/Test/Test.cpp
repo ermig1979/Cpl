@@ -108,6 +108,8 @@ namespace Test
     TEST_ADD(YamlParam);
 
     TEST_ADD(XmlAllocateString);
+    TEST_ADD(XmlIterator);
+    TEST_ADD(ToValEmpty);
     TEST_ADD(DoFileModify);
     TEST_ADD(DoFileExistance);
     TEST_ADD(DoFileInfo);

@@ -194,7 +194,7 @@ namespace Cpl
     template<class T> CPL_INLINE void ToVal(const String& string, T& value)
     {
         std::stringstream ss(string);
-        if(string != "" || string != " ")
+        if(string != "" && string != " ")
             ss >> value;
     }
 
@@ -206,7 +206,9 @@ namespace Cpl
 
     template<> CPL_INLINE void ToVal<size_t>(const String& string, size_t& value)
     {
-        ToVal(string, (ptrdiff_t&)value);
+        ptrdiff_t tmp;
+        ToVal(string, tmp);
+        value = static_cast<size_t>(tmp);
     }
 
     template<> CPL_INLINE void ToVal<bool>(const String& string, bool& value)

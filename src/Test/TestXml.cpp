@@ -147,4 +147,81 @@ namespace Test
 
         return true;
     }
+
+    bool XmlIteratorTest()
+    {
+        using namespace Cpl::Xml;
+
+        std::string xml = "<root a1=\"1\" a2=\"2\" a3=\"3\"><c1/><c2/><c3/></root>";
+        std::vector<char> buf(xml.begin(), xml.end());
+        buf.push_back('\0');
+
+        XmlDocument<char> doc;
+        doc.Parse<0>(buf.data(), buf.size());
+        XmlNode<char>* root = doc.FirstNode();
+        if (!root)
+            return false;
+
+        // NodeIterator: postfix ++ returns old value, advances iterator
+        {
+            NodeIterator<char> it(root);
+            std::string first = it->Name();
+            NodeIterator<char> prev = it++;
+            std::string second = it->Name();
+
+            if (std::string(prev->Name()) != first)
+                return false;
+            if (first == second)
+                return false;
+            if (first != "c1" || second != "c2")
+                return false;
+        }
+
+        // NodeIterator: postfix -- returns old value, goes backward
+        {
+            NodeIterator<char> it(root);
+            ++it; // c2
+            ++it; // c3
+            std::string third = it->Name();
+            NodeIterator<char> prev = it--;
+            std::string second = it->Name();
+
+            if (std::string(prev->Name()) != third)
+                return false;
+            if (third != "c3" || second != "c2")
+                return false;
+        }
+
+        // AttributeIterator: postfix ++ returns old value, advances iterator
+        {
+            AttributeIterator<char> it(root);
+            std::string first = it->Name();
+            AttributeIterator<char> prev = it++;
+            std::string second = it->Name();
+
+            if (std::string(prev->Name()) != first)
+                return false;
+            if (first == second)
+                return false;
+            if (first != "a1" || second != "a2")
+                return false;
+        }
+
+        // AttributeIterator: postfix -- returns old value, goes backward
+        {
+            AttributeIterator<char> it(root);
+            ++it; // a2
+            ++it; // a3
+            std::string third = it->Name();
+            AttributeIterator<char> prev = it--;
+            std::string second = it->Name();
+
+            if (std::string(prev->Name()) != third)
+                return false;
+            if (third != "a3" || second != "a2")
+                return false;
+        }
+
+        return true;
+    }
 }
