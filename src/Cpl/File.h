@@ -308,7 +308,7 @@ namespace Cpl
                 (fileAttribute & FILE_ATTRIBUTE_DIRECTORY) != 0);
 #elif __linux__
         struct stat buf;
-        int exists = stat( path_.c_str(), &buf );
+        int exists = stat( path.c_str(), &buf );
         return exists == 0 && S_ISDIR(buf.st_mode);
 #else
 #error Not supported system
@@ -644,11 +644,14 @@ namespace Cpl
             p = fs::canonical(p);
             return fs::absolute(p).string();
 #else
-            auto pos = path.find(path);
-            if (pos == String::npos || path.length() == path.length()) {
-                return {};
-            }
-            return path.substr(pos + path.length() + 1, path.length() - 1);
+            if (path.empty())
+                return path;
+            if (path[0] == '/')
+                return path;
+            String base = DirectoryByPath(basePath);
+            if (base.empty())
+                base = basePath;
+            return MakePath(base, path);
 #endif
         }
     }
