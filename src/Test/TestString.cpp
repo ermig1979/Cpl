@@ -314,6 +314,34 @@ namespace Test
         return true;
     }
 
+    bool ToValEmptyTest()
+    {
+        // Empty and whitespace strings must not modify the value
+        int intVal = 42;
+        Cpl::ToVal(Cpl::String(""), intVal);
+        if (intVal != 42)
+            return false;
+
+        intVal = 42;
+        Cpl::ToVal(Cpl::String(" "), intVal);
+        if (intVal != 42)
+            return false;
+
+        // Normal parsing must work
+        intVal = 0;
+        Cpl::ToVal(Cpl::String("7"), intVal);
+        if (intVal != 7)
+            return false;
+
+        // size_t parsing
+        size_t sizeVal = 0;
+        Cpl::ToVal(Cpl::String("12345"), sizeVal);
+        if (sizeVal != 12345)
+            return false;
+
+        return true;
+    }
+
     bool TimeToStrTest()
     {
         std::vector<std::pair<double, std::pair<Cpl::String, Cpl::String>>> testCases =

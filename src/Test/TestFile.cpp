@@ -254,6 +254,14 @@ namespace Test
 
             ok &= COMPARE_RESULT(cnt5 == all_folders.size(), 1);
 
+            //Case if directory ends with multiple slashes
+            int cnt6 = 0;
+            for (auto& exist : all_folders){
+                cnt6 += COMPARE_RESULT(Cpl::DirectoryExists(exist + "///"), 1);
+            }
+
+            ok &= COMPARE_RESULT(cnt6 == all_folders.size(), 1);
+
             return ok;
         }
     }
