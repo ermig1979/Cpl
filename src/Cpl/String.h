@@ -193,9 +193,11 @@ namespace Cpl
 
     template<class T> CPL_INLINE void ToVal(const String& string, T& value)
     {
-        std::stringstream ss(string);
-        if(string != "" && string != " ")
+        if (string != "" && string != " ")
+        {
+            std::stringstream ss(string);
             ss >> value;
+        }
     }
 
     template<> CPL_INLINE void ToVal<String>(const String& string, String& value)
@@ -216,14 +218,17 @@ namespace Cpl
 
     template<> CPL_INLINE void ToVal<bool>(const String& string, bool& value)
     {
-        std::string lower = string;
-        std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-        if (lower == "0" || lower == "false" || lower == "no" || lower == "off")
-            value = false;
-        else if (lower == "1" || lower == "true" || lower == "yes" || lower == "on")
-            value = true;
-        else
-            assert(0);
+        if (string != "" && string != " ")
+        {
+            std::string lower = string;
+            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+            if (lower == "0" || lower == "false" || lower == "no" || lower == "off")
+                value = false;
+            else if (lower == "1" || lower == "true" || lower == "yes" || lower == "on")
+                value = true;
+            else
+                assert(0);
+        }
     }
 
     template<class T> CPL_INLINE void ToVal(const String& string, std::vector<T>& values)
