@@ -206,9 +206,12 @@ namespace Cpl
 
     template<> CPL_INLINE void ToVal<size_t>(const String& string, size_t& value)
     {
-        ptrdiff_t tmp;
-        ToVal(string, tmp);
-        value = static_cast<size_t>(tmp);
+        if (string != "" && string != " ")
+        {
+            ptrdiff_t tmp;
+            ToVal(string, tmp);
+            value = static_cast<size_t>(tmp);
+        }
     }
 
     template<> CPL_INLINE void ToVal<bool>(const String& string, bool& value)
