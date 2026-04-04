@@ -77,6 +77,7 @@ namespace Test
     TEST_ADD(PolygonOverlapsRectangleFloat);
 
     TEST_ADD(ParamSimple);
+    TEST_ADD(ParamSizetDefault);
     TEST_ADD(ParamStruct);
     TEST_ADD(ParamStructMod);
     TEST_ADD(ParamVector);

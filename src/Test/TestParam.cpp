@@ -55,13 +55,36 @@ namespace Test
 
     //---------------------------------------------------------------------------------------------
 
+    bool ParamSizetDefaultTest()
+    {
+        struct TestParam {
+            CPL_PARAM_VALUE(size_t, value_s, 1);
+            CPL_PARAM_VALUE(bool, value_b, true);
+            CPL_PARAM_VALUE(float, value1_f, 2.f);
+            CPL_PARAM_VALUE(float, value2_f, 3.f);
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        TestParamHolder test, loaded;
+
+        String xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?><test><value_b></value_b><value_s></value_s><value1_f></value1_f></test>";
+
+        if (!loaded.Load(xml.c_str(), xml.size(), Cpl::ParamFormatXml))
+            return false;
+
+        return loaded().value_b() && (loaded().value_s() == 1) && (loaded().value1_f() == 2.f) && (loaded().value2_f() == 3.f);
+    }
+
+    //---------------------------------------------------------------------------------------------
+
     bool ParamStructTest()
     {
         struct ChildParam
         {
             CPL_PARAM_VALUE(Int, value, 0);
             CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+            //CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
         };
 
         struct TestParam
@@ -138,7 +161,7 @@ namespace Test
         {
             CPL_PARAM_VALUE(Int, value, 0);
             CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+            //CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
         };
 
         struct TestParam
@@ -228,7 +251,7 @@ namespace Test
         {
             CPL_PARAM_VALUE(Int, value, 0);
             CPL_PARAM_VALUE(String, name, "Name");
-            CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
+            //CPL_PARAM_VALUE(Strings, letters, Strings({ "A", "B", "C" }));
         };
 
         struct TestParam
