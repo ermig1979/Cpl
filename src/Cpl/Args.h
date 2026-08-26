@@ -88,8 +88,7 @@ namespace Cpl
         * \brief Returns the value of the first argument whose token starts with name.
         * \param [in] name - Argument name prefix, for example "-i" or "--input".
         * \param [in] default_ - Value returned when the argument is absent.
-        * \param [in] exit - If true, terminate the process when a required argument is absent
-        *                    (GetArg always supplies default_, so absence does not terminate).
+        * \param [in] exit - If true and no default is available, terminate the process when the argument is absent.
         * \param [in] valids - Allowed values. If not empty, a mismatch prints an error and terminates the process.
         * \return The first matching argument value, or default_ if the argument is absent.
         */
@@ -105,8 +104,7 @@ namespace Cpl
         * \param [in] name1 - First argument name prefix.
         * \param [in] name2 - Second argument name prefix.
         * \param [in] default_ - Value returned when neither name is present.
-        * \param [in] exit - If true, terminate the process when a required argument is absent
-        *                    (GetArg2 always supplies default_, so absence does not terminate).
+        * \param [in] exit - If true and no default is available, terminate the process when the argument is absent.
         * \param [in] valids - Allowed values. If not empty, a mismatch prints an error and terminates the process.
         * \return The first matching argument value, or default_ if both names are absent.
         */
