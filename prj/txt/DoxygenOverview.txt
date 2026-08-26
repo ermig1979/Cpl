@@ -1,0 +1,7 @@
+/*!
+    \mainpage %Cpl Library Overview
+
+    \section s0 Introduction
+
+    The <b>%Cpl Library</b> is a free open source common purpose C++ header only library.
+*/

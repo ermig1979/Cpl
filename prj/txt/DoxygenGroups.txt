@@ -1,0 +1,8 @@
+/*! @defgroup cpl_types CPL Types
+    \short Types of %Cpl Library.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_log Logging
+    \short Cpl::Log class and macros. 
+*/
