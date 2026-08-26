@@ -60,6 +60,7 @@ namespace Test
     TEST_ADD(LogCallback);
     TEST_ADD(LogCallbackRaw);
     TEST_ADD(LogDateTime);
+    TEST_ADD(LogId);
 
     TEST_ADD(ParseUri);
 

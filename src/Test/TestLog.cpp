@@ -93,4 +93,29 @@ namespace Test
 
         return true;
     }
+
+    //-------------------------------------------------------------------------------------------------
+
+    bool LogIdTest()
+    {
+        std::ofstream ofs1("log_1.txt");
+        int id1 = Cpl::Log::Global().AddWriter(Log::Debug, CustomFileWriter, &ofs1);
+
+        std::ofstream ofs2("log_2.txt");
+        int id2 = Cpl::Log::Global().AddWriter(Log::Debug, CustomFileWriter, &ofs2);
+
+        CPL_LOG_ID(Debug, "log 1 message", id1);
+
+        CPL_LOG_ID(Debug, "log 2 message", id2);
+
+        CPL_LOG(Debug, "common message");
+
+        Cpl::Log::Global().RemoveWriter(id1);
+
+        CPL_LOG(Debug, "after remove log 1 message");
+
+        Cpl::Log::Global().RemoveWriter(id2);
+
+        return true;
+    }
 }

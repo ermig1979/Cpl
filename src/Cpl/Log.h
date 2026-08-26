@@ -106,7 +106,10 @@ namespace Cpl
 
         int AddFileWriter(Level level, const String& fileName)
         {
-            _files.emplace_back(std::ofstream(fileName));
+            {
+                std::lock_guard<std::mutex> lock(_mutex);
+                _files.emplace_back(std::ofstream(fileName));
+            }
             if (_files.back().is_open())
                 return AddWriter(level, FileWrite, &_files.back());
             else
@@ -115,6 +118,7 @@ namespace Cpl
 
         bool RemoveWriter(int id)
         {
+            std::lock_guard<std::mutex> lock(_mutex);
             if (_writers.find(id) != _writers.end())
             {
                 _writers.erase(id);
@@ -139,7 +143,7 @@ namespace Cpl
             return level != None && _levelMax >= level;
         }
 
-        void Write(Level level, const String& message) const
+        void Write(Level level, const String& message, int id = -1) const
         {
             if (!Enable(level))
                 return;
@@ -203,7 +207,7 @@ namespace Cpl
             for (Writers::const_iterator it = _writers.begin(); it != _writers.end(); ++it)
             {
                 const Writer& writer = it->second;
-                if (level <= writer.level)
+                if (level <= writer.level && (id == -1 || id == it->first))
                 {
                     if (writer.callback)
                         writer.callback(ss.str().c_str(), writer.userData);
@@ -274,11 +278,21 @@ namespace Cpl
 #define CPL_LOG(level, msg) \
     Cpl::Log::Global().Write(Cpl::Log::level, msg);
 
+#define CPL_LOG_ID(level, msg, id) \
+    Cpl::Log::Global().Write(Cpl::Log::level, msg, id);
+
 #define CPL_LOG_SS(level, msg) \
     { \
         std::stringstream __ss; \
         __ss << msg; \
         Cpl::Log::Global().Write(Cpl::Log::level, __ss.str()); \
+    }
+
+#define CPL_LOG_SS_ID(level, msg, id) \
+    { \
+        std::stringstream __ss; \
+        __ss << msg; \
+        Cpl::Log::Global().Write(Cpl::Log::level, __ss.str(), id); \
     }
 
 #define CPL_IF_LOG_SS(cond, level, msg) \
@@ -289,10 +303,21 @@ namespace Cpl
         Cpl::Log::Global().Write(Cpl::Log::level, __ss.str()); \
     }
 
+#define CPL_IF_LOG_SS_ID(cond, level, msg, id) \
+    if(cond) \
+    { \
+        std::stringstream __ss; \
+        __ss << msg; \
+        Cpl::Log::Global().Write(Cpl::Log::level, __ss.str(), id); \
+    }
+
 #else
 
 #define CPL_LOG(level, msg)
+#define CPL_LOG_ID(level, msg, id)
 #define CPL_LOG_SS(level, msg)
+#define CPL_LOG_SS_ID(level, msg, id)
 #define CPL_IF_LOG_SS(cond, level, msg)
+#define CPL_IF_LOG_SS_ID(cond, level, msg, id)
 
 #endif
