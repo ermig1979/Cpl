@@ -35,37 +35,76 @@
 #if defined(CPL_LOG_ENABLE)
 namespace Cpl
 {
+/*!
+* \class Log
+* \brief Thread-safe logger with multiple writers, severity levels and configurable message formatting.
+* \note The Log class is compiled only when CPL_LOG_ENABLE is defined. Otherwise the logging macros are empty.
+*/
     class Log
     {
     public:
+/*!
+* \enum Level
+* \brief Severity of a log message. A greater value means a more verbose message.
+*        A writer with a given level receives messages whose level is less or equal to that value.
+*/
         enum Level
         {
-            None = 0,
-            Error,
-            Warning,
-            Info,
-            Verbose,
-            Debug,
+            None = 0, //!< Logging disabled. Messages with this level are never written.
+            Error,    //!< Error messages.
+            Warning,  //!< Warning messages.
+            Info,     //!< Informational messages.
+            Verbose,  //!< Verbose diagnostic messages.
+            Debug,    //!< Debug messages (most detailed).
         };
 
+/*!
+* \enum Flags
+* \brief Bit flags that control the prefix written in front of a formatted log message.
+*        Flags can be combined with bitwise OR.
+*/
         enum Flags
         {
-            WriteThreadId = 1 << 0,
-            WritePrefix = 1 << 1,
-            PrettyThreadId = 1 << 2,
-            ColorezedPrefix = 1 << 3,
-            WriteDate = 1 << 4,
-            WriteTime = 1 << 5,
-            DefaultFlags = WriteThreadId | WritePrefix | PrettyThreadId,
-            BashFlags = WriteThreadId | WritePrefix | PrettyThreadId | ColorezedPrefix,
+            WriteThreadId = 1 << 0,  //!< Write the current thread identifier.
+            WritePrefix = 1 << 1,    //!< Write the severity name (Error, Warning, Info, Verbose, Debug).
+            PrettyThreadId = 1 << 2, //!< Replace the native thread id with a sequential 3-digit name.
+            ColorezedPrefix = 1 << 3, //!< Colorize the severity name for terminal output.
+            WriteDate = 1 << 4,      //!< Write the current date.
+            WriteTime = 1 << 5,      //!< Write the current time.
+            DefaultFlags = WriteThreadId | WritePrefix | PrettyThreadId, //!< Default formatting: thread id, pretty thread name and severity prefix.
+            BashFlags = WriteThreadId | WritePrefix | PrettyThreadId | ColorezedPrefix, //!< Default formatting plus a colorized severity prefix.
         };
 
+/*!
+* \typedef Callback
+* \brief Writer callback that receives a fully formatted log line (prefix, message and trailing newline).
+* \param msg - Formatted log line.
+* \param userData - User pointer passed to AddWriter.
+*/
         typedef void(*Callback)(const char* msg, void* userData);
 
+/*!
+* \typedef CallbackRaw
+* \brief Writer callback that receives the severity and the original message without formatting.
+* \param level - Severity of the message.
+* \param msg - Original message string without prefix or trailing newline.
+* \param userData - User pointer passed to AddWriter.
+*/
         typedef void(*CallbackRaw)(Level level, const char* msg, void* userData);
 
+/*!
+* \typedef CallbackRawFunc
+* \brief C-style writer callback. Same as CallbackRaw, but the severity is passed as int.
+* \param level - Severity of the message as int.
+* \param msg - Original message string without prefix or trailing newline.
+* \param userData - User pointer passed to AddWriter.
+*/
         typedef void(*CallbackRawFunc)(int level, const char* msg, void* userData);
 
+/*!
+* \fn Log()
+* \brief Constructs an empty logger with no writers, level None and DefaultFlags.
+*/
         Log()
             : _levelMax(None)
             , _flags(DefaultFlags)
@@ -74,6 +113,14 @@ namespace Cpl
         {
         }
 
+/*!
+* \fn int AddWriter(Level level, Callback callback, void* userData)
+* \brief Registers a formatted writer. Enables prefix generation for subsequent Write calls.
+* \param [in] level - Maximum severity this writer will accept.
+* \param [in] callback - Callback that receives a formatted log line.
+* \param [in] userData - User pointer forwarded to the callback.
+* \return Identifier of the added writer.
+*/
         int AddWriter(Level level, Callback callback, void* userData)
         {
             std::lock_guard<std::mutex> lock(_mutex);
@@ -83,6 +130,14 @@ namespace Cpl
             return _writerId;
         }
 
+/*!
+* \fn int AddWriter(Level level, CallbackRaw callbackRaw, void* userData)
+* \brief Registers a raw writer that receives the original message and its Level.
+* \param [in] level - Maximum severity this writer will accept.
+* \param [in] callbackRaw - Callback that receives level and the unformatted message.
+* \param [in] userData - User pointer forwarded to the callback.
+* \return Identifier of the added writer.
+*/
         int AddWriter(Level level, CallbackRaw callbackRaw, void* userData)
         {
             std::lock_guard<std::mutex> lock(_mutex);
@@ -91,6 +146,14 @@ namespace Cpl
             return _writerId;
         }
 
+/*!
+* \fn int AddWriter(Level level, CallbackRawFunc callbackRaw, void* userData)
+* \brief Registers a C-style raw writer that receives the original message and its level as int.
+* \param [in] level - Maximum severity this writer will accept.
+* \param [in] callbackRaw - Callback that receives level as int and the unformatted message.
+* \param [in] userData - User pointer forwarded to the callback.
+* \return Identifier of the added writer.
+*/
         int AddWriter(Level level, CallbackRawFunc callbackRaw, void* userData)
         {
             std::lock_guard<std::mutex> lock(_mutex);
@@ -99,11 +162,24 @@ namespace Cpl
             return _writerId;
         }
 
+/*!
+* \fn int AddStdWriter(Level level)
+* \brief Registers a writer that prints formatted messages to the standard output.
+* \param [in] level - Maximum severity this writer will accept.
+* \return Identifier of the added writer.
+*/
         int AddStdWriter(Level level)
         {
             return AddWriter(level, StdWrite, NULL);
         }
 
+/*!
+* \fn int AddFileWriter(Level level, const String& fileName)
+* \brief Registers a writer that appends formatted messages to a file.
+* \param [in] level - Maximum severity this writer will accept.
+* \param [in] fileName - Path of the log file to create or open.
+* \return Identifier of the added writer, or 0 if the file could not be opened.
+*/
         int AddFileWriter(Level level, const String& fileName)
         {
             {
@@ -116,6 +192,12 @@ namespace Cpl
                 return 0;
         }
 
+/*!
+* \fn bool RemoveWriter(int id)
+* \brief Removes a previously registered writer.
+* \param [in] id - Writer identifier returned by AddWriter, AddStdWriter or AddFileWriter.
+* \return true if the writer was found and removed, false otherwise.
+*/
         bool RemoveWriter(int id)
         {
             std::lock_guard<std::mutex> lock(_mutex);
@@ -128,21 +210,45 @@ namespace Cpl
                 return false;
         }
 
+/*!
+* \fn void SetFlags(Flags flags)
+* \brief Sets the formatting flags used when a formatted writer is registered.
+* \param [in] flags - Combination of Flags values.
+*/
         void SetFlags(Flags flags)
         {
             _flags = flags;
         }
 
+/*!
+* \fn Flags GetFlags() const
+* \brief Returns the current formatting flags.
+* \return Current Flags value.
+*/
         Flags GetFlags() const
         {
             return _flags;
         }
 
+/*!
+* \fn bool Enable(Level level) const
+* \brief Checks whether a message of the given severity would be written.
+* \param [in] level - Severity to check.
+* \return true if level is not None and is less or equal to the maximum registered writer level.
+*/
         CPL_INLINE bool Enable(Level level) const
         {
             return level != None && _levelMax >= level;
         }
 
+/*!
+* \fn void Write(Level level, const String& message, int id = -1) const
+* \brief Writes a message to matching writers. Formatted writers receive a prefixed line;
+*        raw writers receive the original message.
+* \param [in] level - Severity of the message.
+* \param [in] message - Message text.
+* \param [in] id - Target writer identifier, or -1 to send the message to every matching writer.
+*/
         void Write(Level level, const String& message, int id = -1) const
         {
             if (!Enable(level))
@@ -221,11 +327,21 @@ namespace Cpl
             }
         }
 
+/*!
+* \fn Level MaxLevel() const
+* \brief Returns the highest severity registered among writers.
+* \return Maximum writer Level, or None if no writers are registered.
+*/
         Level MaxLevel() const
         {
             return _levelMax;
         }
 
+/*!
+* \fn static Log& Global()
+* \brief Returns the process-wide logger singleton used by the logging macros.
+* \return Reference to the global Log instance.
+*/
         static Log& Global()
         {
             static Log log;
@@ -233,14 +349,22 @@ namespace Cpl
         }
 
     private:
+/*!
+* \struct Writer
+* \brief Internal descriptor of a registered writer.
+*/
         struct Writer
         {
-            Level level;
-            Callback callback;
-            CallbackRaw callbackRaw;
-            CallbackRawFunc callbackRawFunc;
-            void* userData;
+            Level level;                      //!< Maximum severity accepted by this writer.
+            Callback callback;                //!< Formatted callback, or NULL.
+            CallbackRaw callbackRaw;          //!< Raw callback, or NULL.
+            CallbackRawFunc callbackRawFunc;  //!< C-style raw callback, or NULL.
+            void* userData;                   //!< User pointer forwarded to the callback.
 
+/*!
+* \fn Writer(Level l = None, Callback c = NULL, CallbackRaw cr = NULL, CallbackRawFunc crf = NULL, void* ud = NULL)
+* \brief Constructs a writer descriptor. Exactly one callback pointer is expected to be non-NULL.
+*/
             Writer(Level l = None, Callback c = NULL, CallbackRaw cr = NULL, CallbackRawFunc crf = NULL, void* ud = NULL)
                 : level(l)
                 , callback(c)
@@ -261,11 +385,22 @@ namespace Cpl
         Flags _flags;
         bool _rawOnly;
 
+/*!
+* \fn static void StdWrite(const char* msg, void*)
+* \brief Default formatted callback that writes a log line to the standard output.
+* \param [in] msg - Formatted log line.
+*/
         static void StdWrite(const char* msg, void*)
         {
             std::cout << msg << std::flush;
         }
 
+/*!
+* \fn static void FileWrite(const char* msg, void* userData)
+* \brief Default formatted callback that writes a log line to an std::ofstream.
+* \param [in] msg - Formatted log line.
+* \param [in] userData - Pointer to std::ofstream opened by AddFileWriter.
+*/
         static void FileWrite(const char* msg, void* userData)
         {
             std::ofstream& ofs = *(std::ofstream*)userData;
@@ -275,12 +410,31 @@ namespace Cpl
     };
 }
 
+/*!
+* \def CPL_LOG(level, msg)
+* \brief Writes a message to the global logger.
+* \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
+* \param msg - Message string.
+*/
 #define CPL_LOG(level, msg) \
     Cpl::Log::Global().Write(Cpl::Log::level, msg);
 
+/*!
+* \def CPL_LOG_ID(level, msg, id)
+* \brief Writes a message to a single writer of the global logger.
+* \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
+* \param msg - Message string.
+* \param id - Writer identifier returned by AddWriter, AddStdWriter or AddFileWriter.
+*/
 #define CPL_LOG_ID(level, msg, id) \
     Cpl::Log::Global().Write(Cpl::Log::level, msg, id);
 
+/*!
+* \def CPL_LOG_SS(level, msg)
+* \brief Writes a stream-style message to the global logger.
+* \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
+* \param msg - Stream expression, for example "value = " << value.
+*/
 #define CPL_LOG_SS(level, msg) \
     { \
         std::stringstream __ss; \
@@ -288,6 +442,13 @@ namespace Cpl
         Cpl::Log::Global().Write(Cpl::Log::level, __ss.str()); \
     }
 
+/*!
+* \def CPL_LOG_SS_ID(level, msg, id)
+* \brief Writes a stream-style message to a single writer of the global logger.
+* \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
+* \param msg - Stream expression, for example "value = " << value.
+* \param id - Writer identifier returned by AddWriter, AddStdWriter or AddFileWriter.
+*/
 #define CPL_LOG_SS_ID(level, msg, id) \
     { \
         std::stringstream __ss; \
@@ -295,6 +456,13 @@ namespace Cpl
         Cpl::Log::Global().Write(Cpl::Log::level, __ss.str(), id); \
     }
 
+/*!
+* \def CPL_IF_LOG_SS(cond, level, msg)
+* \brief Writes a stream-style message to the global logger when the condition is true.
+* \param cond - Condition that must be true to write the message.
+* \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
+* \param msg - Stream expression, for example "value = " << value.
+*/
 #define CPL_IF_LOG_SS(cond, level, msg) \
     if(cond) \
     { \
@@ -303,6 +471,14 @@ namespace Cpl
         Cpl::Log::Global().Write(Cpl::Log::level, __ss.str()); \
     }
 
+/*!
+* \def CPL_IF_LOG_SS_ID(cond, level, msg, id)
+* \brief Writes a stream-style message to a single writer of the global logger when the condition is true.
+* \param cond - Condition that must be true to write the message.
+* \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
+* \param msg - Stream expression, for example "value = " << value.
+* \param id - Writer identifier returned by AddWriter, AddStdWriter or AddFileWriter.
+*/
 #define CPL_IF_LOG_SS_ID(cond, level, msg, id) \
     if(cond) \
     { \
