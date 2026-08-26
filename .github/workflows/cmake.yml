@@ -2,9 +2,9 @@ name: CMake
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "dev" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "dev" ]
 
 jobs:
   build_and_test_gcc:
@@ -15,7 +15,7 @@ jobs:
         build_type: [Debug, Release]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
 
     - name: Host properties
       run: lscpu
@@ -43,10 +43,10 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
             
     - name: Setup MSYS
-      uses: msys2/setup-msys2@v2
+      uses: msys2/setup-msys2@v3
       with:
         msystem: UCRT64
         update: true
@@ -76,7 +76,7 @@ jobs:
         build_type: [Debug, Release]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
 
     - name: Host properties
       run: lscpu
