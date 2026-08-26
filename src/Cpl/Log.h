@@ -77,7 +77,7 @@ namespace Cpl
 
 /*!
 * \typedef Callback
-* \brief Writer callback that receives a fully formatted log line (prefix, message and trailing newline).
+* \brief Callback that receives a fully formatted log line (prefix, message and trailing newline).
 * \param msg - Formatted log line.
 * \param userData - User pointer passed to AddWriter.
 */
@@ -85,7 +85,7 @@ namespace Cpl
 
 /*!
 * \typedef CallbackRaw
-* \brief Writer callback that receives the severity and the original message without formatting.
+* \brief Callback that receives the severity and the original message without formatting.
 * \param level - Severity of the message.
 * \param msg - Original message string without prefix or trailing newline.
 * \param userData - User pointer passed to AddWriter.
