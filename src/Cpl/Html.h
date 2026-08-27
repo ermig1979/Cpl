@@ -34,7 +34,7 @@ namespace Cpl
     * \brief Incremental HTML writer that emits tags, attributes and text to an output stream.
     * \note Indentation uses two spaces per level. Text may be HTML-escaped ("shielded") so that
     *       ampersand, less-than, greater-than, quote and apostrophe become character entities.
-    *       Attribute values are written as-is.
+    *       Values of attributes are written as-is.
     *       The indent flag raises or lowers the current indent level around nested tags.
     *       The line flag appends a newline after the written markup and records that the next write starts a new line.
     */
@@ -46,14 +46,14 @@ namespace Cpl
         */
         struct Attribute
         {
-            String name;  //!< Attribute name, for example "class" or "href".
-            String value; //!< Attribute value written in quotes after the name.
+            String name;  //!< HTML attribute name, for example "class" or "href".
+            String value; //!< HTML attribute value written in quotes after the name.
 
             /*!
             * \fn Attribute(const String& n = String(), const String& v = String())
             * \brief Constructs an attribute with the given name and value.
-            * \param [in] n - Attribute name. Empty by default.
-            * \param [in] v - Attribute value. Empty by default.
+            * \param [in] n - HTML attribute name. Empty by default.
+            * \param [in] v - HTML attribute value. Empty by default.
             */
             Attribute(const String& n = String(), const String& v = String())
                 : name(n)
