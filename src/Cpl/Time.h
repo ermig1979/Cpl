@@ -39,6 +39,14 @@
 
 namespace Cpl
 {
+    /*! @ingroup cpl_time
+    * \fn int64_t TimeCounter()
+    * \brief Returns the current value of the high-resolution time counter.
+    * \return Counter ticks. On Windows this is QueryPerformanceCounter. On GCC this is
+    *         CLOCK_REALTIME expressed in nanoseconds.
+    * \note Convert a difference of two TimeCounter values to seconds or milliseconds with
+    *       Seconds() or Miliseconds(). The tick rate is given by TimeFrequency().
+    */
     CPL_INLINE int64_t TimeCounter()
     {
 #if defined(_MSC_VER)
@@ -54,6 +62,11 @@ namespace Cpl
 #endif
     }
 
+    /*! @ingroup cpl_time
+    * \fn int64_t TimeFrequency()
+    * \brief Returns the number of TimeCounter ticks in one second.
+    * \return Ticks per second. On Windows this is QueryPerformanceFrequency. On GCC this is 10^9.
+    */
     CPL_INLINE int64_t TimeFrequency()
     {
 #if defined(_MSC_VER)
@@ -67,16 +80,35 @@ namespace Cpl
 #endif
     }
 
+    /*! @ingroup cpl_time
+    * \fn double Seconds(int64_t count)
+    * \brief Converts a time-counter value to seconds.
+    * \param [in] count - Number of TimeCounter ticks, typically a difference of two TimeCounter() values.
+    * \return Duration in seconds.
+    */
     CPL_INLINE double Seconds(int64_t count)
     {
         return double(count) / double(TimeFrequency());
     }
 
+    /*! @ingroup cpl_time
+    * \fn double Miliseconds(int64_t count)
+    * \brief Converts a time-counter value to milliseconds.
+    * \param [in] count - Number of TimeCounter ticks, typically a difference of two TimeCounter() values.
+    * \return Duration in milliseconds.
+    */
     CPL_INLINE double Miliseconds(int64_t count)
     {
         return double(count) / double(TimeFrequency()) * 1000.0;
     }
 
+    /*! @ingroup cpl_time
+    * \fn double Time()
+    * \brief Returns the current time in seconds.
+    * \return TimeCounter() divided by TimeFrequency().
+    * \note On Windows the origin is the QueryPerformanceCounter epoch. On GCC the origin is
+    *       the Unix epoch (CLOCK_REALTIME).
+    */
     CPL_INLINE double Time()
     {
         return double(TimeCounter()) / double(TimeFrequency());

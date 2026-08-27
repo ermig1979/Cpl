@@ -31,3 +31,8 @@
     @defgroup cpl_table Table
     \short Cpl::Table class.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_time Time
+    \short Cpl time-counter functions.
+*/
