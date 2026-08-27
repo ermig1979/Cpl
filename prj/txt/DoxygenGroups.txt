@@ -21,3 +21,8 @@
     @defgroup cpl_performance Performance
     \short Cpl performance measurement classes and macros.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_html HTML
+    \short Cpl::Html class.
+*/
