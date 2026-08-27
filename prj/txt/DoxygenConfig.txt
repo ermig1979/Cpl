@@ -1,6 +1,6 @@
 PROJECT_NAME="Cpl Library"
 OUTPUT_DIRECTORY=..\..\docs
-INPUT=..\txt\DoxygenOverview.txt ..\txt\DoxygenGroups.txt ..\..\src\Simd\SimdLib.h ..\..\src\Cpl\Log.h ..\..\src\Cpl\Args.h ..\..\src\Cpl\Console.h
+INPUT=..\txt\DoxygenOverview.txt ..\txt\DoxygenGroups.txt ..\..\src\Simd\SimdLib.h ..\..\src\Cpl\Log.h ..\..\src\Cpl\Args.h ..\..\src\Cpl\Console.h ..\..\src\Cpl\Performance.h
 EXTRACT_ALL=NO
 SHOW_INCLUDE_FILES=NO
 SHOW_USED_FILES=NO
@@ -39,7 +39,7 @@ HTML_DYNAMIC_SECTIONS=NO
 SUBGROUPING=YES
 SHOW_NAMESPACES=NO
 ENUM_VALUES_PER_LINE=1
-PREDEFINED="CPL_INLINE=" "CPL_LOG_ENABLE=1"
+PREDEFINED="CPL_INLINE=" "CPL_LOG_ENABLE=1" "CPL_PERF_ENABLE=1"
 ENABLE_PREPROCESSING=YES
 DISABLE_INDEX=NO
 GENERATE_TREEVIEW=NO
