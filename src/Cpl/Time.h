@@ -39,35 +39,33 @@
 
 namespace Cpl
 {
-#if defined(_MSC_VER)
     CPL_INLINE int64_t TimeCounter()
     {
+#if defined(_MSC_VER)
         LARGE_INTEGER counter;
         QueryPerformanceCounter(&counter);
         return counter.QuadPart;
-    }
-
-    CPL_INLINE int64_t TimeFrequency()
-    {
-        LARGE_INTEGER frequency;
-        QueryPerformanceFrequency(&frequency);
-        return frequency.QuadPart;
-    }
 #elif defined(__GNUC__)
-    CPL_INLINE int64_t TimeCounter()
-    {
         timespec t;
         clock_gettime(CLOCK_REALTIME, &t);
         return int64_t(t.tv_sec) * int64_t(1000000000) + int64_t(t.tv_nsec);
+#else
+#error Platform is not supported!
+#endif
     }
 
     CPL_INLINE int64_t TimeFrequency()
     {
+#if defined(_MSC_VER)
+        LARGE_INTEGER frequency;
+        QueryPerformanceFrequency(&frequency);
+        return frequency.QuadPart;
+#elif defined(__GNUC__)
         return int64_t(1000000000);
-    }
 #else
 #error Platform is not supported!
 #endif
+    }
 
     CPL_INLINE double Seconds(int64_t count)
     {
