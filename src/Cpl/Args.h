@@ -254,8 +254,8 @@ namespace Cpl
         }
 
     private:
-        int _argc;   //!< Number of command-line arguments.
-        char** _argv; //!< Command-line argument vector.
-        bool _alt;   //!< Alternative `name=value` syntax when true; otherwise `name value`.
+        int _argc;
+        char** _argv;
+        bool _alt;
     };
 }

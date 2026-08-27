@@ -349,22 +349,14 @@ namespace Cpl
         }
 
     private:
-        /*!
-        * \struct Writer
-        * \brief Internal descriptor of a registered writer.
-        */
         struct Writer
         {
-            Level level;                      //!< Maximum severity accepted by this writer.
-            Callback callback;                //!< Formatted callback, or NULL.
-            CallbackRaw callbackRaw;          //!< Raw callback, or NULL.
-            CallbackRawFunc callbackRawFunc;  //!< C-style raw callback, or NULL.
-            void* userData;                   //!< User pointer forwarded to the callback.
+            Level level;
+            Callback callback;
+            CallbackRaw callbackRaw;
+            CallbackRawFunc callbackRawFunc;
+            void* userData;
 
-            /*!
-            * \fn Writer(Level l = None, Callback c = NULL, CallbackRaw cr = NULL, CallbackRawFunc crf = NULL, void* ud = NULL)
-            * \brief Constructs a writer descriptor. Exactly one callback pointer is expected to be non-NULL.
-            */
             Writer(Level l = None, Callback c = NULL, CallbackRaw cr = NULL, CallbackRawFunc crf = NULL, void* ud = NULL)
                 : level(l)
                 , callback(c)
@@ -385,22 +377,11 @@ namespace Cpl
         Flags _flags;
         bool _rawOnly;
 
-        /*!
-        * \fn static void StdWrite(const char* msg, void*)
-        * \brief Default formatted callback that writes a log line to the standard output.
-        * \param [in] msg - Formatted log line.
-        */
         static void StdWrite(const char* msg, void*)
         {
             std::cout << msg << std::flush;
         }
 
-        /*!
-        * \fn static void FileWrite(const char* msg, void* userData)
-        * \brief Default formatted callback that writes a log line to an std::ofstream.
-        * \param [in] msg - Formatted log line.
-        * \param [in] userData - Pointer to std::ofstream opened by AddFileWriter.
-        */
         static void FileWrite(const char* msg, void* userData)
         {
             std::ofstream& ofs = *(std::ofstream*)userData;
