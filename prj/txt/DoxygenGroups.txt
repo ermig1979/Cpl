@@ -6,3 +6,8 @@
     @defgroup cpl_log Logging
     \short Cpl::Log class and macros. 
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpp_args Argument Parser
+    \short Cpl::ArgsParser class.
+*/

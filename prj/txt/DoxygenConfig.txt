@@ -1,6 +1,6 @@
 PROJECT_NAME="Cpl Library"
 OUTPUT_DIRECTORY=..\..\docs
-INPUT=..\txt\DoxygenOverview.txt ..\txt\DoxygenGroups.txt ..\..\src\Simd\SimdLib.h ..\..\src\Cpl\Log.h
+INPUT=..\txt\DoxygenOverview.txt ..\txt\DoxygenGroups.txt ..\..\src\Simd\SimdLib.h ..\..\src\Cpl\Log.h ..\..\src\Cpl\Args.h
 EXTRACT_ALL=NO
 SHOW_INCLUDE_FILES=NO
 SHOW_USED_FILES=NO
