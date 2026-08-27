@@ -16,3 +16,8 @@
     @defgroup cpl_console Console
     \short Cpl::Console namespace and ANSI terminal styling helpers.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_performance Performance
+    \short Cpl performance measurement classes and macros.
+*/
