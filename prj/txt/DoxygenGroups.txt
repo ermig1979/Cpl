@@ -26,3 +26,8 @@
     @defgroup cpl_html HTML
     \short Cpl::Html class.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_table Table
+    \short Cpl::Table class.
+*/
