@@ -11,3 +11,8 @@
     @defgroup cpl_args Argument Parser
     \short Cpl::ArgsParser class.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_console Console
+    \short Cpl::Console namespace and ANSI terminal styling helpers.
+*/
