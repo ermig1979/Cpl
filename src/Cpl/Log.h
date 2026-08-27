@@ -35,7 +35,7 @@
 #if defined(CPL_LOG_ENABLE)
 namespace Cpl
 {
-    /*! @ingroup cpp_log
+    /*! @ingroup cpl_log
     * \class Log
     * \brief Thread-safe logger with multiple writers, severity levels and configurable message formatting.
     * \note The Log class is compiled only when CPL_LOG_ENABLE is defined. Otherwise the logging macros are empty.
@@ -410,7 +410,7 @@ namespace Cpl
     };
 }
 
-/*! @ingroup cpp_log
+/*! @ingroup cpl_log
 * \def CPL_LOG(level, msg)
 * \brief Writes a message to the global logger.
 * \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
@@ -419,7 +419,7 @@ namespace Cpl
 #define CPL_LOG(level, msg) \
     Cpl::Log::Global().Write(Cpl::Log::level, msg);
 
-/*! @ingroup cpp_log
+/*! @ingroup cpl_log
 * \def CPL_LOG_ID(level, msg, id)
 * \brief Writes a message to a single writer of the global logger.
 * \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
@@ -429,7 +429,7 @@ namespace Cpl
 #define CPL_LOG_ID(level, msg, id) \
     Cpl::Log::Global().Write(Cpl::Log::level, msg, id);
 
-/*! @ingroup cpp_log
+/*! @ingroup cpl_log
 * \def CPL_LOG_SS(level, msg)
 * \brief Writes a stream-style message to the global logger.
 * \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
@@ -442,7 +442,7 @@ namespace Cpl
         Cpl::Log::Global().Write(Cpl::Log::level, __ss.str()); \
     }
 
-/*! @ingroup cpp_log
+/*! @ingroup cpl_log
 * \def CPL_LOG_SS_ID(level, msg, id)
 * \brief Writes a stream-style message to a single writer of the global logger.
 * \param level - Severity enumerator name without the Log:: prefix (Error, Warning, Info, Verbose or Debug).
@@ -456,7 +456,7 @@ namespace Cpl
         Cpl::Log::Global().Write(Cpl::Log::level, __ss.str(), id); \
     }
 
-/*! @ingroup cpp_log
+/*! @ingroup cpl_log
 * \def CPL_IF_LOG_SS(cond, level, msg)
 * \brief Writes a stream-style message to the global logger when the condition is true.
 * \param cond - Condition that must be true to write the message.
@@ -471,7 +471,7 @@ namespace Cpl
         Cpl::Log::Global().Write(Cpl::Log::level, __ss.str()); \
     }
 
-/*! @ingroup cpp_log
+/*! @ingroup cpl_log
 * \def CPL_IF_LOG_SS_ID(cond, level, msg, id)
 * \brief Writes a stream-style message to a single writer of the global logger when the condition is true.
 * \param cond - Condition that must be true to write the message.

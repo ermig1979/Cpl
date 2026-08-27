@@ -8,6 +8,6 @@
 */
 
 /*! @ingroup cpl_types
-    @defgroup cpp_args Argument Parser
+    @defgroup cpl_args Argument Parser
     \short Cpl::ArgsParser class.
 */

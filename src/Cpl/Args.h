@@ -28,7 +28,7 @@
 
 namespace Cpl
 {
-    /*! @ingroup cpp_args
+    /*! @ingroup cpl_args
     * \struct ArgsParser
     * \brief Command-line argument parser intended to be used as a base class.
     * \note Inherit ArgsParser and call GetArg, GetArg2, GetArgs or HasArg from the derived class.
