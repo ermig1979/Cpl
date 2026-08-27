@@ -29,14 +29,13 @@
 namespace Cpl
 {
     /*! @ingroup cpl_console
-    * \namespace Console
+    * \namespace Cpl::Console
     * \brief ANSI/VT100 terminal text styling helpers.
     * \note Stylized emits escape sequences only on Linux. On other platforms it returns the original text.
     */
     namespace Console
     {
         /*! @ingroup cpl_console
-        * \enum Format
         * \brief ANSI SGR text attributes applied to the styled text.
         */
         enum Format
@@ -52,7 +51,6 @@ namespace Cpl
         };
 
         /*! @ingroup cpl_console
-        * \enum Foreground
         * \brief ANSI SGR foreground (text) colors.
         */
         enum Foreground
@@ -77,32 +75,30 @@ namespace Cpl
         };
 
         /*! @ingroup cpl_console
-        * \enum Background
         * \brief ANSI SGR background colors.
         */
         enum Background
         {
-            BackgroundDefault = 49,      //!< Terminal default background color.
-            BackgroundBlack = 40,        //!< Black background.
-            BackgroundRed = 41,          //!< Red background.
-            BackgroundGreen = 42,        //!< Green background.
-            BackgroundYellow = 43,       //!< Yellow background.
-            BackgroundBlue = 44,         //!< Blue background.
-            BackgroundMegenta = 45,      //!< Magenta background.
-            BackgroundCyan = 46,         //!< Cyan background.
-            BackgroundLightGray = 47,    //!< Light gray background.
-            BackgroundDarkGray = 100,    //!< Dark gray (bright black) background.
-            BackgroundLightRed = 101,    //!< Light red background.
-            BackgroundLightGreen = 102,  //!< Light green background.
-            BackgroundLightYellow = 103, //!< Light yellow background.
-            BackgroundLightBlue = 104,   //!< Light blue background.
+            BackgroundDefault = 49,       //!< Terminal default background color.
+            BackgroundBlack = 40,         //!< Black background.
+            BackgroundRed = 41,           //!< Red background.
+            BackgroundGreen = 42,         //!< Green background.
+            BackgroundYellow = 43,        //!< Yellow background.
+            BackgroundBlue = 44,          //!< Blue background.
+            BackgroundMegenta = 45,       //!< Magenta background.
+            BackgroundCyan = 46,          //!< Cyan background.
+            BackgroundLightGray = 47,     //!< Light gray background.
+            BackgroundDarkGray = 100,     //!< Dark gray (bright black) background.
+            BackgroundLightRed = 101,     //!< Light red background.
+            BackgroundLightGreen = 102,   //!< Light green background.
+            BackgroundLightYellow = 103,  //!< Light yellow background.
+            BackgroundLightBlue = 104,    //!< Light blue background.
             BackgroundLightMagenta = 105, //!< Light magenta background.
-            BackgroundLightCyan = 106,   //!< Light cyan background.
-            BackgroundWhite = 107,       //!< White background.
+            BackgroundLightCyan = 106,    //!< Light cyan background.
+            BackgroundWhite = 107,        //!< White background.
         };
 
         /*! @ingroup cpl_console
-        * \enum Reset
         * \brief ANSI SGR codes appended after the text to clear previously applied attributes.
         */
         enum Reset
@@ -117,7 +113,6 @@ namespace Cpl
         };
 
         /*! @ingroup cpl_console
-        * \fn String Stylized(const String & text, Format format = FormatDefault, Foreground foreground = ForegroundDefault, Background background = BackgroundDefault, Reset reset = ResetAll)
         * \brief Wraps text in ANSI/VT100 SGR escape sequences on Linux; returns the original text on other platforms.
         * \param [in] text - Text to style.
         * \param [in] format - Text attributes such as bold or underline.
@@ -125,7 +120,7 @@ namespace Cpl
         * \param [in] background - Background color.
         * \param [in] reset - Reset sequence appended after the text.
         * \return Styled string on Linux, unmodified text otherwise.
-        * \note Escape sequences are emitted only when __linux__ is defined.
+        * \note Escape sequences are emitted only when compiled for Linux.
         */
         CPL_INLINE String Stylized(const String & text, Format format = FormatDefault, Foreground foreground = ForegroundDefault, 
             Background background = BackgroundDefault, Reset reset = ResetAll)
