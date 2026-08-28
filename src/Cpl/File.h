@@ -148,7 +148,8 @@ namespace Cpl
     * \return path without a trailing FolderSeparator() or spaces. Unchanged if path is not longer
     *         than the separator or does not end with a separator or space.
     */
-    CPL_INLINE String DirectoryPathRemoveAllLastDash(const String& path){
+    CPL_INLINE String DirectoryPathRemoveAllLastDash(const String& path)
+    {
         auto iter = path.rbegin();
         auto separator = FolderSeparator();
 
@@ -171,7 +172,8 @@ namespace Cpl
     * \return 0 for GCC < 7 or Clang < 5; 1 for GCC <= 10 or C++ below 17; 2 for newer GCC/Clang
     *         or C++17 and later; 3 for MSVC 2015 or older; 4 for other compilers.
     */
-    CPL_INLINE size_t CompilerType(){
+    CPL_INLINE size_t CompilerType()
+    {
 #if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
         return 0;
 #elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
@@ -190,7 +192,8 @@ namespace Cpl
     * \return 2 for std::filesystem, 3 for experimental/TR2 filesystem, 1 for the Win32 API,
     *         0 when neither filesystem nor Win32 is available.
     */
-    CPL_INLINE size_t FilesystemType(){
+    CPL_INLINE size_t FilesystemType()
+    {
 #if CPL_FILE_USE_FILESYSTEM == 2
         return 2;
 #elif CPL_FILE_USE_FILESYSTEM == 1
@@ -202,14 +205,16 @@ namespace Cpl
 #endif
     }
 
-    namespace PathDetail{
+    namespace PathDetail
+    {
         /*! @ingroup cpl_file
         * \brief Checks whether a path is a Windows drive root such as "C:" or "C:\\".
         * \param [in] path - Path to test. Trailing separators are ignored.
         * \return true on Windows when the stripped path is two characters and the second is ':'.
         *         Always false on Linux.
         */
-        CPL_INLINE bool DirectoryIsDrive(const Cpl::String& path) {
+        CPL_INLINE bool DirectoryIsDrive(const Cpl::String& path) 
+        {
 #ifdef __linux__
             return false;
 #elif _WIN32
@@ -284,7 +289,8 @@ namespace Cpl
     * \param [in] path - File or directory path.
     * \return Same result as DirectoryByPath(path).
     */
-    CPL_INLINE String DirectoryUp(const String& path) {
+    CPL_INLINE String DirectoryUp(const String& path) 
+    {
         return DirectoryByPath(path);
     }
 
@@ -414,13 +420,13 @@ namespace Cpl
 #endif
         };
 
-        if (createDirFunctor(path)) {
+        if (createDirFunctor(path)) 
             return true;
-        }
         const String startPath = path;
         String parent = Cpl::DirectoryUp(startPath);
 
-        do {
+        do 
+        {
             if (!Cpl::DirectoryExists(parent)) {
                 String newParent = Cpl::DirectoryUp(parent);
                 if (newParent == parent) {
@@ -460,7 +466,8 @@ namespace Cpl
     * \param [in] recursive - If true, scan subdirectories. false by default.
     * \return Paths of matching entries. Empty if directory does not exist.
     */
-    inline StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive = false) {
+    inline StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive = false) 
+    {
         std::list<String> names;
 #if CPL_FILE_USE_FILESYSTEM
         if (!Cpl::DirectoryExists(directory)) {
@@ -512,7 +519,8 @@ namespace Cpl
 
         queue.push(MakePath(directory, filter));
 
-        while (!queue.empty()){
+        while (!queue.empty())
+        {
             auto dir = std::move(queue.front());
             queue.pop();
 
@@ -697,7 +705,8 @@ namespace Cpl
     */
     CPL_INLINE String GetAbsolutePath(const String& path, const String& basePath = "")
     {
-        if (basePath.empty()) {
+        if (basePath.empty()) 
+        {
 #ifdef _WIN32
             std::array<char, MAX_PATH> buffer;
             const char* end = _fullpath(buffer.data(), path.c_str(), MAX_PATH);
@@ -710,7 +719,9 @@ namespace Cpl
 #else
 #error Not supported system
 #endif
-        } else {
+        } 
+        else 
+        {
 #ifdef CPL_FILE_USE_FILESYSTEM
             if (path.empty())
                 return path;
@@ -744,16 +755,16 @@ namespace Cpl
     */
     CPL_INLINE bool Copy(const String& src, const String& dst)
     {
-        if (src == dst) {
+        if (src == dst)
             return true;
-        }
-
 #ifdef CPL_FILE_USE_FILESYSTEM
-        try {
+        try 
+        {
             fs::copy(src, dst, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
             return true;
         }
-        catch (...) {
+        catch (...) 
+        {
             return false;
         }
 #elif _WIN32
@@ -774,7 +785,8 @@ namespace Cpl
             s.pFrom = srcc.c_str();;
             return SHFileOperationA(&s) == 0;
         }
-        catch (...){
+        catch (...)
+        {
         }
         return false;
 #elif __linux__
@@ -793,9 +805,8 @@ namespace Cpl
     */
     CPL_INLINE bool DeleteFile(const String& filename)
     {
-        if (!FileExists(filename)) {
+        if (!FileExists(filename)) 
             return false;
-        }
 #ifdef CPL_FILE_USE_FILESYSTEM
         std::error_code code;
         bool ret = fs::remove(filename, code);
@@ -807,7 +818,6 @@ namespace Cpl
 #else
 #error Not supported system
 #endif
-
     }
 
     /*! @ingroup cpl_file
@@ -818,12 +828,14 @@ namespace Cpl
     CPL_INLINE bool DeleteDirectory(const String& dir)
     {
 #ifdef CPL_FILE_USE_FILESYSTEM
-        try {
+        try 
+        {
             std::error_code code;
             auto ret = fs::remove_all(dir);
             return !code && ret != -1;
         }
-        catch (...) {
+        catch (...) 
+        {
         }
         return 0;
 #elif _WIN32
@@ -883,22 +895,23 @@ namespace Cpl
     * \param [out] size - Receives the file size in bytes when the call succeeds.
     * \return true if the file exists and its size was read, false otherwise.
     */
-    CPL_INLINE bool FileSize (const String & path, size_t& size) {
-        if (FileExists(path)) {
-            std::ifstream ifs;
-            ifs.open(path, std::ios::in | std::ios::binary);
-            if (!ifs.fail()) {
-                std::ifstream::pos_type pos = 0;
-                if (ifs.seekg(0, std::ios::end))
-                    pos = ifs.tellg();
-
-                size = pos;
-                return true;
-            }
-        }
-
-        return false;
-    }
+	CPL_INLINE bool FileSize(const String& path, size_t& size)
+	{
+		if (FileExists(path))
+		{
+			std::ifstream ifs;
+			ifs.open(path, std::ios::in | std::ios::binary);
+			if (!ifs.fail())
+			{
+				std::ifstream::pos_type pos = 0;
+				if (ifs.seekg(0, std::ios::end))
+					pos = ifs.tellg();
+				size = pos;
+				return true;
+			}
+		}
+		return false;
+	}
 
     /*! @ingroup cpl_file
     * \brief Sums the sizes of files in a directory.
@@ -908,103 +921,118 @@ namespace Cpl
     * \note On Windows and when std::filesystem is available the scan is recursive. On Linux
     *       without std::filesystem only the immediate directory entries are summed.
     */
-    CPL_INLINE bool DirectorySize (const String & path, size_t& size) {
-        size_t tsize = 0;
+	CPL_INLINE bool DirectorySize(const String& path, size_t& size)
+	{
+		size_t tsize = 0;
 #ifdef CPL_FILE_USE_FILESYSTEM
-        try {
-            if (!DirectoryExists(path))
-                return false;
+		try
+		{
+			if (!DirectoryExists(path))
+				return false;
 
-            fs::recursive_directory_iterator end_itr;
+			fs::recursive_directory_iterator end_itr;
 
-            for (fs::recursive_directory_iterator iter(path); iter != end_itr; ++iter ) {
-                if (!fs::is_directory(iter->status()) )
-                    tsize += fs::file_size(iter->path());
-            }
-        }
-        catch(...) {
-            return false;
-        }
+			for (fs::recursive_directory_iterator iter(path); iter != end_itr; ++iter)
+			{
+				if (!fs::is_directory(iter->status()))
+					tsize += fs::file_size(iter->path());
+			}
+		}
+		catch (...) {
+			return false;
+		}
 #elif _WIN32
-        ::WIN32_FIND_DATAA data;
-        HANDLE handle = NULL;
-        std::queue<String> queue;
-        const String filter = "*";
-        queue.push(path);
+		::WIN32_FIND_DATAA data;
+		HANDLE handle = NULL;
+		std::queue<String> queue;
+		const String filter = "*";
+		queue.push(path);
 
-        while (!queue.empty()) {
-            auto dir = std::move(queue.front());
-            queue.pop();
+		while (!queue.empty())
+		{
+			auto dir = std::move(queue.front());
+			queue.pop();
 
-            handle = FindFirstFileA(MakePath(dir, filter).c_str(), &data);
-            if (handle == INVALID_HANDLE_VALUE)
-                return false;
+			handle = FindFirstFileA(MakePath(dir, filter).c_str(), &data);
+			if (handle == INVALID_HANDLE_VALUE)
+				return false;
 
-            do {
-                // skip current directory and parent directory
-                if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0)) {
-                    if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY) {
-                        queue.push(Cpl::MakePath(dir, data.cFileName));
-                    } else
-                        tsize += (size_t) (data.nFileSizeHigh * MAXDWORD + data.nFileSizeLow);
-                }
+			do
+			{
+				// skip current directory and parent directory
+				if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0))
+				{
+					if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
+					{
+						queue.push(Cpl::MakePath(dir, data.cFileName));
+					}
+					else
+						tsize += (size_t)(data.nFileSizeHigh * MAXDWORD + data.nFileSizeLow);
+				}
 
-            } while (FindNextFileA(handle, &data));
-        }
+			} while (FindNextFileA(handle, &data));
+		}
 
-        FindClose(handle);
+		FindClose(handle);
 #elif __linux__
-        //https://stackoverflow.com/questions/1129499/how-to-get-the-size-of-a-dir-programatically-in-linux
-        DIR *d = opendir( path.c_str() );
-        if( d == NULL )
-            return false;
+		//https://stackoverflow.com/questions/1129499/how-to-get-the-size-of-a-dir-programatically-in-linux
+		DIR* d = opendir(path.c_str());
+		if (d == NULL)
+			return false;
 
-        struct dirent *de;
-        struct stat buf;
+		struct dirent* de;
+		struct stat buf;
 
-        for( de = readdir( d ); de != NULL; de = readdir( d ) ) {
-            int exists = stat( Cpl::MakePath(path, String(de->d_name)).c_str(), &buf );
+		for (de = readdir(d); de != NULL; de = readdir(d))
+		{
+			int exists = stat(Cpl::MakePath(path, String(de->d_name)).c_str(), &buf);
 
-            if( exists < 0 ) {
-                fprintf( stderr, "Cannot read file statistics for %s\n", de->d_name );
-            } else {
-                if (de->d_type == DT_REG)
-                    tsize += buf.st_size;
-            }
-        }
+			if (exists < 0)
+			{
+				fprintf(stderr, "Cannot read file statistics for %s\n", de->d_name);
+			}
+			else
+			{
+				if (de->d_type == DT_REG)
+					tsize += buf.st_size;
+			}
+		}
 
 #else
 #error Not supported system
 #endif
-        size = tsize;
-        return true;
-    }
+		size = tsize;
+		return true;
+	}
 
     /*! @ingroup cpl_file
     * \struct FileData
     * \brief In-memory buffer that holds file contents read by ReadFile.
     */
-    struct FileData {
+    struct FileData 
+    {
         /*!
         * \enum Type
         * \brief Storage format of the file buffer.
         */
-        enum class Type {
+        enum class Type 
+        {
             Binary,              //!< Raw file bytes with no extra terminator.
             BinaryNullTerminated //!< File bytes followed by an extra 0 byte.
         };
-
 
         /*!
         * \struct Error
         * \brief Result of ReadFile. Converts to true for NoError and PartitialRead.
         */
-        struct Error {
+        struct Error 
+        {
             /*!
             * \enum ReadFileError
             * \brief Status codes returned by ReadFile.
             */
-            enum ReadFileError {
+            enum ReadFileError 
+            {
                 NoError,         //!< The requested range was read completely.
                 PartitialRead,   //!< Only the first maxSize bytes were read.
                 FailedToOpen,    //!< The file could not be opened.
@@ -1026,10 +1054,10 @@ namespace Cpl
             * \brief Checks whether the read produced usable data.
             * \return true for NoError and PartitialRead, false for the failure codes.
             */
-            operator bool() const {
-                if (code == NoError || code == PartitialRead) {
+            operator bool() const 
+            {
+                if (code == NoError || code == PartitialRead)
                     return true;
-                }
                 return false;
             }
         };
@@ -1040,16 +1068,18 @@ namespace Cpl
         * \param [in] type - Buffer format. Binary by default.
         */
         FileData(Type type = Type::Binary)
-                : _type(type)
-                , _size(0)
-        {};
+            : _type(type)
+            , _size(0)
+        {
+        };
 
         /*!
         * \fn const char* data() const
         * \brief Returns a pointer to the buffer, or nullptr when the buffer is empty.
         * \return Pointer to size() bytes, plus a trailing 0 when type is BinaryNullTerminated.
         */
-        const char* data() const {
+        const char* data() const 
+        {
             if (_holder)
                 return reinterpret_cast<const char*>(_holder.get());
             else
@@ -1076,29 +1106,31 @@ namespace Cpl
         * \param [in] other - Buffer to move from.
         * \return Reference to this buffer.
         */
-        FileData& operator=(FileData&& other) {
+        FileData& operator=(FileData&& other) 
+        {
             this->_size = other._size;
             this->_type = other._type;
             this->_holder = std::move(other._holder);
-
             other._size = 0;
             other._type = Type::Binary;
-
             return *this;
         }
 
     private:
         FileData(size_t size, Type type)
-                : _type(type)
-                , _size(size)
+            : _type(type)
+            , _size(size)
         {
             if (size)
                 recreateHolder();
         }
 
-        bool recreateHolder() {
-            try {
-                if (_type == Type::BinaryNullTerminated) {
+        bool recreateHolder() 
+        {
+            try
+            {
+                if (_type == Type::BinaryNullTerminated) 
+                {
                     //_holder = std::make_unique<unsigned char[]>(_size + 1);
                     _holder = std::unique_ptr<unsigned char[]>(new unsigned char[_size + 1]);
                     _holder.get()[_size] = 0;
@@ -1128,21 +1160,25 @@ namespace Cpl
     * \param [in] recreate - If true, create or overwrite the file. If false, append. True by default.
     * \return -1 on success, 0 on failure.
     */
-    CPL_INLINE int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate = true) {
-        try {
+    CPL_INLINE int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate = true) 
+    {
+        try
+        {
             std::ofstream fs;
             auto fl = std::ios::out | std::ios::binary;
             if (!recreate)
                 fl |= std::ios::app;
 
             fs.open(filePath, fl);
-            if (!fs.fail()) {
+            if (!fs.fail()) 
+            {
                 fs.write(data, size);
                 fs.close();
                 return -1;
             }
         }
-        catch (...) {
+        catch (...) 
+        {
         }
 
         return 0;
@@ -1158,45 +1194,48 @@ namespace Cpl
     *         is larger than maxSize. Opening a directory returns FailedToRead on Linux and
     *         CommonFail on Windows. A missing path returns CommonFail.
     */
-    CPL_INLINE FileData::Error ReadFile(const String & path, FileData& out, size_t startPos = 0, size_t maxSize = 1 * 1024 * 1024 * 1024 /* 1 gb */) {
-        try {
+    CPL_INLINE FileData::Error ReadFile(const String & path, FileData& out, size_t startPos = 0, size_t maxSize = 1 * 1024 * 1024 * 1024 /* 1 gb */) 
+    {
+        try 
+        {
             std::ifstream ifs;
             ifs.open(path, std::ios::in | std::ios::binary);
             bool partial = false;
-            if (!ifs.fail()) {
-
-                if (startPos) {
-                    if (!ifs.seekg(startPos)) {
+            if (!ifs.fail()) 
+            {
+                if (startPos)
+                {
+                    if (!ifs.seekg(startPos)) 
                         return FileData::Error::FailedToGetInfo;
-                    }
                 }
 
-                if (!ifs.seekg(0, std::ios::end)) {
+                if (!ifs.seekg(0, std::ios::end))
                     return FileData::Error::FailedToGetInfo;
-                }
 
                 size_t end = ifs.tellg();
                 size_t size = end - startPos;
 
-                if ( size > maxSize) {
+                if ( size > maxSize) 
+                {
                     size = maxSize;
                     partial = true;
                 }
 
                 FileData readed(size, out._type);
 
-                if (size && ifs.seekg(startPos)) {
+                if (size && ifs.seekg(startPos)) 
+                {
                     ifs.read((char*) readed._holder.get(), readed.size());
-                    if (ifs.fail()) {
+                    if (ifs.fail())
                         return FileData::Error::FailedToRead;
-                    }
                 }
 
                 out = std::move(readed);
                 return partial ? FileData::Error::PartitialRead : FileData::Error::NoError;
             }
         }
-        catch (...) {
+        catch (...) 
+        {
         }
 
         return FileData::Error::CommonFail;
@@ -1248,14 +1287,18 @@ namespace Cpl
     * \param [in] path - File path.
     * \return true if an input stream to path is good, false otherwise.
     */
-    CPL_INLINE bool FileIsReadable(const String& path) {
-        try {
+    CPL_INLINE bool FileIsReadable(const String& path) 
+    {
+        try 
+        {
             std::ifstream file(path.c_str());
             const bool state = file.good();
             file.close();
             return state;
         }
-        catch (...) {}
+        catch (...) 
+        {
+        }
         return false;
     }
 
@@ -1265,12 +1308,12 @@ namespace Cpl
     * \return true if the file exists and can be opened for append. false if the file does not
     *         exist or is not writable.
     */
-    CPL_INLINE bool FileIsWritable(const String& path) {
-        try {
-            if (!FileExists(path)){
+    CPL_INLINE bool FileIsWritable(const String& path) 
+    {
+        try 
+        {
+            if (!FileExists(path))
                 return false;
-            }
-
             bool state = false;
             //Combination std::ios_base::in | std::ios_base::out does not create a file, try to open already exist
             std::fstream file(path.c_str(), std::ios_base::app | std::ios_base::out );
@@ -1280,12 +1323,13 @@ namespace Cpl
             }
             return state;
         }
-        catch (...) {}
+        catch (...) 
+        {
+        }
         return false;
     }
 
     /*          Deprecated block        */
-
 
     /*! @ingroup cpl_file
     * \brief Returns the last component of a path, including the extension.
@@ -1293,12 +1337,12 @@ namespace Cpl
     * \return Same result as FileNameByPath(path_).
     * \deprecated Use FileNameByPath instead.
     */
-    CPL_INLINE String GetNameByPath(const String& path_) {
+    CPL_INLINE String GetNameByPath(const String& path_) 
+    {
         static std::once_flag onceFlag;
         std::call_once ( onceFlag, [ ]{
             CPL_LOG(Warning, "Cpl::GetNameByPath is deprecated, will be removed soon, please use Cpl::FileNameByPath instead");
         } );
-
         return FileNameByPath(path_);
     }
 
@@ -1309,7 +1353,8 @@ namespace Cpl
     * \return Same result as Copy(src, dst).
     * \deprecated Use Copy instead.
     */
-    CPL_INLINE bool CopyDirectory(const String& src, const String& dst) {
+    CPL_INLINE bool CopyDirectory(const String& src, const String& dst) 
+    {
         static std::once_flag onceFlag;
         std::call_once ( onceFlag, [ ]{
             CPL_LOG(Warning, "Cpl::CopyDirectory is deprecated, will be removed soon, please use Cpl::Copy instead");
