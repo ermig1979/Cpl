@@ -51,14 +51,29 @@
 #endif
 
 #if defined(_MSC_VER) && _MSC_VER <= 1900
+/*! @ingroup cpl_file
+* \def CPL_FILE_USE_FILESYSTEM
+* \brief Filesystem backend used by the file helpers. 1 is experimental/TR2 filesystem, 2 is std::filesystem.
+*        Undefined when the Win32 or POSIX APIs are used instead.
+*/
 #define CPL_FILE_USE_FILESYSTEM 1
 #include <filesystem>
 namespace fs = std::tr2::sys;
 #elif (__cplusplus >= 201703L)
+/*! @ingroup cpl_file
+* \def CPL_FILE_USE_FILESYSTEM
+* \brief Filesystem backend used by the file helpers. 1 is experimental/TR2 filesystem, 2 is std::filesystem.
+*        Undefined when the Win32 or POSIX APIs are used instead.
+*/
 #define CPL_FILE_USE_FILESYSTEM 2
 #include <filesystem>
 namespace fs = std::filesystem;
 #elif (__cplusplus == 201402L)
+/*! @ingroup cpl_file
+* \def CPL_FILE_USE_FILESYSTEM
+* \brief Filesystem backend used by the file helpers. 1 is experimental/TR2 filesystem, 2 is std::filesystem.
+*        Undefined when the Win32 or POSIX APIs are used instead.
+*/
 #define CPL_FILE_USE_FILESYSTEM 1
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
@@ -100,6 +115,10 @@ namespace
 
 namespace Cpl
 {
+    /*! @ingroup cpl_file
+    * \brief Returns the platform directory separator.
+    * \return "\\" on Windows, "/" on Unix. An empty string on unsupported platforms.
+    */
     CPL_INLINE String FolderSeparator()
     {
 #ifdef _WIN32
@@ -112,6 +131,9 @@ namespace Cpl
 #endif
     }
 
+    /*! @ingroup cpl_file
+    * \brief Characters that ChangeExtension strips from a new extension: '<', '>', ':', '"', '/', '\\', '|', '?', '*' and ASCII codes 0-31.
+    */
     static const std::vector<char> forbiddenSymbols = [](){
         std::vector<char> temp = {'<', '>', ':', '"', '/', '\\', '|', '?', '*'};
         for (char ch= 0; ch < 32; ch++){
@@ -120,6 +142,12 @@ namespace Cpl
         return temp;
     }();
 
+    /*! @ingroup cpl_file
+    * \brief Removes trailing directory separators and spaces from a path.
+    * \param [in] path - File or directory path.
+    * \return path without a trailing FolderSeparator() or spaces. Unchanged if path is not longer
+    *         than the separator or does not end with a separator or space.
+    */
     CPL_INLINE String DirectoryPathRemoveAllLastDash(const String& path)
     {
         auto iter = path.rbegin();
@@ -139,6 +167,11 @@ namespace Cpl
         return path.substr(0, std::distance(iter, path.rend()));;
     }
 
+    /*! @ingroup cpl_file
+    * \brief Identifies the compiler family used to select a filesystem backend.
+    * \return 0 for GCC < 7 or Clang < 5; 1 for GCC <= 10 or C++ below 17; 2 for newer GCC/Clang
+    *         or C++17 and later; 3 for MSVC 2015 or older; 4 for other compilers.
+    */
     CPL_INLINE size_t CompilerType()
     {
 #if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
@@ -154,6 +187,11 @@ namespace Cpl
 #endif
     }
 
+    /*! @ingroup cpl_file
+    * \brief Identifies the filesystem API used by the file helpers.
+    * \return 2 for std::filesystem, 3 for experimental/TR2 filesystem, 1 for the Win32 API,
+    *         0 when neither filesystem nor Win32 is available.
+    */
     CPL_INLINE size_t FilesystemType()
     {
 #if CPL_FILE_USE_FILESYSTEM == 2
@@ -169,6 +207,12 @@ namespace Cpl
 
     namespace PathDetail
     {
+        /*! @ingroup cpl_file
+        * \brief Checks whether a path is a Windows drive root such as "C:" or "C:\\".
+        * \param [in] path - Path to test. Trailing separators are ignored.
+        * \return true on Windows when the stripped path is two characters and the second is ':'.
+        *         Always false on Linux.
+        */
         CPL_INLINE bool DirectoryIsDrive(const Cpl::String& path) 
         {
 #ifdef __linux__
@@ -184,6 +228,15 @@ namespace Cpl
         }
     }
 
+    /*! @ingroup cpl_file
+    * \brief Joins two path components with FolderSeparator() when needed.
+    * \tparam T - Type of the first component. Must be insertable into std::ostream.
+    * \tparam S - Type of the second component. Must be insertable into std::ostream.
+    * \param [in] a - Left path component.
+    * \param [in] b - Right path component.
+    * \return Concatenation of a and b. A separator is inserted when a is not empty and does not
+    *         already end with FolderSeparator().
+    */
     template<typename T, typename S>
     CPL_INLINE String MakePath(const T& a, const S& b)
     {
@@ -198,16 +251,27 @@ namespace Cpl
         return stream.str();
     }
 
+    /*! @ingroup cpl_file
+    * \brief Joins three or more path components from left to right.
+    * \tparam T - Type of the first component. Must be insertable into std::ostream.
+    * \tparam S - Type of the second component. Must be insertable into std::ostream.
+    * \tparam Ts - Types of the remaining components.
+    * \param [in] a - First path component.
+    * \param [in] b - Second path component.
+    * \param [in] args - Additional path components.
+    * \return Result of joining a and b, then joining that result with args.
+    */
     template<typename T, typename S, typename... Ts>
     CPL_INLINE String MakePath(const T& a, const S& b, const Ts&... args)
     {
         return MakePath(MakePath(a, b), args...);
     }
 
-    /*!
-    * \fn   String DirectoryByPath(const String& path);
-    * \brief Returns the directory of the file path or the parent directory of the directory path
-    * \param [in] path_ - The file or directory path
+    /*! @ingroup cpl_file
+    * \brief Returns the parent directory of a file or directory path.
+    * \param [in] path_ - File or directory path. Trailing separators are ignored.
+    * \return Directory that contains path_. For a Windows drive root such as "C:", returns the
+    *         drive with a trailing separator.
     */
     //TODO: maybe rename, check "." folder on linux
     CPL_INLINE String DirectoryByPath(const String& path_) {
@@ -220,34 +284,32 @@ namespace Cpl
         return substr;
     }
 
-    /*!
-    * \fn   String DirectoryUp(const String& path);
-    * \brief Returns the parent directory of the directory path
-    * \param [in] path - The directory path
+    /*! @ingroup cpl_file
+    * \brief Returns the parent directory of a path.
+    * \param [in] path - File or directory path.
+    * \return Same result as DirectoryByPath(path).
     */
     CPL_INLINE String DirectoryUp(const String& path) 
     {
         return DirectoryByPath(path);
     }
 
-    /*!
-    * \fn   String DirectoryDown(const String& format, const String& path);
-    * \brief Returns the path with one level deeper than than path with corresponding format.
-    *        For example, if format = "/usr/local/bin" and path = "/usr/", returns "/usr/local"
-    * \param [in] format - the format path
-    * \param [in] path - the current path
-    * \return the path one level deeper than the current path with corresponding format.
+    /*! @ingroup cpl_file
+    * \brief Returns the next directory along format that is one level deeper than path.
+    * \param [in] format - Full path that path is a prefix of, for example "/usr/local/bin".
+    * \param [in] path - Current prefix of format, for example "/usr".
+    * \return The next component of format after path. For format "/usr/local/bin" and path "/usr",
+    *         the result is "/usr/local".
     */
     CPL_INLINE String DirectoryDown(const String& format, const String& path) {
         size_t endPos = format.find(Cpl::FolderSeparator(), path.size() + Cpl::FolderSeparator().size());
         return format.substr(0, endPos);
     }
 
-    /*!
-    * \fn   bool FileExists(const String& path);
-    * \brief Checks if a file exists at the specified file path. Returns false for directory paths
-    * \param [in] filePath - file path to check
-    * \return true if file exists, false otherwise
+    /*! @ingroup cpl_file
+    * \brief Checks whether a regular file or symlink exists at filePath.
+    * \param [in] filePath - Path to test.
+    * \return true if a file exists at filePath. false if the path is a directory or does not exist.
     */
     CPL_INLINE bool FileExists(const String& filePath)
     {
@@ -268,7 +330,13 @@ namespace Cpl
 #endif
     }
 
-    // only $USER is currently supported
+    /*! @ingroup cpl_file
+    * \brief Replaces the "$USER" token in a path with the value of the USER environment variable.
+    * \param [in] path - Path that may contain "$USER".
+    * \return path with every "$USER" replaced by getenv("USER"), or path unchanged if USER is
+    *         missing or empty.
+    * \note Only the $USER token is supported.
+    */
     CPL_INLINE String SubstituteEnv(const String& path)
     {
 #ifdef _MSC_VER
@@ -292,11 +360,10 @@ namespace Cpl
         return path;
     }
 
-    /*!
-    * \fn   bool DirectoryExists(const String& path_);
-    * \brief Checks if a directory exists at the spicified path and return the result. Return false is path_ is a file path
-    * \param [in] path_ - directory path
-    * \return true if directory exits at the specified path, false otherwise
+    /*! @ingroup cpl_file
+    * \brief Checks whether a directory exists at the given path.
+    * \param [in] path_ - Path to test. Trailing separators are ignored.
+    * \return true if a directory exists at path_. false if the path is a file or does not exist.
     */
     CPL_INLINE bool DirectoryExists(const String& path_)
     {
@@ -323,10 +390,11 @@ namespace Cpl
 
     CPL_INLINE String DirectoryByPath(const String& path_);
 
-    /*!
-    * \fn  bool CreatePath(const String& path);
-    * \brief Creates the directory path recursively. Returns true if path_ was created.
-    * \param [in] path - path to create
+    /*! @ingroup cpl_file
+    * \brief Creates a directory path, including missing parent directories.
+    * \param [in] path - Directory path to create.
+    * \return true if path already exists as a directory or was created. false for a Windows drive
+    *         root that does not exist, or if creation fails.
     */
     CPL_INLINE bool CreatePath(const String& path)
     {
@@ -387,14 +455,16 @@ namespace Cpl
 #endif
     }
 
-    /*!
-    * \fn   StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive)
-    * \brief Observe the folder, return a list of all file/directory entrance
-    * \param [in] directory - the path to observe
-    * \param [in] filter - the mask, for example "*", "abc*"
-    * \param [in] files - do count files or do skip
-    * \param [in] directories - do count folders or do skip
-    * \param [in] recursive - do recursive observation
+    /*! @ingroup cpl_file
+    * \brief Lists files and/or directories in a folder that match a wildcard filter.
+    * \param [in] directory - Directory to scan.
+    * \param [in] filter - Wildcard mask applied to the entry name, for example "*" or "abc*".
+    *                      '?' matches one character, '*' matches any sequence. An empty filter
+    *                      matches every name.
+    * \param [in] files - If true, include regular files.
+    * \param [in] directories - If true, include directories. "." and ".." are skipped.
+    * \param [in] recursive - If true, scan subdirectories. false by default.
+    * \return Paths of matching entries. Empty if directory does not exist.
     */
     inline StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive = false) 
     {
@@ -506,6 +576,11 @@ namespace Cpl
         return names;
     }
 
+    /*! @ingroup cpl_file
+    * \brief Copies a list of strings into a sorted vector.
+    * \param [in] list - Source list, typically the result of GetFileList.
+    * \return Strings vector with the same elements, sorted in ascending order.
+    */
     CPL_INLINE Strings ToSortedVector(const StringList& list)
     {
         Strings vector;
@@ -515,10 +590,10 @@ namespace Cpl
         return vector;
     }
 
-    /*!
-    * \fn   String FileNameByPath(const String & path_)
-    * \brief Returns the filename (with extension) from the given file path
-    * \param [in] path_ - the path to the filename
+    /*! @ingroup cpl_file
+    * \brief Returns the last component of a path, including the extension.
+    * \param [in] path_ - File or directory path. Trailing separators are ignored.
+    * \return File or directory name after the last FolderSeparator().
     */
     CPL_INLINE String FileNameByPath(const String & path_)
     {
@@ -533,10 +608,11 @@ namespace Cpl
 #endif
     }
 
-    /*!
-    * \fn   String ExtensionByPath(const String& path)
-    * \brief Returns the filename extension from the given file path
-    * \param [in] path - the path to the filename
+    /*! @ingroup cpl_file
+    * \brief Returns the filename extension of a path, including the leading '.'.
+    * \param [in] path - File path.
+    * \return Substring from the last '.' of the filename, or an empty string when the filename
+    *         has no extension or the only '.' is at the start (for example ".gitignore").
     */
     CPL_INLINE String ExtensionByPath(const String& path)
     {
@@ -550,10 +626,11 @@ namespace Cpl
             return filename.substr(pos);
     }
 
-    /*!
-    * \fn   String RemoveExtension(const String& path)
-    * \brief Remove the extension from given filename path and return the result
-    * \param [in] path - the path to the filename
+    /*! @ingroup cpl_file
+    * \brief Returns a path with the last filename extension removed.
+    * \param [in] path - File path.
+    * \return path without the substring from the last '.'. Unchanged when there is no '.' or the
+    *         only '.' is at the start of path.
     */
     CPL_INLINE String RemoveExtension(const String& path)
     {
@@ -564,11 +641,14 @@ namespace Cpl
         return path.substr(0, last_sep);
     }
 
-    /*!
-    * \fn   String ChangeExtension(const String& path, const String& ext)
-    * \brief Change the extension of given filename path to ext
-    * \param [in] path - the path to the filename
-    * \param [in] ext - the new extension string
+    /*! @ingroup cpl_file
+    * \brief Replaces the filename extension of a path.
+    * \param [in] path - File path.
+    * \param [in] ext - New extension, with or without a leading '.'. Whitespace and characters
+    *                   listed in forbiddenSymbols are stripped. An empty result after stripping
+    *                   removes the existing extension.
+    * \return path with the new extension. Unchanged when the filename contains neither a letter
+    *         nor a digit (for example "." or "..").
     */
     CPL_INLINE String ChangeExtension(const String& path, const String& ext)
     {
@@ -614,12 +694,14 @@ namespace Cpl
         return MakePath(path.substr(0, filenamePos), filenameRemovedExtesion);
     }
 
-    /*!
-    * \fn   String GetAbsolutePath(const String& path)
-    * \brief Returns the absolute path corresponding to the given relative path. If basePath is empty, result will
-    *        be relative to cwd directory. Otherwise path is relative to basePath.
-    * \param [in] path      - relative path
-    * \param [in] basePath  - relative path base
+    /*! @ingroup cpl_file
+    * \brief Resolves a path to an absolute path.
+    * \param [in] path - Path to resolve. Returned unchanged when it is already absolute and basePath is not empty.
+    * \param [in] basePath - Base for a relative path. Empty by default, which resolves path against
+    *                        the current working directory. When not empty, a relative path is
+    *                        resolved against basePath if it is a directory, or against its parent
+    *                        if it is a file.
+    * \return Absolute path. On Linux, an empty string if realpath() fails when basePath is empty.
     */
     CPL_INLINE String GetAbsolutePath(const String& path, const String& basePath = "")
     {
@@ -665,11 +747,11 @@ namespace Cpl
         }
     }
 
-    /*!
-    * \fn   bool Copy(const String& src, const String& dst)
-    * \brief Copy recursively files/dirs. Return true if success
-    * \param [in] src - source path
-    * \param [in] dst - destination path
+    /*! @ingroup cpl_file
+    * \brief Copies a file or directory tree from src to dst, overwriting existing files.
+    * \param [in] src - Source file or directory.
+    * \param [in] dst - Destination path.
+    * \return true if src and dst are the same or the copy succeeded, false otherwise.
     */
     CPL_INLINE bool Copy(const String& src, const String& dst)
     {
@@ -715,10 +797,11 @@ namespace Cpl
 #endif
     }
 
-    /*!
-    * \fn   bool DeleteFile(const String& filename)
-    * \brief Deletes the file with specified file name. Returns true on success. If given filename is directory, do nothing and return false.
-    * \param [in] path - the file path
+    /*! @ingroup cpl_file
+    * \brief Deletes a regular file.
+    * \param [in] filename - File path.
+    * \return true if the file was deleted. false if filename does not exist, is a directory,
+    *         or deletion fails.
     */
     CPL_INLINE bool DeleteFile(const String& filename)
     {
@@ -737,10 +820,10 @@ namespace Cpl
 #endif
     }
 
-    /*!
-    * \fn   bool DeleteDirectory(const String& dir)
-    * \brief Deletes the directory with specified name. Returns true on success. If given path correspond to a file, do nothing and return false.
-    * \param [in] path - the file path
+    /*! @ingroup cpl_file
+    * \brief Deletes a directory and its contents recursively.
+    * \param [in] dir - Directory path.
+    * \return true if the directory was deleted, false otherwise.
     */
     CPL_INLINE bool DeleteDirectory(const String& dir)
     {
@@ -781,9 +864,10 @@ namespace Cpl
     //TODO:
     //CPL_INLINE bool EqualPath(const String& first, const String& second);
 
-    /*!
-    * \fn    String GetExecutableLocation()
-    * \brief Returns the executable location
+    /*! @ingroup cpl_file
+    * \brief Returns the directory that contains the current executable.
+    * \return Parent directory of the executable path. On Windows this is GetModuleFileNameA
+    *         without the file name. On Linux this is the directory of /proc/self/exe.
     */
     CPL_INLINE String GetExecutableLocation()
     {
@@ -805,12 +889,11 @@ namespace Cpl
         return retval;
     }
 
-    /*!
-    * \fn   bool FileSize(const String & path, size_t& size)
-    * \brief Read file size info and write it to size
-    * \param [in] path - the file path
-    * \param [out] size - size ref to write
-    * \return true if success
+    /*! @ingroup cpl_file
+    * \brief Reads the size of a file.
+    * \param [in] path - File path.
+    * \param [out] size - Receives the file size in bytes when the call succeeds.
+    * \return true if the file exists and its size was read, false otherwise.
     */
 	CPL_INLINE bool FileSize(const String& path, size_t& size)
 	{
@@ -830,12 +913,13 @@ namespace Cpl
 		return false;
 	}
 
-    /*!
-    * \fn   bool DirectorySize(const String & path, size_t& size)
-    * \brief Recursively read file size info of all files in directory and write it sum to size ref
-    * \param [in] path - the file path
-    * \param [out] size - size ref to write
-    * \return true if success
+    /*! @ingroup cpl_file
+    * \brief Sums the sizes of files in a directory.
+    * \param [in] path - Directory path.
+    * \param [out] size - Receives the total size in bytes when the call succeeds.
+    * \return true if the directory was scanned, false otherwise.
+    * \note On Windows and when std::filesystem is available the scan is recursive. On Linux
+    *       without std::filesystem only the immediate directory entries are summed.
     */
 	CPL_INLINE bool DirectorySize(const String& path, size_t& size)
 	{
@@ -921,29 +1005,55 @@ namespace Cpl
 		return true;
 	}
 
+    /*! @ingroup cpl_file
+    * \struct FileData
+    * \brief In-memory buffer that holds file contents read by ReadFile.
+    */
     struct FileData 
     {
+        /*!
+        * \enum Type
+        * \brief Storage format of the file buffer.
+        */
         enum class Type 
         {
-            Binary,
-            BinaryNullTerminated
+            Binary,              //!< Raw file bytes with no extra terminator.
+            BinaryNullTerminated //!< File bytes followed by an extra 0 byte.
         };
 
+        /*!
+        * \struct Error
+        * \brief Result of ReadFile. Converts to true for NoError and PartitialRead.
+        */
         struct Error 
         {
+            /*!
+            * \enum ReadFileError
+            * \brief Status codes returned by ReadFile.
+            */
             enum ReadFileError 
             {
-                NoError,
-                PartitialRead,
-                FailedToOpen,
-                FailedToRead,
-                FailedToGetInfo,
-                CommonFail
+                NoError,         //!< The requested range was read completely.
+                PartitialRead,   //!< Only the first maxSize bytes were read.
+                FailedToOpen,    //!< The file could not be opened.
+                FailedToRead,    //!< The file was opened but the read failed.
+                FailedToGetInfo, //!< File size or seek position could not be obtained.
+                CommonFail       //!< Unspecified failure, including a missing path.
             };
 
+            /*!
+            * \fn Error(Error::ReadFileError code_)
+            * \brief Stores a ReadFile status code.
+            * \param [in] code_ - Status to store.
+            */
             Error(Error::ReadFileError code_) : code(code_) {}
-            const ReadFileError code;
+            const ReadFileError code; //!< Status of the ReadFile call.
 
+            /*!
+            * \fn operator bool() const
+            * \brief Checks whether the read produced usable data.
+            * \return true for NoError and PartitialRead, false for the failure codes.
+            */
             operator bool() const 
             {
                 if (code == NoError || code == PartitialRead)
@@ -952,12 +1062,22 @@ namespace Cpl
             }
         };
 
+        /*!
+        * \fn FileData(Type type = Type::Binary)
+        * \brief Constructs an empty buffer with the given storage format.
+        * \param [in] type - Buffer format. Binary by default.
+        */
         FileData(Type type = Type::Binary)
             : _type(type)
             , _size(0)
         {
         };
 
+        /*!
+        * \fn const char* data() const
+        * \brief Returns a pointer to the buffer, or nullptr when the buffer is empty.
+        * \return Pointer to size() bytes, plus a trailing 0 when type is BinaryNullTerminated.
+        */
         const char* data() const 
         {
             if (_holder)
@@ -966,9 +1086,26 @@ namespace Cpl
                 return nullptr;
         }
 
+        /*!
+        * \fn size_t size() const
+        * \brief Returns the number of file bytes stored in the buffer.
+        * \return Byte count, not including the extra terminator of BinaryNullTerminated.
+        */
         size_t size() const { return _size; }
+
+        /*!
+        * \fn bool empty() const
+        * \brief Checks whether the buffer holds no data.
+        * \return true if data() is nullptr, false otherwise.
+        */
         bool empty() const { return !_holder.operator bool(); }
 
+        /*!
+        * \fn FileData& operator=(FileData&& other)
+        * \brief Moves the buffer from other and leaves other empty.
+        * \param [in] other - Buffer to move from.
+        * \return Reference to this buffer.
+        */
         FileData& operator=(FileData&& other) 
         {
             this->_size = other._size;
@@ -1015,14 +1152,13 @@ namespace Cpl
         friend FileData::Error ReadFile(const String & path, FileData& out, size_t startPos, size_t maxSize);
     };
 
-    /*!
-    * \fn   int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate)
-    * \brief Write data to file.
-    * \param [in] filePath - the file path
-    * \param [in] data - the data to write
-    * \param [in] size - the size of data to write
-    * \param [in] recreate - if true, file will be created/overwritten. If false data will be appended
-    * \return -1 in case of success, otherwise  0
+    /*! @ingroup cpl_file
+    * \brief Writes a byte range to a file.
+    * \param [in] filePath - Destination file path.
+    * \param [in] data - Bytes to write.
+    * \param [in] size - Number of bytes to write.
+    * \param [in] recreate - If true, create or overwrite the file. If false, append. True by default.
+    * \return -1 on success, 0 on failure.
     */
     CPL_INLINE int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate = true) 
     {
@@ -1048,14 +1184,15 @@ namespace Cpl
         return 0;
     }
 
-    /*!
-    * \fn   FileData::Error ReadFile(const String & path, FileData& out, size_t startPos, size_t maxSize)
-    * \brief Read data from file. If try to open directory, return codes can be different, ReadFileError::FailedToRead on linux, ReadFileError::CommonFail on Windows
-    * \param [in] path - the file path
-    * \param [out] out - the data holder
-    * \param [in] startPos - the shift to data read
-    * \param [in] maxSize - max size to read file
-    * \return FileData::Error state
+    /*! @ingroup cpl_file
+    * \brief Reads a file into an existing FileData buffer.
+    * \param [in] path - File path.
+    * \param [out] out - Destination buffer. Its Type selects Binary or BinaryNullTerminated storage.
+    * \param [in] startPos - Byte offset to start reading from. 0 by default.
+    * \param [in] maxSize - Maximum number of bytes to read. 1 GB by default.
+    * \return FileData::Error. NoError on a complete read, PartitialRead when the remaining file
+    *         is larger than maxSize. Opening a directory returns FailedToRead on Linux and
+    *         CommonFail on Windows. A missing path returns CommonFail.
     */
     CPL_INLINE FileData::Error ReadFile(const String & path, FileData& out, size_t startPos = 0, size_t maxSize = 1 * 1024 * 1024 * 1024 /* 1 gb */) 
     {
@@ -1104,6 +1241,13 @@ namespace Cpl
         return FileData::Error::CommonFail;
     }
 
+    /*! @ingroup cpl_file
+    * \brief Loads a file as a sequence of T values.
+    * \tparam T - Element type. The file size must be a multiple of sizeof(T) for a complete last element.
+    * \param [in] path - File path.
+    * \param [out] data - Destination resized to file_size / sizeof(T) and filled from the file.
+    * \return true if the file was opened and read, false otherwise.
+    */
     template<class T> CPL_INLINE bool LoadBinaryData(const String& path, std::vector<T>& data)
     {
         std::ifstream ifs(path.c_str(), std::ofstream::binary);
@@ -1120,6 +1264,13 @@ namespace Cpl
         return true;
     }
 
+    /*! @ingroup cpl_file
+    * \brief Writes a sequence of T values to a file as raw bytes.
+    * \tparam T - Element type.
+    * \param [in] data - Values to write.
+    * \param [in] path - Destination file path. The file is created or overwritten.
+    * \return true if the file was opened and written, false otherwise.
+    */
     template<class T> CPL_INLINE bool SaveBinaryData(const std::vector<T>& data, const String& path)
     {
         std::ofstream ofs(path.c_str(), std::ofstream::binary);
@@ -1131,6 +1282,11 @@ namespace Cpl
         return result;
     }
 
+    /*! @ingroup cpl_file
+    * \brief Checks whether a path can be opened for reading.
+    * \param [in] path - File path.
+    * \return true if an input stream to path is good, false otherwise.
+    */
     CPL_INLINE bool FileIsReadable(const String& path) 
     {
         try 
@@ -1146,6 +1302,12 @@ namespace Cpl
         return false;
     }
 
+    /*! @ingroup cpl_file
+    * \brief Checks whether an existing file can be opened for writing.
+    * \param [in] path - File path.
+    * \return true if the file exists and can be opened for append. false if the file does not
+    *         exist or is not writable.
+    */
     CPL_INLINE bool FileIsWritable(const String& path) 
     {
         try 
@@ -1169,6 +1331,12 @@ namespace Cpl
 
     /*          Deprecated block        */
 
+    /*! @ingroup cpl_file
+    * \brief Returns the last component of a path, including the extension.
+    * \param [in] path_ - File or directory path.
+    * \return Same result as FileNameByPath(path_).
+    * \deprecated Use FileNameByPath instead.
+    */
     CPL_INLINE String GetNameByPath(const String& path_) 
     {
         static std::once_flag onceFlag;
@@ -1178,6 +1346,13 @@ namespace Cpl
         return FileNameByPath(path_);
     }
 
+    /*! @ingroup cpl_file
+    * \brief Copies a file or directory tree from src to dst.
+    * \param [in] src - Source file or directory.
+    * \param [in] dst - Destination path.
+    * \return Same result as Copy(src, dst).
+    * \deprecated Use Copy instead.
+    */
     CPL_INLINE bool CopyDirectory(const String& src, const String& dst) 
     {
         static std::once_flag onceFlag;
