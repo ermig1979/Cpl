@@ -41,3 +41,8 @@
     @defgroup cpl_string String
     \short Cpl string conversion and manipulation functions.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_utils Utils
+    \short Cpl alignment, rounding and other utility functions.
+*/
