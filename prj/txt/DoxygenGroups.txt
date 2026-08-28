@@ -51,3 +51,8 @@
     @defgroup cpl_file File
     \short Cpl file and directory path functions.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_geometry Geometry
+    \short Cpl 2D point, rectangle and polygon functions.
+*/
