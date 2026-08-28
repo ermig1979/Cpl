@@ -120,7 +120,8 @@ namespace Cpl
         return temp;
     }();
 
-    CPL_INLINE String DirectoryPathRemoveAllLastDash(const String& path){
+    CPL_INLINE String DirectoryPathRemoveAllLastDash(const String& path)
+    {
         auto iter = path.rbegin();
         auto separator = FolderSeparator();
 
@@ -138,7 +139,8 @@ namespace Cpl
         return path.substr(0, std::distance(iter, path.rend()));;
     }
 
-    CPL_INLINE size_t CompilerType(){
+    CPL_INLINE size_t CompilerType()
+    {
 #if (defined(__GNUC__) && (__GNUC__ < 7) || ( defined(__clang__) &&  __clang_major__ < 5))
         return 0;
 #elif defined(__GNUC__) && (__GNUC__ <= 10 || __cplusplus < 201703L)
@@ -152,7 +154,8 @@ namespace Cpl
 #endif
     }
 
-    CPL_INLINE size_t FilesystemType(){
+    CPL_INLINE size_t FilesystemType()
+    {
 #if CPL_FILE_USE_FILESYSTEM == 2
         return 2;
 #elif CPL_FILE_USE_FILESYSTEM == 1
@@ -164,8 +167,10 @@ namespace Cpl
 #endif
     }
 
-    namespace PathDetail{
-        CPL_INLINE bool DirectoryIsDrive(const Cpl::String& path) {
+    namespace PathDetail
+    {
+        CPL_INLINE bool DirectoryIsDrive(const Cpl::String& path) 
+        {
 #ifdef __linux__
             return false;
 #elif _WIN32
@@ -199,11 +204,11 @@ namespace Cpl
         return MakePath(MakePath(a, b), args...);
     }
 
-/*!
-* \fn   String DirectoryByPath(const String& path);
-* \brief Returns the directory of the file path or the parent directory of the directory path
-* \param [in] path_ - The file or directory path
-*/
+    /*!
+    * \fn   String DirectoryByPath(const String& path);
+    * \brief Returns the directory of the file path or the parent directory of the directory path
+    * \param [in] path_ - The file or directory path
+    */
     //TODO: maybe rename, check "." folder on linux
     CPL_INLINE String DirectoryByPath(const String& path_) {
         const String path = DirectoryPathRemoveAllLastDash(path_);
@@ -215,34 +220,35 @@ namespace Cpl
         return substr;
     }
 
-/*!
-* \fn   String DirectoryUp(const String& path);
-* \brief Returns the parent directory of the directory path
-* \param [in] path - The directory path
-*/
-    CPL_INLINE String DirectoryUp(const String& path) {
+    /*!
+    * \fn   String DirectoryUp(const String& path);
+    * \brief Returns the parent directory of the directory path
+    * \param [in] path - The directory path
+    */
+    CPL_INLINE String DirectoryUp(const String& path) 
+    {
         return DirectoryByPath(path);
     }
 
-/*!
-* \fn   String DirectoryDown(const String& format, const String& path);
-* \brief Returns the path with one level deeper than than path with corresponding format.
-*        For example, if format = "/usr/local/bin" and path = "/usr/", returns "/usr/local"
-* \param [in] format - the format path
-* \param [in] path - the current path
-* \return the path one level deeper than the current path with corresponding format.
-*/
+    /*!
+    * \fn   String DirectoryDown(const String& format, const String& path);
+    * \brief Returns the path with one level deeper than than path with corresponding format.
+    *        For example, if format = "/usr/local/bin" and path = "/usr/", returns "/usr/local"
+    * \param [in] format - the format path
+    * \param [in] path - the current path
+    * \return the path one level deeper than the current path with corresponding format.
+    */
     CPL_INLINE String DirectoryDown(const String& format, const String& path) {
         size_t endPos = format.find(Cpl::FolderSeparator(), path.size() + Cpl::FolderSeparator().size());
         return format.substr(0, endPos);
     }
 
-/*!
-* \fn   bool FileExists(const String& path);
-* \brief Checks if a file exists at the specified file path. Returns false for directory paths
-* \param [in] filePath - file path to check
-* \return true if file exists, false otherwise
-*/
+    /*!
+    * \fn   bool FileExists(const String& path);
+    * \brief Checks if a file exists at the specified file path. Returns false for directory paths
+    * \param [in] filePath - file path to check
+    * \return true if file exists, false otherwise
+    */
     CPL_INLINE bool FileExists(const String& filePath)
     {
 #ifdef CPL_FILE_USE_FILESYSTEM
@@ -286,12 +292,12 @@ namespace Cpl
         return path;
     }
 
-/*!
-* \fn   bool DirectoryExists(const String& path_);
-* \brief Checks if a directory exists at the spicified path and return the result. Return false is path_ is a file path
-* \param [in] path_ - directory path
-* \return true if directory exits at the specified path, false otherwise
-*/
+    /*!
+    * \fn   bool DirectoryExists(const String& path_);
+    * \brief Checks if a directory exists at the spicified path and return the result. Return false is path_ is a file path
+    * \param [in] path_ - directory path
+    * \return true if directory exits at the specified path, false otherwise
+    */
     CPL_INLINE bool DirectoryExists(const String& path_)
     {
         const String path = DirectoryPathRemoveAllLastDash(path_);
@@ -317,11 +323,11 @@ namespace Cpl
 
     CPL_INLINE String DirectoryByPath(const String& path_);
 
-/*!
-* \fn  bool CreatePath(const String& path);
-* \brief Creates the directory path recursively. Returns true if path_ was created.
-* \param [in] path - path to create
-*/
+    /*!
+    * \fn  bool CreatePath(const String& path);
+    * \brief Creates the directory path recursively. Returns true if path_ was created.
+    * \param [in] path - path to create
+    */
     CPL_INLINE bool CreatePath(const String& path)
     {
         if (DirectoryExists(path))
@@ -346,13 +352,13 @@ namespace Cpl
 #endif
         };
 
-        if (createDirFunctor(path)) {
+        if (createDirFunctor(path)) 
             return true;
-        }
         const String startPath = path;
         String parent = Cpl::DirectoryUp(startPath);
 
-        do {
+        do 
+        {
             if (!Cpl::DirectoryExists(parent)) {
                 String newParent = Cpl::DirectoryUp(parent);
                 if (newParent == parent) {
@@ -381,16 +387,17 @@ namespace Cpl
 #endif
     }
 
-/*!
-* \fn   StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive)
-* \brief Observe the folder, return a list of all file/directory entrance
-* \param [in] directory - the path to observe
-* \param [in] filter - the mask, for example "*", "abc*"
-* \param [in] files - do count files or do skip
-* \param [in] directories - do count folders or do skip
-* \param [in] recursive - do recursive observation
-*/
-    inline StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive = false) {
+    /*!
+    * \fn   StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive)
+    * \brief Observe the folder, return a list of all file/directory entrance
+    * \param [in] directory - the path to observe
+    * \param [in] filter - the mask, for example "*", "abc*"
+    * \param [in] files - do count files or do skip
+    * \param [in] directories - do count folders or do skip
+    * \param [in] recursive - do recursive observation
+    */
+    inline StringList GetFileList(const String& directory, String filter, bool files, bool directories, bool recursive = false) 
+    {
         std::list<String> names;
 #if CPL_FILE_USE_FILESYSTEM
         if (!Cpl::DirectoryExists(directory)) {
@@ -442,7 +449,8 @@ namespace Cpl
 
         queue.push(MakePath(directory, filter));
 
-        while (!queue.empty()){
+        while (!queue.empty())
+        {
             auto dir = std::move(queue.front());
             queue.pop();
 
@@ -507,11 +515,11 @@ namespace Cpl
         return vector;
     }
 
-/*!
-* \fn   String FileNameByPath(const String & path_)
-* \brief Returns the filename (with extension) from the given file path
-* \param [in] path_ - the path to the filename
-*/
+    /*!
+    * \fn   String FileNameByPath(const String & path_)
+    * \brief Returns the filename (with extension) from the given file path
+    * \param [in] path_ - the path to the filename
+    */
     CPL_INLINE String FileNameByPath(const String & path_)
     {
         const String path = DirectoryPathRemoveAllLastDash(path_);
@@ -525,11 +533,11 @@ namespace Cpl
 #endif
     }
 
-/*!
-* \fn   String ExtensionByPath(const String& path)
-* \brief Returns the filename extension from the given file path
-* \param [in] path - the path to the filename
-*/
+    /*!
+    * \fn   String ExtensionByPath(const String& path)
+    * \brief Returns the filename extension from the given file path
+    * \param [in] path - the path to the filename
+    */
     CPL_INLINE String ExtensionByPath(const String& path)
     {
         auto filename = FileNameByPath(path);
@@ -542,11 +550,11 @@ namespace Cpl
             return filename.substr(pos);
     }
 
-/*!
-* \fn   String RemoveExtension(const String& path)
-* \brief Remove the extension from given filename path and return the result
-* \param [in] path - the path to the filename
-*/
+    /*!
+    * \fn   String RemoveExtension(const String& path)
+    * \brief Remove the extension from given filename path and return the result
+    * \param [in] path - the path to the filename
+    */
     CPL_INLINE String RemoveExtension(const String& path)
     {
         size_t last_sep = (size_t) path.find_last_of(".");
@@ -556,13 +564,12 @@ namespace Cpl
         return path.substr(0, last_sep);
     }
 
-/*!
-* \fn   String ChangeExtension(const String& path, const String& ext)
-* \brief Change the extension of given filename path to ext
-* \param [in] path - the path to the filename
-* \param [in] ext - the new extension string
-*/
-
+    /*!
+    * \fn   String ChangeExtension(const String& path, const String& ext)
+    * \brief Change the extension of given filename path to ext
+    * \param [in] path - the path to the filename
+    * \param [in] ext - the new extension string
+    */
     CPL_INLINE String ChangeExtension(const String& path, const String& ext)
     {
         auto filenamePos = path.find_last_of(Cpl::FolderSeparator());
@@ -607,17 +614,17 @@ namespace Cpl
         return MakePath(path.substr(0, filenamePos), filenameRemovedExtesion);
     }
 
-/*!
-* \fn   String GetAbsolutePath(const String& path)
-* \brief Returns the absolute path corresponding to the given relative path. If basePath is empty, result will
-*        be relative to cwd directory. Otherwise path is relative to basePath.
-* \param [in] path      - relative path
-* \param [in] basePath  - relative path base
-*/
-
+    /*!
+    * \fn   String GetAbsolutePath(const String& path)
+    * \brief Returns the absolute path corresponding to the given relative path. If basePath is empty, result will
+    *        be relative to cwd directory. Otherwise path is relative to basePath.
+    * \param [in] path      - relative path
+    * \param [in] basePath  - relative path base
+    */
     CPL_INLINE String GetAbsolutePath(const String& path, const String& basePath = "")
     {
-        if (basePath.empty()) {
+        if (basePath.empty()) 
+        {
 #ifdef _WIN32
             std::array<char, MAX_PATH> buffer;
             const char* end = _fullpath(buffer.data(), path.c_str(), MAX_PATH);
@@ -630,7 +637,9 @@ namespace Cpl
 #else
 #error Not supported system
 #endif
-        } else {
+        } 
+        else 
+        {
 #ifdef CPL_FILE_USE_FILESYSTEM
             if (path.empty())
                 return path;
@@ -656,25 +665,24 @@ namespace Cpl
         }
     }
 
-/*!
-* \fn   bool Copy(const String& src, const String& dst)
-* \brief Copy recursively files/dirs. Return true if success
-* \param [in] src - source path
-* \param [in] dst - destination path
-*/
-
+    /*!
+    * \fn   bool Copy(const String& src, const String& dst)
+    * \brief Copy recursively files/dirs. Return true if success
+    * \param [in] src - source path
+    * \param [in] dst - destination path
+    */
     CPL_INLINE bool Copy(const String& src, const String& dst)
     {
-        if (src == dst) {
+        if (src == dst)
             return true;
-        }
-
 #ifdef CPL_FILE_USE_FILESYSTEM
-        try {
+        try 
+        {
             fs::copy(src, dst, fs::copy_options::recursive | fs::copy_options::overwrite_existing);
             return true;
         }
-        catch (...) {
+        catch (...) 
+        {
             return false;
         }
 #elif _WIN32
@@ -695,7 +703,8 @@ namespace Cpl
             s.pFrom = srcc.c_str();;
             return SHFileOperationA(&s) == 0;
         }
-        catch (...){
+        catch (...)
+        {
         }
         return false;
 #elif __linux__
@@ -706,16 +715,15 @@ namespace Cpl
 #endif
     }
 
-/*!
-* \fn   bool DeleteFile(const String& filename)
-* \brief Deletes the file with specified file name. Returns true on success. If given filename is directory, do nothing and return false.
-* \param [in] path - the file path
-*/
+    /*!
+    * \fn   bool DeleteFile(const String& filename)
+    * \brief Deletes the file with specified file name. Returns true on success. If given filename is directory, do nothing and return false.
+    * \param [in] path - the file path
+    */
     CPL_INLINE bool DeleteFile(const String& filename)
     {
-        if (!FileExists(filename)) {
+        if (!FileExists(filename)) 
             return false;
-        }
 #ifdef CPL_FILE_USE_FILESYSTEM
         std::error_code code;
         bool ret = fs::remove(filename, code);
@@ -727,23 +735,24 @@ namespace Cpl
 #else
 #error Not supported system
 #endif
-
     }
 
-/*!
-* \fn   bool DeleteDirectory(const String& dir)
-* \brief Deletes the directory with specified name. Returns true on success. If given path correspond to a file, do nothing and return false.
-* \param [in] path - the file path
-*/
+    /*!
+    * \fn   bool DeleteDirectory(const String& dir)
+    * \brief Deletes the directory with specified name. Returns true on success. If given path correspond to a file, do nothing and return false.
+    * \param [in] path - the file path
+    */
     CPL_INLINE bool DeleteDirectory(const String& dir)
     {
 #ifdef CPL_FILE_USE_FILESYSTEM
-        try {
+        try 
+        {
             std::error_code code;
             auto ret = fs::remove_all(dir);
             return !code && ret != -1;
         }
-        catch (...) {
+        catch (...) 
+        {
         }
         return 0;
 #elif _WIN32
@@ -772,10 +781,10 @@ namespace Cpl
     //TODO:
     //CPL_INLINE bool EqualPath(const String& first, const String& second);
 
-/*!
-* \fn    String GetExecutableLocation()
-* \brief Returns the executable location
-*/
+    /*!
+    * \fn    String GetExecutableLocation()
+    * \brief Returns the executable location
+    */
     CPL_INLINE String GetExecutableLocation()
     {
 #if _WIN32
@@ -796,118 +805,134 @@ namespace Cpl
         return retval;
     }
 
-/*!
-* \fn   bool FileSize(const String & path, size_t& size)
-* \brief Read file size info and write it to size
-* \param [in] path - the file path
-* \param [out] size - size ref to write
-* \return true if success
-*/
-    CPL_INLINE bool FileSize (const String & path, size_t& size) {
-        if (FileExists(path)) {
-            std::ifstream ifs;
-            ifs.open(path, std::ios::in | std::ios::binary);
-            if (!ifs.fail()) {
-                std::ifstream::pos_type pos = 0;
-                if (ifs.seekg(0, std::ios::end))
-                    pos = ifs.tellg();
+    /*!
+    * \fn   bool FileSize(const String & path, size_t& size)
+    * \brief Read file size info and write it to size
+    * \param [in] path - the file path
+    * \param [out] size - size ref to write
+    * \return true if success
+    */
+	CPL_INLINE bool FileSize(const String& path, size_t& size)
+	{
+		if (FileExists(path))
+		{
+			std::ifstream ifs;
+			ifs.open(path, std::ios::in | std::ios::binary);
+			if (!ifs.fail())
+			{
+				std::ifstream::pos_type pos = 0;
+				if (ifs.seekg(0, std::ios::end))
+					pos = ifs.tellg();
+				size = pos;
+				return true;
+			}
+		}
+		return false;
+	}
 
-                size = pos;
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-/*!
-* \fn   bool DirectorySize(const String & path, size_t& size)
-* \brief Recursively read file size info of all files in directory and write it sum to size ref
-* \param [in] path - the file path
-* \param [out] size - size ref to write
-* \return true if success
-*/
-    CPL_INLINE bool DirectorySize (const String & path, size_t& size) {
-        size_t tsize = 0;
+    /*!
+    * \fn   bool DirectorySize(const String & path, size_t& size)
+    * \brief Recursively read file size info of all files in directory and write it sum to size ref
+    * \param [in] path - the file path
+    * \param [out] size - size ref to write
+    * \return true if success
+    */
+	CPL_INLINE bool DirectorySize(const String& path, size_t& size)
+	{
+		size_t tsize = 0;
 #ifdef CPL_FILE_USE_FILESYSTEM
-        try {
-            if (!DirectoryExists(path))
-                return false;
+		try
+		{
+			if (!DirectoryExists(path))
+				return false;
 
-            fs::recursive_directory_iterator end_itr;
+			fs::recursive_directory_iterator end_itr;
 
-            for (fs::recursive_directory_iterator iter(path); iter != end_itr; ++iter ) {
-                if (!fs::is_directory(iter->status()) )
-                    tsize += fs::file_size(iter->path());
-            }
-        }
-        catch(...) {
-            return false;
-        }
+			for (fs::recursive_directory_iterator iter(path); iter != end_itr; ++iter)
+			{
+				if (!fs::is_directory(iter->status()))
+					tsize += fs::file_size(iter->path());
+			}
+		}
+		catch (...) {
+			return false;
+		}
 #elif _WIN32
-        ::WIN32_FIND_DATAA data;
-        HANDLE handle = NULL;
-        std::queue<String> queue;
-        const String filter = "*";
-        queue.push(path);
+		::WIN32_FIND_DATAA data;
+		HANDLE handle = NULL;
+		std::queue<String> queue;
+		const String filter = "*";
+		queue.push(path);
 
-        while (!queue.empty()) {
-            auto dir = std::move(queue.front());
-            queue.pop();
+		while (!queue.empty())
+		{
+			auto dir = std::move(queue.front());
+			queue.pop();
 
-            handle = FindFirstFileA(MakePath(dir, filter).c_str(), &data);
-            if (handle == INVALID_HANDLE_VALUE)
-                return false;
+			handle = FindFirstFileA(MakePath(dir, filter).c_str(), &data);
+			if (handle == INVALID_HANDLE_VALUE)
+				return false;
 
-            do {
-                // skip current directory and parent directory
-                if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0)) {
-                    if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY) {
-                        queue.push(Cpl::MakePath(dir, data.cFileName));
-                    } else
-                        tsize += (size_t) (data.nFileSizeHigh * MAXDWORD + data.nFileSizeLow);
-                }
+			do
+			{
+				// skip current directory and parent directory
+				if ((strcmp(data.cFileName, ".") != 0 && strcmp(data.cFileName, "..") != 0))
+				{
+					if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
+					{
+						queue.push(Cpl::MakePath(dir, data.cFileName));
+					}
+					else
+						tsize += (size_t)(data.nFileSizeHigh * MAXDWORD + data.nFileSizeLow);
+				}
 
-            } while (FindNextFileA(handle, &data));
-        }
+			} while (FindNextFileA(handle, &data));
+		}
 
-        FindClose(handle);
+		FindClose(handle);
 #elif __linux__
-        //https://stackoverflow.com/questions/1129499/how-to-get-the-size-of-a-dir-programatically-in-linux
-        DIR *d = opendir( path.c_str() );
-        if( d == NULL )
-            return false;
+		//https://stackoverflow.com/questions/1129499/how-to-get-the-size-of-a-dir-programatically-in-linux
+		DIR* d = opendir(path.c_str());
+		if (d == NULL)
+			return false;
 
-        struct dirent *de;
-        struct stat buf;
+		struct dirent* de;
+		struct stat buf;
 
-        for( de = readdir( d ); de != NULL; de = readdir( d ) ) {
-            int exists = stat( Cpl::MakePath(path, String(de->d_name)).c_str(), &buf );
+		for (de = readdir(d); de != NULL; de = readdir(d))
+		{
+			int exists = stat(Cpl::MakePath(path, String(de->d_name)).c_str(), &buf);
 
-            if( exists < 0 ) {
-                fprintf( stderr, "Cannot read file statistics for %s\n", de->d_name );
-            } else {
-                if (de->d_type == DT_REG)
-                    tsize += buf.st_size;
-            }
-        }
+			if (exists < 0)
+			{
+				fprintf(stderr, "Cannot read file statistics for %s\n", de->d_name);
+			}
+			else
+			{
+				if (de->d_type == DT_REG)
+					tsize += buf.st_size;
+			}
+		}
 
 #else
 #error Not supported system
 #endif
-        size = tsize;
-        return true;
-    }
+		size = tsize;
+		return true;
+	}
 
-    struct FileData {
-        enum class Type {
+    struct FileData 
+    {
+        enum class Type 
+        {
             Binary,
             BinaryNullTerminated
         };
 
-
-        struct Error {
-            enum ReadFileError {
+        struct Error 
+        {
+            enum ReadFileError 
+            {
                 NoError,
                 PartitialRead,
                 FailedToOpen,
@@ -919,20 +944,22 @@ namespace Cpl
             Error(Error::ReadFileError code_) : code(code_) {}
             const ReadFileError code;
 
-            operator bool() const {
-                if (code == NoError || code == PartitialRead) {
+            operator bool() const 
+            {
+                if (code == NoError || code == PartitialRead)
                     return true;
-                }
                 return false;
             }
         };
 
         FileData(Type type = Type::Binary)
-                : _type(type)
-                , _size(0)
-        {};
+            : _type(type)
+            , _size(0)
+        {
+        };
 
-        const char* data() const {
+        const char* data() const 
+        {
             if (_holder)
                 return reinterpret_cast<const char*>(_holder.get());
             else
@@ -942,29 +969,31 @@ namespace Cpl
         size_t size() const { return _size; }
         bool empty() const { return !_holder.operator bool(); }
 
-        FileData& operator=(FileData&& other) {
+        FileData& operator=(FileData&& other) 
+        {
             this->_size = other._size;
             this->_type = other._type;
             this->_holder = std::move(other._holder);
-
             other._size = 0;
             other._type = Type::Binary;
-
             return *this;
         }
 
     private:
         FileData(size_t size, Type type)
-                : _type(type)
-                , _size(size)
+            : _type(type)
+            , _size(size)
         {
             if (size)
                 recreateHolder();
         }
 
-        bool recreateHolder() {
-            try {
-                if (_type == Type::BinaryNullTerminated) {
+        bool recreateHolder() 
+        {
+            try
+            {
+                if (_type == Type::BinaryNullTerminated) 
+                {
                     //_holder = std::make_unique<unsigned char[]>(_size + 1);
                     _holder = std::unique_ptr<unsigned char[]>(new unsigned char[_size + 1]);
                     _holder.get()[_size] = 0;
@@ -986,83 +1015,90 @@ namespace Cpl
         friend FileData::Error ReadFile(const String & path, FileData& out, size_t startPos, size_t maxSize);
     };
 
-/*!
-* \fn   int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate)
-* \brief Write data to file.
-* \param [in] filePath - the file path
-* \param [in] data - the data to write
-* \param [in] size - the size of data to write
-* \param [in] recreate - if true, file will be created/overwritten. If false data will be appended
-* \return -1 in case of success, otherwise  0
-*/
-    CPL_INLINE int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate = true) {
-        try {
+    /*!
+    * \fn   int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate)
+    * \brief Write data to file.
+    * \param [in] filePath - the file path
+    * \param [in] data - the data to write
+    * \param [in] size - the size of data to write
+    * \param [in] recreate - if true, file will be created/overwritten. If false data will be appended
+    * \return -1 in case of success, otherwise  0
+    */
+    CPL_INLINE int WriteToFile(const String & filePath, const char* data, size_t size, bool recreate = true) 
+    {
+        try
+        {
             std::ofstream fs;
             auto fl = std::ios::out | std::ios::binary;
             if (!recreate)
                 fl |= std::ios::app;
 
             fs.open(filePath, fl);
-            if (!fs.fail()) {
+            if (!fs.fail()) 
+            {
                 fs.write(data, size);
                 fs.close();
                 return -1;
             }
         }
-        catch (...) {
+        catch (...) 
+        {
         }
 
         return 0;
     }
 
-/*!
-* \fn   FileData::Error ReadFile(const String & path, FileData& out, size_t startPos, size_t maxSize)
-* \brief Read data from file. If try to open directory, return codes can be different, ReadFileError::FailedToRead on linux, ReadFileError::CommonFail on Windows
-* \param [in] path - the file path
-* \param [out] out - the data holder
-* \param [in] startPos - the shift to data read
-* \param [in] maxSize - max size to read file
-* \return FileData::Error state
-*/
-    CPL_INLINE FileData::Error ReadFile(const String & path, FileData& out, size_t startPos = 0, size_t maxSize = 1 * 1024 * 1024 * 1024 /* 1 gb */) {
-        try {
+    /*!
+    * \fn   FileData::Error ReadFile(const String & path, FileData& out, size_t startPos, size_t maxSize)
+    * \brief Read data from file. If try to open directory, return codes can be different, ReadFileError::FailedToRead on linux, ReadFileError::CommonFail on Windows
+    * \param [in] path - the file path
+    * \param [out] out - the data holder
+    * \param [in] startPos - the shift to data read
+    * \param [in] maxSize - max size to read file
+    * \return FileData::Error state
+    */
+    CPL_INLINE FileData::Error ReadFile(const String & path, FileData& out, size_t startPos = 0, size_t maxSize = 1 * 1024 * 1024 * 1024 /* 1 gb */) 
+    {
+        try 
+        {
             std::ifstream ifs;
             ifs.open(path, std::ios::in | std::ios::binary);
             bool partial = false;
-            if (!ifs.fail()) {
-
-                if (startPos) {
-                    if (!ifs.seekg(startPos)) {
+            if (!ifs.fail()) 
+            {
+                if (startPos)
+                {
+                    if (!ifs.seekg(startPos)) 
                         return FileData::Error::FailedToGetInfo;
-                    }
                 }
 
-                if (!ifs.seekg(0, std::ios::end)) {
+                if (!ifs.seekg(0, std::ios::end))
                     return FileData::Error::FailedToGetInfo;
-                }
 
                 size_t end = ifs.tellg();
                 size_t size = end - startPos;
 
-                if ( size > maxSize) {
+                if ( size > maxSize) 
+                {
                     size = maxSize;
                     partial = true;
                 }
 
                 FileData readed(size, out._type);
 
-                if (size && ifs.seekg(startPos)) {
+                if (size && ifs.seekg(startPos)) 
+                {
                     ifs.read((char*) readed._holder.get(), readed.size());
-                    if (ifs.fail()) {
+                    if (ifs.fail())
                         return FileData::Error::FailedToRead;
-                    }
                 }
 
                 out = std::move(readed);
                 return partial ? FileData::Error::PartitialRead : FileData::Error::NoError;
             }
         }
-        catch (...) {
+        catch (...) 
+        {
         }
 
         return FileData::Error::CommonFail;
@@ -1095,23 +1131,27 @@ namespace Cpl
         return result;
     }
 
-    CPL_INLINE bool FileIsReadable(const String& path) {
-        try {
+    CPL_INLINE bool FileIsReadable(const String& path) 
+    {
+        try 
+        {
             std::ifstream file(path.c_str());
             const bool state = file.good();
             file.close();
             return state;
         }
-        catch (...) {}
+        catch (...) 
+        {
+        }
         return false;
     }
 
-    CPL_INLINE bool FileIsWritable(const String& path) {
-        try {
-            if (!FileExists(path)){
+    CPL_INLINE bool FileIsWritable(const String& path) 
+    {
+        try 
+        {
+            if (!FileExists(path))
                 return false;
-            }
-
             bool state = false;
             //Combination std::ios_base::in | std::ios_base::out does not create a file, try to open already exist
             std::fstream file(path.c_str(), std::ios_base::app | std::ios_base::out );
@@ -1121,23 +1161,25 @@ namespace Cpl
             }
             return state;
         }
-        catch (...) {}
+        catch (...) 
+        {
+        }
         return false;
     }
 
     /*          Deprecated block        */
 
-
-    CPL_INLINE String GetNameByPath(const String& path_) {
+    CPL_INLINE String GetNameByPath(const String& path_) 
+    {
         static std::once_flag onceFlag;
         std::call_once ( onceFlag, [ ]{
             CPL_LOG(Warning, "Cpl::GetNameByPath is deprecated, will be removed soon, please use Cpl::FileNameByPath instead");
         } );
-
         return FileNameByPath(path_);
     }
 
-    CPL_INLINE bool CopyDirectory(const String& src, const String& dst) {
+    CPL_INLINE bool CopyDirectory(const String& src, const String& dst) 
+    {
         static std::once_flag onceFlag;
         std::call_once ( onceFlag, [ ]{
             CPL_LOG(Warning, "Cpl::CopyDirectory is deprecated, will be removed soon, please use Cpl::Copy instead");
