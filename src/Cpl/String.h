@@ -32,6 +32,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 
 #if _WIN32
