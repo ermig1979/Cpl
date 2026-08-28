@@ -26,12 +26,14 @@
 
 #include "Cpl/Time.h"
 
+#include <cstdint>
+
 namespace Cpl
 {
     /*! @ingroup cpl_utils
     * \brief Rounds a size up to a multiple of the given alignment.
     * \param [in] size - Value to align.
-    * \param [in] align - Alignment in bytes. Must be a power of two.
+    * \param [in] align - Alignment. Must be a power of two.
     * \return Smallest multiple of align that is greater than or equal to size.
     */
     CPL_INLINE size_t AlignHi(size_t size, size_t align)
@@ -42,7 +44,7 @@ namespace Cpl
     /*! @ingroup cpl_utils
     * \brief Rounds a size down to a multiple of the given alignment.
     * \param [in] size - Value to align.
-    * \param [in] align - Alignment in bytes. Must be a power of two.
+    * \param [in] align - Alignment. Must be a power of two.
     * \return Largest multiple of align that is less than or equal to size.
     */
     CPL_INLINE size_t AlignLo(size_t size, size_t align)
