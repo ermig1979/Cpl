@@ -46,3 +46,8 @@
     @defgroup cpl_utils Utils
     \short Cpl alignment, rounding and other utility functions.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_file File
+    \short Cpl file and directory path functions.
+*/
