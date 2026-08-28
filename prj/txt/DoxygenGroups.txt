@@ -36,3 +36,8 @@
     @defgroup cpl_time Time
     \short Cpl time-counter functions.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_string String
+    \short Cpl string conversion and manipulation functions.
+*/
