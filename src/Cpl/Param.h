@@ -35,7 +35,6 @@
 namespace Cpl
 {
     /*! @ingroup cpl_param
-    * \enum ParamFormat
     * \brief Serialization format used by Param::Save and Param::Load.
     */
     enum ParamFormat
@@ -376,7 +375,7 @@ namespace Cpl
     /*! @ingroup cpl_param
     * \struct ParamValue
     * \brief Scalar parameter that stores a single value of type T and compares it to a default.
-    * \tparam T - Stored value type. Must support Cpl::ToStr, Cpl::ToVal and operator==.
+    * \tparam T - Stored value type. Must support Cpl::%ToStr, Cpl::%ToVal and operator==.
     * \note Declare instances with CPL_PARAM_VALUE. Changed() is true when the stored value
     *       differs from Default(). XML and YAML represent the value as a named scalar.
     */
@@ -744,7 +743,7 @@ namespace Cpl
     * \tparam T - Item type. Typically a user struct of Param fields.
     * \note Declare instances with CPL_PARAM_VECTOR. operator() returns the std::vector<T>.
     *       Changed() is true when the vector is not empty. XML writes each item as an
-    *       <item> element; YAML writes a sequence.
+    *       "item" element; YAML writes a sequence.
     */
     template<class T> struct ParamVector : public Cpl::Param<std::vector<T>>
     {
@@ -902,11 +901,11 @@ namespace Cpl
     /*! @ingroup cpl_param
     * \struct ParamMap
     * \brief Parameter node that stores a std::map from key K to value struct T.
-    * \tparam K - Key type. Must support Cpl::ToStr and Cpl::ToVal.
+    * \tparam K - Key type. Must support Cpl::%ToStr and Cpl::%ToVal.
     * \tparam T - Value type. Typically a user struct of Param fields.
     * \note Declare instances with CPL_PARAM_MAP. operator() returns the std::map<K, T>.
     *       Changed() is true when the map is not empty. XML writes each entry as an
-    *       <item> with <first> (key) and <second> (value). YAML writes a mapping from
+    *       "item" with "first" (key) and "second" (value). YAML writes a mapping from
     *       the stringified key to the value node.
     */
     template<class K, class T> struct ParamMap : public Cpl::Param<std::map<K, T>>
@@ -1109,7 +1108,7 @@ namespace Cpl
     * \param [in] data - Comma- and space-separated enumerator identifiers, typically #__VA_ARGS__
     *                    from a CPL_PARAM_ENUM* macro.
     * \param [in,out] names - Destination list. Left unchanged when it already has elements.
-    * \note Used by the ToStr specialization generated for CPL_PARAM_ENUM0, CPL_PARAM_ENUM1,
+    * \note Used by the %ToStr specialization generated for CPL_PARAM_ENUM0, CPL_PARAM_ENUM1,
     *       CPL_PARAM_ENUM2 and CPL_PARAM_ENUM3.
     */
     CPL_INLINE void ParseEnumNames(const char * data, Strings & names)
@@ -1135,7 +1134,7 @@ namespace Cpl
 /*! @ingroup cpl_param
 * \def CPL_PARAM_VALUE(type, name, value)
 * \brief Declares a named scalar parameter field with a default value.
-* \param type - Stored value type. Must support Cpl::ToStr, Cpl::ToVal and operator==.
+* \param type - Stored value type. Must support Cpl::%ToStr, Cpl::%ToVal and operator==.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \param value - Default value. Changed() is true when the stored value differs from this default.
 */
@@ -1198,7 +1197,7 @@ struct Param_##name : public Cpl::ParamStruct<type> \
 * \brief Declares a vector parameter field of item type.
 * \param type - Item type. Typically a user struct of Param fields.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
-* \note operator() returns std::vector<type>. XML items are named "item"; YAML uses a sequence.
+* \note operator() returns std::vector of type. XML items are named "item"; YAML uses a sequence.
 */
 #define CPL_PARAM_VECTOR(type, name) \
 struct Param_##name : public Cpl::ParamVector<type> \
@@ -1210,10 +1209,10 @@ struct Param_##name : public Cpl::ParamVector<type> \
 /*! @ingroup cpl_param
 * \def CPL_PARAM_MAP(key, type, name)
 * \brief Declares a map parameter field from key to type.
-* \param key - Key type. Must support Cpl::ToStr and Cpl::ToVal.
+* \param key - Key type. Must support Cpl::%ToStr and Cpl::%ToVal.
 * \param type - Value type. Typically a user struct of Param fields.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
-* \note operator() returns std::map<key, type>. XML items use "item" / "first" / "second";
+* \note operator() returns std::map of key to type. XML items use "item" / "first" / "second";
 *       YAML uses a mapping from the stringified key.
 */
 #define CPL_PARAM_MAP(key, type, name) \
@@ -1225,7 +1224,7 @@ struct Param_##name : public Cpl::ParamMap<key, type> \
 
 /*! @ingroup cpl_param
 * \def CPL_PARAM_ENUM_DECL(type, unknown, size, ...)
-* \brief Declares an enum type with sentinels type##unknown = -1 and type##size after the enumerators.
+* \brief Declares an enum type with unknown (= -1) and size sentinels concatenated to the type name.
 * \param type - Enumeration type name. Enumerator identifiers should start with this name.
 * \param unknown - Suffix of the unknown sentinel, typically Unknown.
 * \param size - Suffix of the count sentinel, typically Size.
@@ -1242,13 +1241,13 @@ enum type \
 
 /*! @ingroup cpl_param
 * \def CPL_PARAM_ENUM_CONV(ns, type, unknown, size, ...)
-* \brief Specializes Cpl::ToStr and Cpl::ToVal for an enum declared by CPL_PARAM_ENUM_DECL.
+* \brief Specializes Cpl::%ToStr and Cpl::%ToVal for an enum declared by CPL_PARAM_ENUM_DECL.
 * \param ns - Enclosing namespace of the enum, or CPL_NOARG for the global namespace.
 * \param type - Enumeration type name.
 * \param unknown - Suffix of the unknown sentinel, typically Unknown.
 * \param size - Suffix of the count sentinel, typically Size.
-* \param ... - Comma-separated enumerator identifiers. ToStr strips the type name prefix from each name.
-* \note ToVal matches names case-insensitively through Cpl::ToEnum. Used by CPL_PARAM_ENUM0 through CPL_PARAM_ENUM3.
+* \param ... - Comma-separated enumerator identifiers. %ToStr strips the type name prefix from each name.
+* \note %ToVal matches names case-insensitively through Cpl::%ToEnum. Used by CPL_PARAM_ENUM0 through CPL_PARAM_ENUM3.
 */
 #define CPL_PARAM_ENUM_CONV(ns, type, unknown, size, ...) \
 namespace Cpl \
@@ -1274,7 +1273,7 @@ namespace Cpl \
 
 /*! @ingroup cpl_param
 * \def CPL_PARAM_ENUM0(type, ...)
-* \brief Declares an enum in the current namespace and specializations of Cpl::ToStr and Cpl::ToVal.
+* \brief Declares an enum in the current namespace and specializations of Cpl::%ToStr and Cpl::%ToVal.
 * \param type - Enumeration type name. Adds typeUnknown = -1 and typeSize sentinels.
 * \param ... - Comma-separated enumerator identifiers. Each name should start with type.
 */
@@ -1284,7 +1283,7 @@ namespace Cpl \
 
 /*! @ingroup cpl_param
 * \def CPL_PARAM_ENUM1(ns1, type, ...)
-* \brief Declares an enum in namespace ns1 and specializations of Cpl::ToStr and Cpl::ToVal.
+* \brief Declares an enum in namespace ns1 and specializations of Cpl::%ToStr and Cpl::%ToVal.
 * \param ns1 - Enclosing namespace.
 * \param type - Enumeration type name. Adds typeUnknown = -1 and typeSize sentinels.
 * \param ... - Comma-separated enumerator identifiers. Each name should start with type.
@@ -1295,7 +1294,7 @@ namespace Cpl \
 
 /*! @ingroup cpl_param
 * \def CPL_PARAM_ENUM2(ns1, ns2, type, ...)
-* \brief Declares an enum in namespace ns1::ns2 and specializations of Cpl::ToStr and Cpl::ToVal.
+* \brief Declares an enum in namespace ns1::ns2 and specializations of Cpl::%ToStr and Cpl::%ToVal.
 * \param ns1 - Outer namespace.
 * \param ns2 - Inner namespace.
 * \param type - Enumeration type name. Adds typeUnknown = -1 and typeSize sentinels.
@@ -1307,7 +1306,7 @@ namespace Cpl \
 
 /*! @ingroup cpl_param
 * \def CPL_PARAM_ENUM3(ns1, ns2, ns3, type, ...)
-* \brief Declares an enum in namespace ns1::ns2::ns3 and specializations of Cpl::ToStr and Cpl::ToVal.
+* \brief Declares an enum in namespace ns1::ns2::ns3 and specializations of Cpl::%ToStr and Cpl::%ToVal.
 * \param ns1 - Outer namespace.
 * \param ns2 - Middle namespace.
 * \param ns3 - Inner namespace.
