@@ -263,15 +263,17 @@ namespace Cpl
             std::pair<const std::string&, Node&> operator *();
 
             /*!
-            * \fn Iterator& operator ++ (int)
+            * \fn Iterator& operator ++ (int dummy)
             * \brief Advances to the next child.
+            * \param dummy - Unused postfix dummy argument.
             * \return *this after the step.
             */
             Iterator& operator ++ (int);
 
             /*!
-            * \fn Iterator& operator -- (int)
+            * \fn Iterator& operator -- (int dummy)
             * \brief Moves to the previous child.
+            * \param dummy - Unused postfix dummy argument.
             * \return *this after the step.
             */
             Iterator& operator -- (int);
@@ -351,15 +353,17 @@ namespace Cpl
             std::pair<const std::string&, const Node&> operator *();
 
             /*!
-            * \fn ConstIterator& operator ++ (int)
+            * \fn ConstIterator& operator ++ (int dummy)
             * \brief Advances to the next child.
+            * \param dummy - Unused postfix dummy argument.
             * \return *this after the step.
             */
             ConstIterator& operator ++ (int);
 
             /*!
-            * \fn ConstIterator& operator -- (int)
+            * \fn ConstIterator& operator -- (int dummy)
             * \brief Moves to the previous child.
+            * \param dummy - Unused postfix dummy argument.
             * \return *this after the step.
             */
             ConstIterator& operator -- (int);
@@ -638,7 +642,6 @@ namespace Cpl
         };
 
         /*! @ingroup cpl_yaml
-        * \fn void Parse(Node& root, const char* filename)
         * \brief Reads a YAML file and stores the document in root.
         * \param [out] root - Destination node. Existing contents are replaced.
         * \param [in] filename - Path opened as a binary input file.
@@ -648,7 +651,6 @@ namespace Cpl
         void Parse(Node& root, const char* filename);
 
         /*! @ingroup cpl_yaml
-        * \fn void Parse(Node& root, std::istream& stream)
         * \brief Parses YAML text from stream into root.
         * \param [out] root - Destination node. Existing contents are replaced.
         * \param [in] stream - Input stream positioned at the start of the document.
@@ -657,7 +659,6 @@ namespace Cpl
         void Parse(Node& root, std::istream& stream);
 
         /*! @ingroup cpl_yaml
-        * \fn void Parse(Node& root, const std::string& string)
         * \brief Parses YAML text from string into root.
         * \param [out] root - Destination node. Existing contents are replaced.
         * \param [in] string - Complete YAML document.
@@ -666,7 +667,6 @@ namespace Cpl
         void Parse(Node& root, const std::string& string);
 
         /*! @ingroup cpl_yaml
-        * \fn void Parse(Node& root, const char* buffer, const size_t size)
         * \brief Parses YAML text from a memory buffer into root.
         * \param [out] root - Destination node. Existing contents are replaced.
         * \param [in] buffer - Pointer to size bytes of YAML text. Need not be zero-terminated.
@@ -702,7 +702,6 @@ namespace Cpl
         };
 
         /*! @ingroup cpl_yaml
-        * \fn void Serialize(const Node& root, const char* filename, const SerializeConfig& config = { 2, 64, false, false })
         * \brief Writes root as YAML text to a file.
         * \param [in] root - Document tree to write.
         * \param [in] filename - Path opened for text output.
@@ -712,7 +711,6 @@ namespace Cpl
         void Serialize(const Node& root, const char* filename, const SerializeConfig& config = { 2, 64, false, false });
 
         /*! @ingroup cpl_yaml
-        * \fn void Serialize(const Node& root, std::ostream& stream, const SerializeConfig& config = { 2, 64, false, false })
         * \brief Writes root as YAML text to stream.
         * \param [in] root - Document tree to write.
         * \param [out] stream - Destination stream.
@@ -722,7 +720,6 @@ namespace Cpl
         void Serialize(const Node& root, std::ostream& stream, const SerializeConfig& config = { 2, 64, false, false });
 
         /*! @ingroup cpl_yaml
-        * \fn void Serialize(const Node& root, std::string& string, const SerializeConfig& config = { 2, 64, false, false })
         * \brief Writes root as YAML text into string, replacing its previous contents.
         * \param [in] root - Document tree to write.
         * \param [out] string - Destination string.
@@ -2724,6 +2721,13 @@ namespace Cpl
 
         //-----------------------------------------------------------------------------------------
 
+        /*! @ingroup cpl_yaml
+        * \brief Reads a YAML file and stores the document in root.
+        * \param [out] root - Destination node. Existing contents are replaced.
+        * \param [in] filename - Path opened as a binary input file.
+        * \note Throws OperationException when the file cannot be opened, or ParsingException
+        *       when the file is not well-formed YAML.
+        */
         inline void Parse(Node& root, const char* filename)
         {
             std::ifstream f(filename, std::ifstream::binary);
@@ -2743,6 +2747,12 @@ namespace Cpl
             Parse(root, data.get(), fileSize);
         }
 
+        /*! @ingroup cpl_yaml
+        * \brief Parses YAML text from stream into root.
+        * \param [out] root - Destination node. Existing contents are replaced.
+        * \param [in] stream - Input stream positioned at the start of the document.
+        * \note Throws ParsingException when the text is not well-formed YAML.
+        */
         inline void Parse(Node& root, std::istream& stream)
         {
             ParseImp* pImp = nullptr;
@@ -2760,12 +2770,25 @@ namespace Cpl
             }
         }
 
+        /*! @ingroup cpl_yaml
+        * \brief Parses YAML text from string into root.
+        * \param [out] root - Destination node. Existing contents are replaced.
+        * \param [in] string - Complete YAML document.
+        * \note Throws ParsingException when the text is not well-formed YAML.
+        */
         inline void Parse(Node& root, const std::string& string)
         {
             std::stringstream ss(string);
             Parse(root, ss);
         }
 
+        /*! @ingroup cpl_yaml
+        * \brief Parses YAML text from a memory buffer into root.
+        * \param [out] root - Destination node. Existing contents are replaced.
+        * \param [in] buffer - Pointer to size bytes of YAML text. Need not be zero-terminated.
+        * \param [in] size - Number of bytes at buffer.
+        * \note Throws ParsingException when the text is not well-formed YAML.
+        */
         inline void Parse(Node& root, const char* buffer, const size_t size)
         {
             std::stringstream ss(std::string(buffer, size));
@@ -2787,6 +2810,13 @@ namespace Cpl
 
         //-----------------------------------------------------------------------------------------
 
+        /*! @ingroup cpl_yaml
+        * \brief Writes root as YAML text to a file.
+        * \param [in] root - Document tree to write.
+        * \param [in] filename - Path opened for text output.
+        * \param [in] config - Indentation and folding options.
+        * \note Throws OperationException when the file cannot be opened or SpaceIndentation is less than 2.
+        */
         inline void Serialize(const Node& root, const char* filename, const SerializeConfig& config)
         {
             std::stringstream stream;
@@ -2991,6 +3021,13 @@ namespace Cpl
             }
         }
 
+        /*! @ingroup cpl_yaml
+        * \brief Writes root as YAML text to stream.
+        * \param [in] root - Document tree to write.
+        * \param [out] stream - Destination stream.
+        * \param [in] config - Indentation and folding options.
+        * \note Throws OperationException when SpaceIndentation is less than 2.
+        */
         inline void Serialize(const Node& root, std::ostream& stream, const SerializeConfig& config)
         {
             if (config.SpaceIndentation < 2)
@@ -3001,6 +3038,13 @@ namespace Cpl
             SerializeLoop(root, stream, false, 0, config);
         }
 
+        /*! @ingroup cpl_yaml
+        * \brief Writes root as YAML text into string, replacing its previous contents.
+        * \param [in] root - Document tree to write.
+        * \param [out] string - Destination string.
+        * \param [in] config - Indentation and folding options.
+        * \note Throws OperationException when SpaceIndentation is less than 2.
+        */
         inline void Serialize(const Node& root, std::string& string, const SerializeConfig& config)
         {
             std::stringstream stream;
