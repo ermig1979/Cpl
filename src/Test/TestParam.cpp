@@ -44,10 +44,10 @@ namespace Test
 
         test().value() = 9;
 
-        test.Save("simple_short.xml", false);
-        test.Save("simple_full.xml", true);
+        test.Save(options.OutputPath("simple_short.xml"), false);
+        test.Save(options.OutputPath("simple_full.xml"), true);
 
-        if (!loaded.Load("simple_short.xml"))
+        if (!loaded.Load(options.OutputPath("simple_short.xml")))
             return false;
 
         return loaded.Equal(test);
@@ -99,10 +99,10 @@ namespace Test
 
         test().child().name() = "Horse";
 
-        test.Save("struct_short.xml", false);
-        test.Save("struct_full.xml", true);
+        test.Save(options.OutputPath("struct_short.xml"), false);
+        test.Save(options.OutputPath("struct_full.xml"), true);
 
-        if (!loaded.Load("struct_full.xml"))
+        if (!loaded.Load(options.OutputPath("struct_full.xml")))
             return false;
 
         return loaded.Equal(test);
@@ -144,10 +144,10 @@ namespace Test
 
         TestParamHolder test, loaded;
 
-        test.Save("struct_mod_short.xml", false);
-        test.Save("struct_mod_full.xml", true);
+        test.Save(options.OutputPath("struct_mod_short.xml"), false);
+        test.Save(options.OutputPath("struct_mod_full.xml"), true);
 
-        if (!loaded.Load("struct_mod_full.xml"))
+        if (!loaded.Load(options.OutputPath("struct_mod_full.xml")))
             return false;
 
         return loaded.Equal(test);
@@ -177,10 +177,10 @@ namespace Test
         test().children().resize(2);
         test().children()[0].value() = 5;
 
-        test.Save("vector_short.xml", false);
-        test.Save("vector_full.xml", true);
+        test.Save(options.OutputPath("vector_short.xml"), false);
+        test.Save(options.OutputPath("vector_full.xml"), true);
 
-        if (!loaded.Load("vector_short.xml"))
+        if (!loaded.Load(options.OutputPath("vector_short.xml")))
             return false;
 
         return loaded.Equal(test);
@@ -234,10 +234,10 @@ namespace Test
         test().enum2() = A::B::Enum2;
         test().enum3() = A::B::C::Enum1;
 
-        test.Save("enum_short.xml", false);
-        test.Save("enum_full.xml", true);
+        test.Save(options.OutputPath("enum_short.xml"), false);
+        test.Save(options.OutputPath("enum_full.xml"), true);
 
-        if (!loaded.Load("enum_full.xml"))
+        if (!loaded.Load(options.OutputPath("enum_full.xml")))
             return false;
 
         return loaded.Equal(test);
@@ -269,10 +269,10 @@ namespace Test
 
         copy.Clone(test);
 
-        test.Save("map_short.xml", false);
-        copy.Save("map_copy_full.xml", true);
+        test.Save(options.OutputPath("map_short.xml"), false);
+        copy.Save(options.OutputPath("map_copy_full.xml"), true);
 
-        if (!loaded.Load("map_copy_full.xml"))
+        if (!loaded.Load(options.OutputPath("map_copy_full.xml")))
             return false;
 
         return loaded.Equal(test);
@@ -340,10 +340,10 @@ namespace Test
 
         copy.Clone(test);
 
-        test.Save("map_short.xml", false);
-        copy.Save("map_copy_full.xml", true);
+        test.Save(options.OutputPath("map_short.xml"), false);
+        copy.Save(options.OutputPath("map_copy_full.xml"), true);
 
-        if (!loaded.Load("map_copy_full.xml"))
+        if (!loaded.Load(options.OutputPath("map_copy_full.xml")))
             return false;
 
         return loaded.Equal(test);
@@ -370,10 +370,10 @@ namespace Test
 
         test().value() = 9;
 
-        test.Save("limited_short.xml", false);
-        test.Save("limited_full.xml", true);
+        test.Save(options.OutputPath("limited_short.xml"), false);
+        test.Save(options.OutputPath("limited_full.xml"), true);
 
-        if (!loaded.Load("limited_full.xml"))
+        if (!loaded.Load(options.OutputPath("limited_full.xml")))
             return false;
 
         return loaded.Equal(test);
@@ -409,20 +409,20 @@ namespace Test
         test().strProp().value() = "string";
 
 
-        test.Save("template_short.yml", false);
-        test.Save("template_full.yml", true);
+        test.Save(options.OutputPath("template_short.yml"), false);
+        test.Save(options.OutputPath("template_full.yml"), true);
 
-        test.Save("template_short.xml", false);
-        test.Save("template_full.xml", true);
+        test.Save(options.OutputPath("template_short.xml"), false);
+        test.Save(options.OutputPath("template_full.xml"), true);
 
-        if (!loaded.Load("template_full.yml"))
+        if (!loaded.Load(options.OutputPath("template_full.yml")))
             return false;
 
         if (!loaded.Equal(test))
         {
             CPL_LOG_SS(Error, "loaded full != original");
-            loaded.Save("template_short_loaded.yml", false);
-            loaded.Save("template_full_loaded.yml", true);
+            loaded.Save(options.OutputPath("template_short_loaded.yml"), false);
+            loaded.Save(options.OutputPath("template_full_loaded.yml"), true);
             return false;
         }
 

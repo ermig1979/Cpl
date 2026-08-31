@@ -98,27 +98,27 @@ namespace Test
         test().dict()["A"].desc() = "A";
         test().dict()["B"];
 
-        test.Save("yaml_short.yml", false, Cpl::ParamFormatYaml);
+        test.Save(options.OutputPath("yaml_short.yml"), false, Cpl::ParamFormatYaml);
 
-        test.Save("yaml_full.yml", true, Cpl::ParamFormatYaml);
+        test.Save(options.OutputPath("yaml_full.yml"), true, Cpl::ParamFormatYaml);
 
-        if (!loaded.Load("yaml_short.yml", Cpl::ParamFormatYaml))
+        if (!loaded.Load(options.OutputPath("yaml_short.yml"), Cpl::ParamFormatYaml))
             return false;
         if (!loaded.Equal(test))
         {
             CPL_LOG_SS(Error, "loaded short != original");
-            loaded.Save("yaml_short_loaded.yml", false, Cpl::ParamFormatYaml);
-            loaded.Save("yaml_full_loaded.yml", true, Cpl::ParamFormatYaml);
+            loaded.Save(options.OutputPath("yaml_short_loaded.yml"), false, Cpl::ParamFormatYaml);
+            loaded.Save(options.OutputPath("yaml_full_loaded.yml"), true, Cpl::ParamFormatYaml);
             return false;
         }
 
-        if (!loaded.Load("yaml_full.yml", Cpl::ParamFormatYaml))
+        if (!loaded.Load(options.OutputPath("yaml_full.yml"), Cpl::ParamFormatYaml))
             return false;
         if (!loaded.Equal(test))
         {
             CPL_LOG_SS(Error, "loaded full != original");
-            loaded.Save("yaml_short_loaded.yml", false, Cpl::ParamFormatYaml);
-            loaded.Save("yaml_full_loaded.yml", true, Cpl::ParamFormatYaml);
+            loaded.Save(options.OutputPath("yaml_short_loaded.yml"), false, Cpl::ParamFormatYaml);
+            loaded.Save(options.OutputPath("yaml_full_loaded.yml"), true, Cpl::ParamFormatYaml);
             return false;
         }
 

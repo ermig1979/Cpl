@@ -27,6 +27,7 @@
 
 #include "Cpl/Defs.h"
 #include "Cpl/Args.h"
+#include "Cpl/File.h"
 #include "Cpl/Log.h"
 #include "Cpl/Performance.h"
 

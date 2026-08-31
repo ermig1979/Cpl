@@ -36,6 +36,7 @@ namespace Test
         bool help;
         Log::Level logLevel;
         String logFile;
+        String output;
         Strings include, exclude;
 
         Options(int argc, char* argv[])
@@ -44,10 +45,16 @@ namespace Test
             help = HasArg("-h", "-?");
             logLevel = (Log::Level)Cpl::ToVal<Int>(GetArg2("-ll", "--logLevel", "4", false));
             logFile = GetArg2("-lf", "--logFile", "", false);
+            output = GetArg("-o", "out", false);
             include = GetArgs("-i", Strings(), false);
             exclude = GetArgs("-e", Strings(), false);
         }
 
         bool Required(const Group& group);
+
+        String OutputPath(const String& name) const
+        {
+            return Cpl::MakePath(output, name);
+        }
     };
 }

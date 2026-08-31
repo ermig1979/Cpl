@@ -38,7 +38,7 @@ namespace Test
 
     bool LogCallbackTest(const Options& options)
     {
-        std::ofstream ofs("custom_log.txt");
+        std::ofstream ofs(options.OutputPath("custom_log.txt"));
         int id = Cpl::Log::Global().AddWriter(Log::Debug, CustomFileWriter, &ofs);
 
         CPL_LOG(Debug, "debug log message");
@@ -59,7 +59,7 @@ namespace Test
 
     bool LogCallbackRawTest(const Options& options)
     {
-        std::ofstream ofs("custom_raw_log.txt");
+        std::ofstream ofs(options.OutputPath("custom_raw_log.txt"));
         int id = Cpl::Log::Global().AddWriter(Log::Debug, CustomRawFileWriter, &ofs);
 
         CPL_LOG(Debug, "raw debug log message");
@@ -98,10 +98,10 @@ namespace Test
 
     bool LogIdTest(const Options& options)
     {
-        std::ofstream ofs1("log_1.txt");
+        std::ofstream ofs1(options.OutputPath("log_1.txt"));
         int id1 = Cpl::Log::Global().AddWriter(Log::Debug, CustomFileWriter, &ofs1);
 
-        std::ofstream ofs2("log_2.txt");
+        std::ofstream ofs2(options.OutputPath("log_2.txt"));
         int id2 = Cpl::Log::Global().AddWriter(Log::Debug, CustomFileWriter, &ofs2);
 
         CPL_LOG_ID(Debug, "log 1 message", id1);

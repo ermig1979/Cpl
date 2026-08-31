@@ -58,7 +58,7 @@ namespace Test
 
         CPL_LOG_SS(Info, std::endl << table.GenerateText());
 
-        std::ofstream ofsHtml("simple_table.html");
+        std::ofstream ofsHtml(options.OutputPath("simple_table.html"));
         if (ofsHtml.is_open())
         {
             ofsHtml << "<html><body>" << std::endl;
@@ -68,7 +68,7 @@ namespace Test
             ofsHtml.close();
         }
 
-        std::ofstream ofsText("simple_table.txt");
+        std::ofstream ofsText(options.OutputPath("simple_table.txt"));
         if (ofsText.is_open())
         {
             ofsText << "simple table" << std::endl << std::endl;
@@ -85,7 +85,7 @@ namespace Test
 
         CPL_LOG_SS(Info, std::endl << table.GenerateText());
 
-        std::ofstream ofs("sortable_table.html");
+        std::ofstream ofs(options.OutputPath("sortable_table.html"));
         if (ofs.is_open())
         {
             ofs << "<html><body>" << std::endl;
