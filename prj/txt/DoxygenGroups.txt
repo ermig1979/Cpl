@@ -71,3 +71,8 @@
     @defgroup cpl_xml XML
     \short Cpl::Xml parser, printer and file loader.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_yaml YAML
+    \short Cpl::Yaml parser, node tree and serializer.
+*/
