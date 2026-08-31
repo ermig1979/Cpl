@@ -34,13 +34,21 @@
 
 namespace Cpl
 {
+    /*! @ingroup cpl_param
+    * \brief Serialization format used by Param::Save and Param::Load.
+    */
     enum ParamFormat
     {
-        ParamFormatXml,
-        ParamFormatYaml,
-        ParamFormatByExt,
+        ParamFormatXml,   //!< XML document with a UTF-8 declaration.
+        ParamFormatYaml,  //!< YAML document.
+        ParamFormatByExt, //!< Choose XML or YAML from the file extension (.xml, .yaml or .yml).
     };
 
+    /*! @ingroup cpl_param
+    * \brief Returns a display name of a ParamFormat value.
+    * \param [in] format - Format enumerator.
+    * \return "XML", "YAML" or "Auto detection by file extension". An empty string if format is out of range.
+    */
     CPL_INLINE String ToStr(ParamFormat format)
     {
         static const char* names[] = { "XML", "YAML", "Auto detection by file extension" };
@@ -59,27 +67,77 @@ namespace Cpl
     template<typename, typename> struct ParamMap;
     template<typename, typename> struct ParamMapV2;
 
+    /*! @ingroup cpl_param
+    * \struct Param
+    * \brief Named parameter node that stores a value of type T and can be saved or loaded as XML or YAML.
+    * \tparam T - Stored value type. A scalar, a user struct of Param fields, std::vector or std::map
+    *             depending on the derived class.
+    * \note Declare fields with CPL_PARAM_VALUE, CPL_PARAM_LIMITED, CPL_PARAM_STRUCT, CPL_PARAM_VECTOR
+    *       or CPL_PARAM_MAP and a CPL_PARAM_HOLDER root. operator() returns the stored value.
+    *       Save and Load write or read a tree whose node names are the field names.
+    */
     template<class T> struct Param
     {
-        typedef T Type;
+        typedef T Type; //!< Stored value type.
 
+        /*!
+        * \fn const Type& operator () () const
+        * \brief Returns a const reference to the stored value.
+        * \return The parameter value.
+        */
         CPL_INLINE const Type& operator () () const { return _value; }
+
+        /*!
+        * \fn Type& operator () ()
+        * \brief Returns a mutable reference to the stored value.
+        * \return The parameter value.
+        */
         CPL_INLINE Type& operator () () { return _value; }
 
+        /*!
+        * \fn const String& Name() const
+        * \brief Returns the field name used as the XML element or YAML key.
+        * \return Name given to the constructor, typically the identifier passed to a CPL_PARAM_* macro.
+        */
         CPL_INLINE const String& Name() const { return _name; };
 
+        /*!
+        * \fn bool Changed() const
+        * \brief Checks whether this node differs from its default.
+        * \return true if the stored value is not the default. The exact rule is defined by the derived class.
+        */
         virtual bool Changed() const = 0;
 
+        /*!
+        * \fn bool Equal(const Param& other) const
+        * \brief Compares this node with another node of the same derived type.
+        * \param [in] other - Node to compare. Must have the same dynamic type as this node.
+        * \return true if the stored values (and children, when present) are equal.
+        */
         CPL_INLINE bool Equal(const Param& other) const
         {
             return EqualNode((Unknown*)&other);
         }
 
+        /*!
+        * \fn void Clone(const Param& other)
+        * \brief Copies the stored value (and children, when present) from another node of the same derived type.
+        * \param [in] other - Source node. Must have the same dynamic type as this node.
+        */
         CPL_INLINE void Clone(const Param& other)
         {
             CloneNode((Unknown*)&other);
         }
 
+        /*!
+        * \fn bool Save(std::ostream& os, bool full, ParamFormat format) const
+        * \brief Serializes this node to an output stream.
+        * \param [in,out] os - Destination stream.
+        * \param [in] full - If true, write every node. If false, omit children that are not Changed().
+        * \param [in] format - ParamFormatXml or ParamFormatYaml. ParamFormatByExt is not valid here.
+        * \return true on success. false if format is unsupported or YAML serialization throws.
+        * \note XML output starts with a declaration version="1.0" encoding="utf-8".
+        */
         bool Save(std::ostream& os, bool full, ParamFormat format) const
         {
             if (format == ParamFormatXml)
@@ -114,6 +172,16 @@ namespace Cpl
             return true;
         }
 
+        /*!
+        * \fn bool Save(const String& path, bool full, ParamFormat format = ParamFormatByExt) const
+        * \brief Serializes this node to a file.
+        * \param [in] path - Output file path.
+        * \param [in] full - If true, write every node. If false, omit children that are not Changed().
+        * \param [in] format - Serialization format. ParamFormatByExt (the default) selects XML or YAML
+        *                      from the extension of path (.xml, .yaml or .yml).
+        * \return true on success. false if the format cannot be detected, the file cannot be opened,
+        *         or stream Save fails.
+        */
         bool Save(const String& path, bool full, ParamFormat format = ParamFormatByExt) const
         {
             if (!DetectFormat(path, format))
@@ -132,6 +200,15 @@ namespace Cpl
             return result;
         }
 
+        /*!
+        * \fn bool Load(const char* data, size_t size, ParamFormat format)
+        * \brief Deserializes this node from a memory buffer.
+        * \param [in] data - Pointer to the XML or YAML text.
+        * \param [in] size - Number of bytes at data.
+        * \param [in] format - ParamFormatXml or ParamFormatYaml. ParamFormatByExt is not valid here.
+        * \return true on success. false if format is unsupported, the text cannot be parsed,
+        *         or a node has an unexpected YAML type.
+        */
         bool Load(const char* data, size_t size, ParamFormat format)
         {
             if (format == ParamFormatXml)
@@ -160,6 +237,14 @@ namespace Cpl
             }
         }
 
+        /*!
+        * \fn bool Load(std::istream& is, ParamFormat format)
+        * \brief Deserializes this node from an input stream.
+        * \param [in,out] is - Source stream positioned at the start of an XML or YAML document.
+        * \param [in] format - ParamFormatXml or ParamFormatYaml. ParamFormatByExt is not valid here.
+        * \return true on success. false if format is unsupported, the text cannot be parsed,
+        *         or a node has an unexpected YAML type.
+        */
         bool Load(std::istream& is, ParamFormat format)
         {
             if (format == ParamFormatXml)
@@ -188,6 +273,15 @@ namespace Cpl
             }
         }
 
+        /*!
+        * \fn bool Load(const String& path, ParamFormat format = ParamFormatByExt)
+        * \brief Deserializes this node from a file.
+        * \param [in] path - Input file path.
+        * \param [in] format - Serialization format. ParamFormatByExt (the default) selects XML or YAML
+        *                      from the extension of path (.xml, .yaml or .yml).
+        * \return true on success. false if the format cannot be detected, the file cannot be opened,
+        *         or stream Load fails.
+        */
         bool Load(const String& path, ParamFormat format = ParamFormatByExt)
         {
             if (!DetectFormat(path, format))
@@ -278,15 +372,32 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
+    /*! @ingroup cpl_param
+    * \struct ParamValue
+    * \brief Scalar parameter that stores a single value of type T and compares it to a default.
+    * \tparam T - Stored value type. Must support Cpl::%ToStr, Cpl::%ToVal and operator==.
+    * \note Declare instances with CPL_PARAM_VALUE. Changed() is true when the stored value
+    *       differs from Default(). XML and YAML represent the value as a named scalar.
+    */
     template<class T> struct ParamValue : public Cpl::Param<T>
     {
-        typedef T Type;
+        typedef T Type; //!< Stored value type.
 
+        /*!
+        * \fn bool Changed() const
+        * \brief Checks whether the stored value differs from Default().
+        * \return true if Default() != the stored value, false otherwise.
+        */
         bool Changed() const override 
         {
             return this->Default() != this->_value;
         }
 
+        /*!
+        * \fn Type Default() const
+        * \brief Returns the default value of this parameter.
+        * \return Type() unless a derived class (typically generated by CPL_PARAM_VALUE) overrides it.
+        */
         virtual CPL_INLINE Type Default() const
         {
             return Type();
@@ -353,10 +464,25 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
+    /*! @ingroup cpl_param
+    * \struct ParamValidator
+    * \brief Assignment wrapper that accepts a value only when it lies in [min, max].
+    * \tparam T - Stored value type. Must support operator<= and stream insertion for the warning log.
+    * \note Returned by ParamLimited::operator(). An out-of-range assignment stores the default
+    *       and logs a warning. Conversion to Type and operator() read the current value.
+    */
     template<class T> struct ParamValidator
     {
-        typedef T Type;
+        typedef T Type; //!< Stored value type.
 
+        /*!
+        * \fn ParamValidator(Type& value, const Type& def, const Type& min, const Type& max)
+        * \brief Binds this validator to an existing storage location and its limits.
+        * \param [in,out] value - Storage that assignment will update.
+        * \param [in] def - Value written when an assignment is out of range.
+        * \param [in] min - Inclusive lower bound of the valid range.
+        * \param [in] max - Inclusive upper bound of the valid range.
+        */
         ParamValidator(Type& value, const Type& def, const Type& min, const Type& max)
             : _value(value)
             , _def(def)
@@ -365,16 +491,32 @@ namespace Cpl
         {
         }
 
+        /*!
+        * \fn operator Type()
+        * \brief Returns a copy of the current stored value.
+        * \return The bound value.
+        */
         operator Type()
         { 
             return _value; 
         }
         
+        /*!
+        * \fn const T& operator () () const
+        * \brief Returns a const reference to the current stored value.
+        * \return The bound value.
+        */
         const T& operator () () const
         { 
             return _value; 
         }
 
+        /*!
+        * \fn ParamValidator<Type>& operator = (const Type& value)
+        * \brief Assigns value when it lies in [min, max]. Otherwise stores the default and logs a warning.
+        * \param [in] value - Candidate value.
+        * \return Reference to this validator.
+        */
         ParamValidator<Type>& operator = (const Type& value)
         {
             if (this->_min <= value && value <= this->_max)
@@ -393,20 +535,43 @@ namespace Cpl
         Type _def, _min, _max;
     };
 
+    /*! @ingroup cpl_param
+    * \struct ParamLimited
+    * \brief Scalar parameter whose assignment is clamped to an inclusive [Min(), Max()] range.
+    * \tparam T - Stored value type. Must be comparable with operator<=.
+    * \note Declare instances with CPL_PARAM_LIMITED. operator() returns a ParamValidator, so
+    *       `field() = x` rejects values outside the range and restores Default().
+    *       Load from XML or YAML applies the same validation.
+    */
     template<class T> struct ParamLimited : public Cpl::ParamValue<T>
     {
-        typedef T Type;
+        typedef T Type; //!< Stored value type.
 
+        /*!
+        * \fn ParamValidator<Type> operator () () const
+        * \brief Returns a validator bound to the stored value, Default(), Min() and Max().
+        * \return ParamValidator that reads the current value and validates assignments.
+        */
         CPL_INLINE ParamValidator<Type> operator () () const
         { 
             return ParamValidator<Type>((Type&) this->_value, this->Default(), this->Min(), this->Max()); 
         }
 
+        /*!
+        * \fn Type Min() const
+        * \brief Returns the inclusive lower bound of the valid range.
+        * \return std::numeric_limits<Type>::min() unless a derived class overrides it.
+        */
         virtual CPL_INLINE Type Min() const
         {
             return std::numeric_limits<Type>::min();
         }
 
+        /*!
+        * \fn Type Max() const
+        * \brief Returns the inclusive upper bound of the valid range.
+        * \return std::numeric_limits<Type>::max() unless a derived class overrides it.
+        */
         virtual CPL_INLINE Type Max() const
         {
             return std::numeric_limits<Type>::max();
@@ -450,8 +615,21 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
+    /*! @ingroup cpl_param
+    * \struct ParamStruct
+    * \brief Parameter node whose children are the consecutive Param fields of a user struct T.
+    * \tparam T - User struct that contains only Param-derived members declared with the CPL_PARAM_* macros.
+    * \note Declare instances with CPL_PARAM_STRUCT or CPL_PARAM_STRUCT_MOD, or a root with CPL_PARAM_HOLDER.
+    *       Children are walked in memory from the first field of T up to the end of this node.
+    *       XML and YAML represent the struct as a named map of those children.
+    */
     template<class T> struct ParamStruct : public Cpl::Param<T>
     {
+        /*!
+        * \fn bool Changed() const
+        * \brief Checks whether any child node is Changed().
+        * \return true if at least one child reports a change, false otherwise.
+        */
         bool Changed() const override
         {
             for (const Unknown* child = this->ChildBeg(); child < this->End(); child = child->End())
@@ -559,8 +737,21 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
+    /*! @ingroup cpl_param
+    * \struct ParamVector
+    * \brief Parameter node that stores a std::vector of item structs T.
+    * \tparam T - Item type. Typically a user struct of Param fields.
+    * \note Declare instances with CPL_PARAM_VECTOR. operator() returns the std::vector<T>.
+    *       Changed() is true when the vector is not empty. XML writes each item as an
+    *       "item" element; YAML writes a sequence.
+    */
     template<class T> struct ParamVector : public Cpl::Param<std::vector<T>>
     {
+        /*!
+        * \fn bool Changed() const
+        * \brief Checks whether the vector contains any items.
+        * \return true if the vector is not empty, false otherwise.
+        */
         bool Changed() const override
         {
             return !this->_value.empty();
@@ -707,8 +898,23 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
+    /*! @ingroup cpl_param
+    * \struct ParamMap
+    * \brief Parameter node that stores a std::map from key K to value struct T.
+    * \tparam K - Key type. Must support Cpl::%ToStr and Cpl::%ToVal.
+    * \tparam T - Value type. Typically a user struct of Param fields.
+    * \note Declare instances with CPL_PARAM_MAP. operator() returns the std::map<K, T>.
+    *       Changed() is true when the map is not empty. XML writes each entry as an
+    *       "item" with "first" (key) and "second" (value). YAML writes a mapping from
+    *       the stringified key to the value node.
+    */
     template<class K, class T> struct ParamMap : public Cpl::Param<std::map<K, T>>
     {
+        /*!
+        * \fn bool Changed() const
+        * \brief Checks whether the map contains any entries.
+        * \return true if the map is not empty, false otherwise.
+        */
         bool Changed() const override
         {
             return !this->_value.empty();
@@ -897,6 +1103,14 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
+    /*! @ingroup cpl_param
+    * \brief Splits a comma-separated enumerator list into names. Does nothing if names is already non-empty.
+    * \param [in] data - Comma- and space-separated enumerator identifiers, typically #__VA_ARGS__
+    *                    from a CPL_PARAM_ENUM* macro.
+    * \param [in,out] names - Destination list. Left unchanged when it already has elements.
+    * \note Used by the %ToStr specialization generated for CPL_PARAM_ENUM0, CPL_PARAM_ENUM1,
+    *       CPL_PARAM_ENUM2 and CPL_PARAM_ENUM3.
+    */
     CPL_INLINE void ParseEnumNames(const char * data, Strings & names)
     {
         if (names.size())
@@ -917,6 +1131,13 @@ namespace Cpl
 
 //-------------------------------------------------------------------------------------------------
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_VALUE(type, name, value)
+* \brief Declares a named scalar parameter field with a default value.
+* \param type - Stored value type. Must support Cpl::%ToStr, Cpl::%ToVal and operator==.
+* \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+* \param value - Default value. Changed() is true when the stored value differs from this default.
+*/
 #define CPL_PARAM_VALUE(type, name, value) \
 struct Param_##name : public Cpl::ParamValue<type> \
 { \
@@ -925,6 +1146,15 @@ struct Param_##name : public Cpl::ParamValue<type> \
     type Default() const override { return value; } \
 } name;
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_LIMITED(type, name, value, min, max)
+* \brief Declares a named scalar parameter field whose assignment is limited to [min, max].
+* \param type - Stored value type. Must be comparable with operator<=.
+* \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+* \param value - Default value. Must satisfy min <= value <= max.
+* \param min - Inclusive lower bound. Out-of-range assignment stores value and logs a warning.
+* \param max - Inclusive upper bound.
+*/
 #define CPL_PARAM_LIMITED(type, name, value, min, max) \
 struct Param_##name : public Cpl::ParamLimited<type> \
 { \
@@ -935,6 +1165,12 @@ struct Param_##name : public Cpl::ParamLimited<type> \
     type Max() const override { return max; } \
 } name;
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_STRUCT(type, name)
+* \brief Declares a nested parameter structure field.
+* \param type - User struct whose members are Param fields declared with the CPL_PARAM_* macros.
+* \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+*/
 #define CPL_PARAM_STRUCT(type, name) \
 struct Param_##name : public Cpl::ParamStruct<type> \
 { \
@@ -942,6 +1178,13 @@ struct Param_##name : public Cpl::ParamStruct<type> \
     Param_##name() : Base(#name) {} \
 } name;
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_STRUCT_MOD(type, name, value)
+* \brief Declares a nested parameter structure field and initializes it from an instance of type.
+* \param type - User struct whose members are Param fields declared with the CPL_PARAM_* macros.
+* \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+* \param value - Initial value of type copied into the field.
+*/
 #define CPL_PARAM_STRUCT_MOD(type, name, value) \
 struct Param_##name : public Cpl::ParamStruct<type> \
 { \
@@ -949,6 +1192,13 @@ struct Param_##name : public Cpl::ParamStruct<type> \
     Param_##name() : Base(#name) { this->_value = value; } \
 } name;
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_VECTOR(type, name)
+* \brief Declares a vector parameter field of item type.
+* \param type - Item type. Typically a user struct of Param fields.
+* \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+* \note operator() returns std::vector of type. XML items are named "item"; YAML uses a sequence.
+*/
 #define CPL_PARAM_VECTOR(type, name) \
 struct Param_##name : public Cpl::ParamVector<type> \
 { \
@@ -956,6 +1206,15 @@ struct Param_##name : public Cpl::ParamVector<type> \
     Param_##name() : Base(#name) {} \
 } name;
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_MAP(key, type, name)
+* \brief Declares a map parameter field from key to type.
+* \param key - Key type. Must support Cpl::%ToStr and Cpl::%ToVal.
+* \param type - Value type. Typically a user struct of Param fields.
+* \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+* \note operator() returns std::map of key to type. XML items use "item" / "first" / "second";
+*       YAML uses a mapping from the stringified key.
+*/
 #define CPL_PARAM_MAP(key, type, name) \
 struct Param_##name : public Cpl::ParamMap<key, type> \
 { \
@@ -963,6 +1222,15 @@ struct Param_##name : public Cpl::ParamMap<key, type> \
     Param_##name() : Base(#name) {} \
 } name;
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_ENUM_DECL(type, unknown, size, ...)
+* \brief Declares an enum type with unknown (= -1) and size sentinels concatenated to the type name.
+* \param type - Enumeration type name. Enumerator identifiers should start with this name.
+* \param unknown - Suffix of the unknown sentinel, typically Unknown.
+* \param size - Suffix of the count sentinel, typically Size.
+* \param ... - Comma-separated enumerator identifiers.
+* \note Used by CPL_PARAM_ENUM0, CPL_PARAM_ENUM1, CPL_PARAM_ENUM2 and CPL_PARAM_ENUM3.
+*/
 #define CPL_PARAM_ENUM_DECL(type, unknown, size, ...) \
 enum type \
 { \
@@ -971,6 +1239,16 @@ enum type \
     type##size \
 };
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_ENUM_CONV(ns, type, unknown, size, ...)
+* \brief Specializes Cpl::%ToStr and Cpl::%ToVal for an enum declared by CPL_PARAM_ENUM_DECL.
+* \param ns - Enclosing namespace of the enum, or CPL_NOARG for the global namespace.
+* \param type - Enumeration type name.
+* \param unknown - Suffix of the unknown sentinel, typically Unknown.
+* \param size - Suffix of the count sentinel, typically Size.
+* \param ... - Comma-separated enumerator identifiers. %ToStr strips the type name prefix from each name.
+* \note %ToVal matches names case-insensitively through Cpl::%ToEnum. Used by CPL_PARAM_ENUM0 through CPL_PARAM_ENUM3.
+*/
 #define CPL_PARAM_ENUM_CONV(ns, type, unknown, size, ...) \
 namespace Cpl \
 {\
@@ -987,24 +1265,65 @@ namespace Cpl \
     }\
 }
 
+/*! @ingroup cpl_param
+* \def CPL_NOARG
+* \brief Empty placeholder passed as the namespace argument of CPL_PARAM_ENUM_CONV from CPL_PARAM_ENUM0.
+*/
 #define CPL_NOARG
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_ENUM0(type, ...)
+* \brief Declares an enum in the current namespace and specializations of Cpl::%ToStr and Cpl::%ToVal.
+* \param type - Enumeration type name. Adds typeUnknown = -1 and typeSize sentinels.
+* \param ... - Comma-separated enumerator identifiers. Each name should start with type.
+*/
 #define CPL_PARAM_ENUM0(type, ...) \
     CPL_PARAM_ENUM_DECL(type, Unknown, Size, __VA_ARGS__) \
     CPL_PARAM_ENUM_CONV(CPL_NOARG, type, Unknown, Size, __VA_ARGS__)
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_ENUM1(ns1, type, ...)
+* \brief Declares an enum in namespace ns1 and specializations of Cpl::%ToStr and Cpl::%ToVal.
+* \param ns1 - Enclosing namespace.
+* \param type - Enumeration type name. Adds typeUnknown = -1 and typeSize sentinels.
+* \param ... - Comma-separated enumerator identifiers. Each name should start with type.
+*/
 #define CPL_PARAM_ENUM1(ns1, type, ...) \
     namespace ns1 { CPL_PARAM_ENUM_DECL(type, Unknown, Size, __VA_ARGS__) } \
     CPL_PARAM_ENUM_CONV(ns1, type, Unknown, Size, __VA_ARGS__)
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_ENUM2(ns1, ns2, type, ...)
+* \brief Declares an enum in namespace ns1::ns2 and specializations of Cpl::%ToStr and Cpl::%ToVal.
+* \param ns1 - Outer namespace.
+* \param ns2 - Inner namespace.
+* \param type - Enumeration type name. Adds typeUnknown = -1 and typeSize sentinels.
+* \param ... - Comma-separated enumerator identifiers. Each name should start with type.
+*/
 #define CPL_PARAM_ENUM2(ns1, ns2, type, ...) \
     namespace ns1 { namespace ns2 { CPL_PARAM_ENUM_DECL(type, Unknown, Size, __VA_ARGS__) } }\
     CPL_PARAM_ENUM_CONV(ns1::ns2, type, Unknown, Size, __VA_ARGS__)
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_ENUM3(ns1, ns2, ns3, type, ...)
+* \brief Declares an enum in namespace ns1::ns2::ns3 and specializations of Cpl::%ToStr and Cpl::%ToVal.
+* \param ns1 - Outer namespace.
+* \param ns2 - Middle namespace.
+* \param ns3 - Inner namespace.
+* \param type - Enumeration type name. Adds typeUnknown = -1 and typeSize sentinels.
+* \param ... - Comma-separated enumerator identifiers. Each name should start with type.
+*/
 #define CPL_PARAM_ENUM3(ns1, ns2, ns3, type, ...) \
     namespace ns1 { namespace ns2 { namespace ns3 {CPL_PARAM_ENUM_DECL(type, Unknown, Size, __VA_ARGS__) } } }\
     CPL_PARAM_ENUM_CONV(ns1::ns2::ns3, type, Unknown, Size, __VA_ARGS__)
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_HOLDER(holder, type, name)
+* \brief Declares a root ParamStruct used to Save and Load a parameter tree.
+* \param holder - Name of the generated holder type.
+* \param type - User struct whose members are Param fields declared with the CPL_PARAM_* macros.
+* \param name - Root XML element or YAML key written by Save and expected by Load.
+*/
 #define CPL_PARAM_HOLDER(holder, type, name) \
 struct holder : public Cpl::ParamStruct<type> \
 { \
