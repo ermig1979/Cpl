@@ -61,3 +61,8 @@
     @defgroup cpl_param Param
     \short Cpl parameter types, XML/YAML serialization and declaration macros.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_prop Prop
+    \short Cpl property types, XML metadata serialization and declaration macros.
+*/
