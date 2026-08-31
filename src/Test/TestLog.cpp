@@ -36,7 +36,7 @@ namespace Test
             ofs << " {custom logger} " << msg << std::flush;
     }
 
-    bool LogCallbackTest()
+    bool LogCallbackTest(const Options& options)
     {
         std::ofstream ofs("custom_log.txt");
         int id = Cpl::Log::Global().AddWriter(Log::Debug, CustomFileWriter, &ofs);
@@ -57,7 +57,7 @@ namespace Test
             ofs << " {raw custom logger} " << msg << std::flush;
     }
 
-    bool LogCallbackRawTest()
+    bool LogCallbackRawTest(const Options& options)
     {
         std::ofstream ofs("custom_raw_log.txt");
         int id = Cpl::Log::Global().AddWriter(Log::Debug, CustomRawFileWriter, &ofs);
@@ -71,7 +71,7 @@ namespace Test
 
     //-------------------------------------------------------------------------------------------------
 
-    bool LogDateTimeTest()
+    bool LogDateTimeTest(const Options& options)
     {
         Cpl::Log::Flags flags = Cpl::Log::Global().GetFlags();
 
@@ -96,7 +96,7 @@ namespace Test
 
     //-------------------------------------------------------------------------------------------------
 
-    bool LogIdTest()
+    bool LogIdTest(const Options& options)
     {
         std::ofstream ofs1("log_1.txt");
         int id1 = Cpl::Log::Global().AddWriter(Log::Debug, CustomFileWriter, &ofs1);

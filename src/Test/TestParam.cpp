@@ -29,7 +29,7 @@
 
 namespace Test
 {
-    bool ParamSimpleTest()
+    bool ParamSimpleTest(const Options& options)
     {
         struct TestParam
         {
@@ -55,7 +55,7 @@ namespace Test
 
     //---------------------------------------------------------------------------------------------
 
-    bool ParamSizetDefaultTest()
+    bool ParamSizetDefaultTest(const Options& options)
     {
         struct TestParam {
             CPL_PARAM_VALUE(size_t, value_s, 1);
@@ -78,7 +78,7 @@ namespace Test
 
     //---------------------------------------------------------------------------------------------
 
-    bool ParamStructTest()
+    bool ParamStructTest(const Options& options)
     {
         struct ChildParam
         {
@@ -132,7 +132,7 @@ namespace Test
         return param;
     }
 
-    bool ParamStructModTest()
+    bool ParamStructModTest(const Options& options)
     {
         struct TestParam
         {
@@ -155,7 +155,7 @@ namespace Test
 
     //---------------------------------------------------------------------------------------------
 
-    bool ParamVectorTest()
+    bool ParamVectorTest(const Options& options)
     {
         struct ChildParam
         {
@@ -215,7 +215,7 @@ CPL_PARAM_ENUM3(A, B, C, Enum,
 
 namespace Test
 {
-    bool ParamEnumTest()
+    bool ParamEnumTest(const Options& options)
     {
         struct TestParam
         {
@@ -245,7 +245,7 @@ namespace Test
 
     //---------------------------------------------------------------------------------------------
 
-    bool ParamMapTest()
+    bool ParamMapTest(const Options& options)
     {
         struct ValueParam
         {
@@ -332,7 +332,7 @@ namespace B
 
 namespace Test
 {
-    bool ParamMapBugTest()
+    bool ParamMapBugTest(const Options& options)
     {
         B::PipelineParamHolder test, loaded, copy;
 
@@ -354,7 +354,7 @@ namespace Test
 
 namespace Test
 {
-    bool ParamLimitedTest()
+    bool ParamLimitedTest(const Options& options)
     {
         struct TestParam
         {
@@ -393,7 +393,7 @@ namespace Test
         CPL_PARAM_VALUE(T, value_default, T());
     };
         
-    bool ParamTemplateTest()
+    bool ParamTemplateTest(const Options& options)
     {
         struct TestParam
         {

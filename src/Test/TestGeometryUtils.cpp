@@ -50,7 +50,7 @@ namespace Test
         return polygon;
     }
 
-    bool PolygonHasPointTest()
+    bool PolygonHasPointTest(const Options& options)
     {
         Polygon polygon = CreatePolygon();
 
@@ -75,7 +75,7 @@ namespace Test
         return true;
     }
 
-    bool PolygonOverlapsRectangleTest()
+    bool PolygonOverlapsRectangleTest(const Options& options)
     {
         Polygon polygon = CreatePolygon();
 
@@ -100,7 +100,7 @@ namespace Test
         return true;
     }
 
-    bool PolygonOverlapsRectangleFloatTest()
+    bool PolygonOverlapsRectangleFloatTest(const Options& options)
     {
         PolygonF polygon = {
             {0, 0},

@@ -32,7 +32,7 @@
 
 namespace Test
 {
-    typedef bool(*TestPtr)();
+    typedef bool(*TestPtr)(const Options& options);
 
     struct Group
     {
@@ -49,7 +49,7 @@ namespace Test
     Groups g_groups;
 
 #define TEST_ADD(name) \
-    bool name##Test(); \
+    bool name##Test(const Options& options); \
     bool name##AddToList(){ g_groups.push_back(Group(#name, name##Test)); return true; } \
     bool name##AtList = name##AddToList();
 
@@ -116,35 +116,17 @@ namespace Test
     TEST_ADD(DoFileExistance);
     TEST_ADD(DoFileInfo);
 
-    struct Options : public Cpl::ArgsParser
+    bool Options::Required(const Group& group)
     {
-        bool help;
-        Log::Level logLevel;
-        String logFile;
-        Strings include, exclude;
-
-        Options(int argc, char* argv[])
-            : Cpl::ArgsParser(argc, argv, true)
-        {
-            help = HasArg("-h", "-?");
-            logLevel = (Log::Level)Cpl::ToVal<Int>(GetArg2("-ll", "--logLevel", "4", false));
-            logFile = GetArg2("-lf", "--logFile", "", false);
-            include = GetArgs("-i", Strings(), false);
-            exclude = GetArgs("-e", Strings(), false);
-        }
-
-        bool Required(const Group& group)
-        {
-            bool required = include.empty();
-            for (size_t i = 0; i < include.size() && !required; ++i)
-                if (group.name.find(include[i]) != std::string::npos)
-                    required = true;
-            for (size_t i = 0; i < exclude.size() && required; ++i)
-                if (group.name.find(exclude[i]) != std::string::npos)
-                    required = false;
-            return required;
-        }
-    };
+        bool required = include.empty();
+        for (size_t i = 0; i < include.size() && !required; ++i)
+            if (group.name.find(include[i]) != std::string::npos)
+                required = true;
+        for (size_t i = 0; i < exclude.size() && required; ++i)
+            if (group.name.find(exclude[i]) != std::string::npos)
+                required = false;
+        return required;
+    }
 
     int PrintHelp()
     {
@@ -164,7 +146,7 @@ namespace Test
         {
             const Group& group = groups[t];
             CPL_LOG_SS(Info, group.name << "Test is started :");
-            bool result = group.test();
+            bool result = group.test(options);
             if (result)
             {
                 CPL_LOG_SS(Info, group.name << "Test is OK." << std::endl);

@@ -29,7 +29,7 @@
 
 namespace Test
 {
-    bool ParamVectorV2Test()
+    bool ParamVectorV2Test(const Options& options)
     {
         struct ChildParam
         {
@@ -62,7 +62,7 @@ namespace Test
 
     //---------------------------------------------------------------------------------------------
 
-    bool ParamMapV2Test()
+    bool ParamMapV2Test(const Options& options)
     {
         struct ValueParam
         {

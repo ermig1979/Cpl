@@ -67,7 +67,7 @@ namespace Test
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    bool PerformanceSimpleTest()
+    bool PerformanceSimpleTest(const Options& options)
     {
 #if defined(CPL_PERF_ENABLE)
         Cpl::PerformanceStorage::Global().Clear();
@@ -101,7 +101,7 @@ namespace Test
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    bool PerformanceStdThreadTest()
+    bool PerformanceStdThreadTest(const Options& options)
     {
 #if defined(CPL_PERF_ENABLE)
         Cpl::PerformanceStorage::Global().Clear();
@@ -127,7 +127,7 @@ namespace Test
         return true;
     }
 
-    bool PerformanceClearTest()
+    bool PerformanceClearTest(const Options& options)
     {
 #if defined(CPL_PERF_ENABLE)
         Cpl::PerformanceStorage::Global().Clear();
@@ -151,7 +151,7 @@ namespace Test
     {
     }
 
-    bool PerformanceNoReturnTest()
+    bool PerformanceNoReturnTest(const Options& options)
     {
         TestFuncV6(NULL);
 
@@ -171,7 +171,7 @@ namespace Test
         return 0;
     }  
 
-    bool PerformancePthreadTest()
+    bool PerformancePthreadTest(const Options& options)
     {
 #if defined(CPL_PERF_ENABLE)
         Cpl::PerformanceStorage::Global().Clear();

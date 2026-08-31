@@ -1,7 +1,9 @@
 /*
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar.
+* Copyright (c) 2021-2026 Yermalayeu Ihar,
+*               2021-2022 Andrey Drogolyub,
+*               2023-2023 Daniil Germanenko.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -23,19 +25,29 @@
 */
 #pragma once
 
-//#define CPL_TEST_NORETURN
-
-#include "Cpl/Defs.h"
-#include "Cpl/Args.h"
-#include "Cpl/Log.h"
-#include "Cpl/Performance.h"
+#include "Test/Test.h"
 
 namespace Test
 {
-    typedef Cpl::Log Log;
-    typedef Cpl::Int Int;
-    typedef Cpl::String String;
-    typedef Cpl::Strings Strings;
-}
+    struct Group;
 
-#include "Test/TestOptions.h"
+    struct Options : public Cpl::ArgsParser
+    {
+        bool help;
+        Log::Level logLevel;
+        String logFile;
+        Strings include, exclude;
+
+        Options(int argc, char* argv[])
+            : Cpl::ArgsParser(argc, argv, true)
+        {
+            help = HasArg("-h", "-?");
+            logLevel = (Log::Level)Cpl::ToVal<Int>(GetArg2("-ll", "--logLevel", "4", false));
+            logFile = GetArg2("-lf", "--logFile", "", false);
+            include = GetArgs("-i", Strings(), false);
+            exclude = GetArgs("-e", Strings(), false);
+        }
+
+        bool Required(const Group& group);
+    };
+}

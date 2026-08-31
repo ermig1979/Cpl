@@ -55,6 +55,7 @@
     <ClInclude Include="..\..\src\Cpl\Xml.h" />
     <ClInclude Include="..\..\src\Cpl\Yaml.h" />
     <ClInclude Include="..\..\src\Test\Test.h" />
+    <ClInclude Include="..\..\src\Test\TestOptions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
