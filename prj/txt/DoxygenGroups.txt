@@ -56,3 +56,8 @@
     @defgroup cpl_geometry Geometry
     \short Cpl 2D point, rectangle and polygon functions.
 */
+
+/*! @ingroup cpl_types
+    @defgroup cpl_param Param
+    \short Cpl parameter types, XML/YAML serialization and declaration macros.
+*/
