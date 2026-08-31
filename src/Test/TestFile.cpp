@@ -22,6 +22,8 @@
 * SOFTWARE.
 */
 
+#include "Test/Test.h"
+
 #include "Cpl/File.h"
 #include <cstdlib>
 #include <fstream>

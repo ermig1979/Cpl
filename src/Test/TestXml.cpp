@@ -23,6 +23,8 @@
 * SOFTWARE.
 */
 
+#include "Test/Test.h"
+
 #include "Cpl/Xml.h"
 #include <iostream>
 #include <string>
