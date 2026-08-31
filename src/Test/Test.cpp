@@ -136,12 +136,19 @@ namespace Test
         std::cout << " -e=test      - exclude test filter." << std::endl << std::endl;
         std::cout << " -ll=1        - a log level." << std::endl << std::endl;
         std::cout << " -lf=test.log - a log file name." << std::endl << std::endl;
+        std::cout << " -o=out       - an output folder for test artifacts." << std::endl << std::endl;
         std::cout << " -h or -?     - to print this help message." << std::endl << std::endl;
         return 0;
     }
 
     int MakeTests(const Groups& groups, const Options& options)
     {
+        if (!Cpl::CreatePath(options.output))
+        {
+            CPL_LOG_SS(Error, "Can't create output folder '" << options.output << "' !");
+            return 1;
+        }
+
         for (size_t t = 0; t < groups.size(); ++t)
         {
             const Group& group = groups[t];

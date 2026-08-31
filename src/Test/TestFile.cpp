@@ -45,7 +45,7 @@ extern "C" {
 /* Test file hierarchy
 
 FOR LINUX:
-----/tmp/cpl/1
+----<output>/cpl/1
             /2
 f               22222.js
             /zero0
@@ -67,79 +67,58 @@ namespace Test
         return a + '\\' + b;
 #endif
     }
-#ifdef __linux__
-    static const std::string testPath = "/tmp/cpl";
-#elif _WIN32
-    static const std::string testPath = ".\\cpl";
-#endif
+    static std::string testPath;
     static const std::string testString = "123456789876543210";
 
-    const static std::set<std::string> all_folders = [](){
-        std::set<std::string> temp;
-        temp.insert(joinPath(testPath, "1"));
-        temp.insert(joinPath(testPath, "2"));
-        temp.insert(joinPath(testPath, "zero0"));
-        temp.insert(joinPath(testPath, joinPath("zero0", "test")));
-        return temp;
-    }();
+    static std::set<std::string> all_folders;
+    static std::set<std::string> not_exist_folders;
+    static std::set<std::string> existance_files;
+    static std::set<std::string> not_existance_files;
+    static std::set<std::string> empty_files;
+    static std::vector<std::pair<std::string, size_t>> not_empty_files;
 
-    const static std::set<std::string> not_exist_folders = [](){
-        std::set<std::string> temp;
-        temp.insert(joinPath(testPath, "999"));
-        temp.insert(joinPath(testPath, joinPath("zxcb", "999")));
-        temp.insert(joinPath(testPath, "8"));
-        return temp;
-    }();
+    void initTestPaths(const Options& options)
+    {
+        testPath = options.OutputPath("cpl");
 
-    const static std::set<std::string> existance_files = [](){
-        std::set<std::string> temp;
-        temp.insert(joinPath(testPath, "emptyFile.js"));
-        temp.insert(joinPath(testPath, joinPath("2", "22222.js")));
-        temp.insert(joinPath(testPath, "notempty.txt"));
-        temp.insert(joinPath(testPath, "notemptyx2"));
-        return temp;
-    }();
+        all_folders.clear();
+        all_folders.insert(joinPath(testPath, "1"));
+        all_folders.insert(joinPath(testPath, "2"));
+        all_folders.insert(joinPath(testPath, "zero0"));
+        all_folders.insert(joinPath(testPath, joinPath("zero0", "test")));
 
-    const static std::set<std::string> not_existance_files = [](){
-        std::set<std::string> temp;
-        temp.insert(joinPath(testPath, "bemptyFile.js"));
-        temp.insert(joinPath(testPath, joinPath("2", "b22222.js")));
-        temp.insert(joinPath(testPath, "bnotempty.txt"));
-        temp.insert(joinPath(testPath, "bnotemptyx2"));
-        return temp;
-    }();
+        not_exist_folders.clear();
+        not_exist_folders.insert(joinPath(testPath, "999"));
+        not_exist_folders.insert(joinPath(testPath, joinPath("zxcb", "999")));
+        not_exist_folders.insert(joinPath(testPath, "8"));
 
-    const static std::set<std::string> empty_files = [](){
-        std::set<std::string> temp;
-        temp.insert(joinPath(testPath, "emptyFile.js"));
-        temp.insert(joinPath(testPath, joinPath("2", "22222.js")));
-        return temp;
-    }();
+        existance_files.clear();
+        existance_files.insert(joinPath(testPath, "emptyFile.js"));
+        existance_files.insert(joinPath(testPath, joinPath("2", "22222.js")));
+        existance_files.insert(joinPath(testPath, "notempty.txt"));
+        existance_files.insert(joinPath(testPath, "notemptyx2"));
 
-    //Every file have at least test string testString
-    const static std::vector<std::pair<std::string, size_t>> not_empty_files = [](){
-        std::vector<std::pair<std::string, size_t>> temp;
-        temp.push_back({joinPath(testPath, "notempty.txt"), testString.size()});
-        temp.push_back({joinPath(testPath, "notemptyx2"), 2*testString.size()});
-        return temp;
-    }();
+        not_existance_files.clear();
+        not_existance_files.insert(joinPath(testPath, "bemptyFile.js"));
+        not_existance_files.insert(joinPath(testPath, joinPath("2", "b22222.js")));
+        not_existance_files.insert(joinPath(testPath, "bnotempty.txt"));
+        not_existance_files.insert(joinPath(testPath, "bnotemptyx2"));
 
-    bool initializeTree() {
-#ifdef __linux__
-        auto p = mkdir(testPath.c_str(), 0777);
-        p |= mkdir(joinPath(testPath, "1").c_str(), 0777);
-        p |= mkdir(joinPath(testPath, "2").c_str(), 0777);
-        p |= mkdir(joinPath(testPath, "zero0").c_str(), 0777);
-        p |= mkdir(joinPath(testPath, joinPath("zero0", "test")).c_str(), 0777);
-#elif _WIN32
-        auto p = _mkdir(testPath.c_str());
-        p |= _mkdir(joinPath(testPath, "1").c_str());
-        p |= _mkdir(joinPath(testPath, "2").c_str());
-        p |= _mkdir(joinPath(testPath, "zero0").c_str());
-        p |= _mkdir(joinPath(testPath, joinPath("zero0", "test")).c_str());
-#endif
+        empty_files.clear();
+        empty_files.insert(joinPath(testPath, "emptyFile.js"));
+        empty_files.insert(joinPath(testPath, joinPath("2", "22222.js")));
 
-        if (p)
+        not_empty_files.clear();
+        not_empty_files.push_back({joinPath(testPath, "notempty.txt"), testString.size()});
+        not_empty_files.push_back({joinPath(testPath, "notemptyx2"), 2*testString.size()});
+    }
+
+    bool initializeTree(const Options& options) {
+        initTestPaths(options);
+
+        if (!Cpl::CreatePath(joinPath(testPath, "1")) ||
+            !Cpl::CreatePath(joinPath(testPath, "2")) ||
+            !Cpl::CreatePath(joinPath(testPath, joinPath("zero0", "test"))))
             return false;
 
         std::ofstream f1(joinPath(testPath, "emptyFile.js"));
@@ -827,7 +806,7 @@ namespace Test
             CPL_LOG_SS(Info, "Filesystem " << Cpl::FilesystemType());
             CPL_LOG_SS(Info, "Compiler type " << Cpl::CompilerType());
 
-            initializeTree();
+            initializeTree(options);
             ok &= COMPARE_RESULT(Modify::folders(), 1);
             ok &= COMPARE_RESULT(Modify::createFiles(), 1);
             ok &= COMPARE_RESULT(Modify::readFormatsTest(), 1);
@@ -846,7 +825,7 @@ namespace Test
             CPL_LOG_SS(Info, "Filesystem " << Cpl::FilesystemType());
             CPL_LOG_SS(Info, "Compiler type " << Cpl::CompilerType());
 
-            initializeTree();
+            initializeTree(options);
             ok &= COMPARE_RESULT(Existance::testFileExists(), 1);
             ok &= COMPARE_RESULT(Existance::testFolderExists(), 1);
 
@@ -864,7 +843,7 @@ namespace Test
             CPL_LOG_SS(Info, "Filesystem " << Cpl::FilesystemType());
             CPL_LOG_SS(Info, "Compiler type " << Cpl::CompilerType());
 
-            initializeTree();
+            initializeTree(options);
             ok &= COMPARE_RESULT(Info::fileList(), 1);
             ok &= COMPARE_RESULT(Info::naming(), 1);
             ok &= COMPARE_RESULT(Info::extension(), 1);

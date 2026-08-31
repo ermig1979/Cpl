@@ -51,10 +51,10 @@ namespace Test
         test().children().resize(2);
         test().children()[0].value() = 5;
 
-        test.Save("vector_v2_short.xml", false);
-        test.Save("vector_v2_full.xml", true);
+        test.Save(options.OutputPath("vector_v2_short.xml"), false);
+        test.Save(options.OutputPath("vector_v2_full.xml"), true);
 
-        if (!loaded.Load("vector_v2_short.xml"))
+        if (!loaded.Load(options.OutputPath("vector_v2_short.xml")))
             return false;
 
         return loaded.Equal(test);
@@ -86,10 +86,10 @@ namespace Test
 
         copy.Clone(test);
 
-        test.Save("map_v2_short.xml", false);
-        copy.Save("map_v2_copy_full.xml", true);
+        test.Save(options.OutputPath("map_v2_short.xml"), false);
+        copy.Save(options.OutputPath("map_v2_copy_full.xml"), true);
 
-        if (!loaded.Load("map_v2_copy_full.xml"))
+        if (!loaded.Load(options.OutputPath("map_v2_copy_full.xml")))
             return false;
 
         return loaded.Equal(test);
