@@ -29,6 +29,17 @@
 
 namespace Cpl
 {
+    /*! @ingroup cpl_param
+    * \struct ParamVectorV2
+    * \brief Parameter node that stores a std::vector of item structs T and writes an explicit count in XML.
+    * \tparam T - Item type. Typically a user struct of Param fields.
+    * \note Declare instances with CPL_PARAM_VECTOR_V2. operator() returns the std::vector<T>.
+    *       Changed() is true when the vector is not empty. YAML I/O matches ParamVector.
+    *       XML save writes a "count" element (the vector size) followed by "item" children.
+    *       XML load accepts zero or one "count" child: when present its integer value must
+    *       equal the number of "item" children and no other child names are allowed;
+    *       when absent every child must be an "item".
+    */
     template<class T> struct ParamVectorV2 : public Cpl::ParamVector<T>
     {
     protected:
@@ -110,6 +121,18 @@ namespace Cpl
 
     //---------------------------------------------------------------------------------------------
 
+    /*! @ingroup cpl_param
+    * \struct ParamMapV2
+    * \brief Parameter node that stores a std::map from key K to value struct T and writes an explicit count in XML.
+    * \tparam K - Key type. Must support Cpl::%ToStr and Cpl::%ToVal.
+    * \tparam T - Value type. Typically a user struct of Param fields.
+    * \note Declare instances with CPL_PARAM_MAP_V2. operator() returns the std::map<K, T>.
+    *       Changed() is true when the map is not empty. YAML I/O matches ParamMap.
+    *       XML save writes a "count" element (the map size) followed by "item" children
+    *       with "first" (key) and "second" (value). XML load accepts zero or one "count"
+    *       child: when present its integer value must equal the number of "item" children
+    *       and no other child names are allowed; when absent every child must be an "item".
+    */
     template<class K, class T> struct ParamMapV2 : public Cpl::ParamMap<K, T>
     {
     protected:
@@ -208,6 +231,14 @@ namespace Cpl
 
 //-------------------------------------------------------------------------------------------------
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_VECTOR_V2(type, name)
+* \brief Declares a vector parameter field that stores an explicit item count in XML.
+* \param type - Item type. Typically a user struct of Param fields.
+* \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+* \note operator() returns std::vector of type. XML writes "count" then "item" children;
+*       YAML uses a sequence, as in CPL_PARAM_VECTOR.
+*/
 #define CPL_PARAM_VECTOR_V2(type, name) \
 struct Param_##name : public Cpl::ParamVectorV2<type> \
 { \
@@ -215,6 +246,15 @@ struct Param_##name : public Cpl::ParamVectorV2<type> \
     Param_##name() : Base(#name) {} \
 } name;
 
+/*! @ingroup cpl_param
+* \def CPL_PARAM_MAP_V2(key, type, name)
+* \brief Declares a map parameter field that stores an explicit entry count in XML.
+* \param key - Key type. Must support Cpl::%ToStr and Cpl::%ToVal.
+* \param type - Value type. Typically a user struct of Param fields.
+* \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+* \note operator() returns std::map of key to type. XML writes "count" then "item" /
+*       "first" / "second"; YAML uses a mapping from the stringified key, as in CPL_PARAM_MAP.
+*/
 #define CPL_PARAM_MAP_V2(key, type, name) \
 struct Param_##name : public Cpl::ParamMapV2<key, type> \
 { \
