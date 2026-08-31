@@ -110,19 +110,18 @@ namespace Cpl
         template<class Ch> class XmlDocument;
 
         /*! @ingroup cpl_xml
-        * \enum NodeType
         * \brief Kind of an XmlNode in the document tree.
         */
         enum NodeType
         {
             NodeDocument,    //!< Document root. XmlDocument has this type.
-            NodeElement,     //!< Element node, for example <name>...</name>.
+            NodeElement,     //!< Element node, for example a named start and end tag pair.
             NodeData,        //!< Text data node (character data between tags).
-            NodeCData,       //!< CDATA section (<![CDATA[...]]>).
-            NodeComment,     //!< Comment (<!-- ... -->).
-            NodeDeclaration, //!< XML declaration (<?xml ... ?>).
-            NodeDocType,     //!< Document type declaration (<!DOCTYPE ...>).
-            NodePi           //!< Processing instruction (<?target ... ?>).
+            NodeCData,       //!< CDATA section.
+            NodeComment,     //!< Comment node.
+            NodeDeclaration, //!< XML declaration node.
+            NodeDocType,     //!< Document type declaration node.
+            NodePi           //!< Processing-instruction node.
         };
 
         /*! @ingroup cpl_xml
@@ -154,17 +153,17 @@ namespace Cpl
         const int ParseNoUtf8 = 0x10;
 
         /*! @ingroup cpl_xml
-        * \brief Create a NodeDeclaration child for an <?xml ... ?> declaration.
+        * \brief Create a NodeDeclaration child for an XML declaration.
         */
         const int ParseDeclarationNode = 0x20;
 
         /*! @ingroup cpl_xml
-        * \brief Create NodeComment children for <!-- ... --> comments.
+        * \brief Create NodeComment children for comments.
         */
         const int ParseCommentNodes = 0x40;
 
         /*! @ingroup cpl_xml
-        * \brief Create a NodeDocType child for a <!DOCTYPE ...> declaration.
+        * \brief Create a NodeDocType child for a document type declaration.
         */
         const int ParseDocTypeNode = 0x80;
 
