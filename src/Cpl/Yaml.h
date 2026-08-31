@@ -28,6 +28,12 @@
 
 namespace Cpl
 {
+    /*! @ingroup cpl_yaml
+    * \namespace Cpl::Yaml
+    * \brief YAML document tree: parse text or a file into Node objects and serialize them back.
+    * \note Parse() and Serialize() throw Cpl::Yaml::Exception (or a derived type) on failure.
+    *       Implementation helpers live in Cpl::Yaml::Detail and are not part of the public API.
+    */
     namespace Yaml
     {
         class Node;
@@ -102,27 +108,50 @@ namespace Cpl
             };
         }
 
+        /*! @ingroup cpl_yaml
+        * \class Exception
+        * \brief Base exception for YAML parse, serialize and internal failures.
+        */
         class Exception : public std::runtime_error
         {
         public:
+            /*!
+            * \brief Kind of YAML failure stored by Exception.
+            */
             enum Type
             {
-                InternalError,
-                ParsingError,
-                OperationError
+                InternalError,  //!< Unexpected internal library error.
+                ParsingError,   //!< The input is not valid YAML.
+                OperationError  //!< File I/O failure or invalid Serialize() configuration.
             };
 
+            /*!
+            * \fn Exception(const std::string& message, const Type type)
+            * \brief Stores the error text and a Type value.
+            * \param [in] message - Description passed to std::runtime_error.
+            * \param [in] type - Category returned by GetType().
+            */
             Exception(const std::string& message, const Type type)
                 : std::runtime_error(message)
                 , _type(type)
             {
             }
 
+            /*!
+            * \fn Type GetType() const
+            * \brief Returns the error category given to the constructor.
+            * \return InternalError, ParsingError or OperationError.
+            */
             Type GetType() const
             {
                 return _type;
             }
 
+            /*!
+            * \fn const char* Message() const
+            * \brief Returns the error text. Same pointer as what().
+            * \return Zero-terminated description string.
+            */
             const char* Message() const
             {
                 return what();
@@ -132,54 +161,135 @@ namespace Cpl
             Type _type;
         };
 
+        /*! @ingroup cpl_yaml
+        * \class InternalException
+        * \brief Exception with Type InternalError.
+        */
         class InternalException : public Exception
         {
         public:
+            /*!
+            * \fn InternalException(const std::string& message)
+            * \brief Constructs an InternalError exception.
+            * \param [in] message - Description passed to Exception.
+            */
             InternalException(const std::string& message)
                 : Exception(message, InternalError)
             {
             }
         };
 
+        /*! @ingroup cpl_yaml
+        * \class ParsingException
+        * \brief Exception thrown by Parse() when the source is not well-formed YAML.
+        */
         class ParsingException : public Exception
         {
         public:
+            /*!
+            * \fn ParsingException(const std::string& message)
+            * \brief Constructs a ParsingError exception.
+            * \param [in] message - Description of the parse error, often including line text.
+            */
             ParsingException(const std::string& message)
                 : Exception(message, ParsingError)
             {
             }
         };
 
+        /*! @ingroup cpl_yaml
+        * \class OperationException
+        * \brief Exception thrown when a file cannot be opened or Serialize() options are invalid.
+        */
         class OperationException : public Exception
         {
         public:
+            /*!
+            * \fn OperationException(const std::string& message)
+            * \brief Constructs an OperationError exception.
+            * \param [in] message - Description of the failed operation.
+            */
             OperationException(const std::string& message)
                 : Exception(message, OperationError)
             {
             }
         };
 
+        /*! @ingroup cpl_yaml
+        * \class Iterator
+        * \brief Mutable iterator over the children of a sequence or map Node.
+        * \note Dereference returns a pair: the map key (empty string for a sequence item)
+        *       and a reference to the child Node. operator++(int) and operator--(int)
+        *       use postfix syntax but return *this after the step.
+        */
         class Iterator
         {
         public:
             friend class Node;
 
+            /*!
+            * \fn Iterator()
+            * \brief Constructs an empty iterator that compares unequal to any populated iterator.
+            */
             Iterator();
 
+            /*!
+            * \fn Iterator(const Iterator& it)
+            * \brief Copies the current position of it.
+            * \param [in] it - Iterator to copy.
+            */
             Iterator(const Iterator& it);
 
+            /*!
+            * \fn Iterator& operator = (const Iterator& it)
+            * \brief Replaces this iterator with a copy of it.
+            * \param [in] it - Iterator to copy.
+            * \return *this.
+            */
             Iterator& operator = (const Iterator& it);
 
+            /*!
+            * \fn ~Iterator()
+            * \brief Destroys the iterator and its implementation object.
+            */
             ~Iterator();
 
+            /*!
+            * \fn std::pair<const std::string&, Node&> operator *()
+            * \brief Returns the current child.
+            * \return Pair of map key (empty for a sequence) and a mutable reference to the child.
+            *         An empty pair is returned when the iterator has no implementation.
+            */
             std::pair<const std::string&, Node&> operator *();
 
+            /*!
+            * \fn Iterator& operator ++ (int)
+            * \brief Advances to the next child.
+            * \return *this after the step.
+            */
             Iterator& operator ++ (int);
 
+            /*!
+            * \fn Iterator& operator -- (int)
+            * \brief Moves to the previous child.
+            * \return *this after the step.
+            */
             Iterator& operator -- (int);
 
+            /*!
+            * \fn bool operator == (const Iterator& it)
+            * \brief Compares two iterators of the same container kind.
+            * \param [in] it - Other iterator.
+            * \return True when both point at the same child, or both are empty of the same kind.
+            */
             bool operator == (const Iterator& it);
 
+            /*!
+            * \fn bool operator != (const Iterator& it)
+            * \brief Negation of operator==.
+            * \param [in] it - Other iterator.
+            * \return True when the iterators are not equal.
+            */
             bool operator != (const Iterator& it);
 
         private:
@@ -195,27 +305,79 @@ namespace Cpl
             void* m_pImp;
         };
 
+        /*! @ingroup cpl_yaml
+        * \class ConstIterator
+        * \brief Read-only iterator over the children of a sequence or map Node.
+        * \note Same pair layout and postfix increment/decrement behaviour as Iterator.
+        */
         class ConstIterator
         {
         public:
             friend class Node;
 
+            /*!
+            * \fn ConstIterator()
+            * \brief Constructs an empty iterator that compares unequal to any populated iterator.
+            */
             ConstIterator();
 
+            /*!
+            * \fn ConstIterator(const ConstIterator& it)
+            * \brief Copies the current position of it.
+            * \param [in] it - Iterator to copy.
+            */
             ConstIterator(const ConstIterator& it);
 
+            /*!
+            * \fn ConstIterator& operator = (const ConstIterator& it)
+            * \brief Replaces this iterator with a copy of it.
+            * \param [in] it - Iterator to copy.
+            * \return *this.
+            */
             ConstIterator& operator = (const ConstIterator& it);
 
+            /*!
+            * \fn ~ConstIterator()
+            * \brief Destroys the iterator and its implementation object.
+            */
             ~ConstIterator();
 
+            /*!
+            * \fn std::pair<const std::string&, const Node&> operator *()
+            * \brief Returns the current child.
+            * \return Pair of map key (empty for a sequence) and a const reference to the child.
+            *         An empty pair is returned when the iterator has no implementation.
+            */
             std::pair<const std::string&, const Node&> operator *();
 
+            /*!
+            * \fn ConstIterator& operator ++ (int)
+            * \brief Advances to the next child.
+            * \return *this after the step.
+            */
             ConstIterator& operator ++ (int);
 
+            /*!
+            * \fn ConstIterator& operator -- (int)
+            * \brief Moves to the previous child.
+            * \return *this after the step.
+            */
             ConstIterator& operator -- (int);
 
+            /*!
+            * \fn bool operator == (const ConstIterator& it)
+            * \brief Compares two iterators of the same container kind.
+            * \param [in] it - Other iterator.
+            * \return True when both point at the same child, or both are empty of the same kind.
+            */
             bool operator == (const ConstIterator& it);
 
+            /*!
+            * \fn bool operator != (const ConstIterator& it)
+            * \brief Negation of operator==.
+            * \param [in] it - Other iterator.
+            * \return True when the iterators are not equal.
+            */
             bool operator != (const ConstIterator& it);
 
         private:
@@ -230,68 +392,243 @@ namespace Cpl
             void* m_pImp;
         };
 
+        /*! @ingroup cpl_yaml
+        * \class Node
+        * \brief One YAML value: an empty node, a sequence, a map or a scalar string.
+        * \note Sequence operations convert this node to SequenceType. Map subscript
+        *       converts it to MapType and inserts a missing key. Scalar assignment
+        *       converts it to ScalarType.
+        */
         class Node
         {
         public:
             friend class Iterator;
 
+            /*!
+            * \brief Kind of value stored in a Node.
+            */
             enum eType
             {
-                None,
-                SequenceType,
-                MapType,
-                ScalarType
+                None,         //!< Empty node with no children and no scalar text.
+                SequenceType, //!< Ordered list of child nodes, addressed by index.
+                MapType,      //!< Mapping of string keys to child nodes.
+                ScalarType    //!< Single string value, converted by As().
             };
 
+            /*!
+            * \fn Node(bool none = false)
+            * \brief Constructs an empty node of type None.
+            * \param [in] none - When true, Clear() is also called. Used for the empty sentinel
+            *                   returned by an out-of-range sequence subscript.
+            */
             Node(bool none = false);
 
+            /*!
+            * \fn Node(const Node& node)
+            * \brief Deep-copies node.
+            * \param [in] node - Node to copy.
+            */
             Node(const Node& node);
 
+            /*!
+            * \fn Node(const std::string& value)
+            * \brief Constructs a ScalarType node that holds value.
+            * \param [in] value - Scalar text.
+            */
             Node(const std::string& value);
+
+            /*!
+            * \fn Node(const char* value)
+            * \brief Constructs a ScalarType node that holds value.
+            * \param [in] value - Zero-terminated scalar text. A null pointer becomes an empty string.
+            */
             Node(const char* value);
 
+            /*!
+            * \fn ~Node()
+            * \brief Destroys the node and its children.
+            */
             ~Node();
 
+            /*!
+            * \fn eType Type() const
+            * \brief Returns the current node kind.
+            * \return None, SequenceType, MapType or ScalarType.
+            */
             eType Type() const;
+
+            /*!
+            * \fn bool IsNone() const
+            * \brief Tests whether Type() is None.
+            * \return True for an empty node.
+            */
             bool IsNone() const;
+
+            /*!
+            * \fn bool IsSequence() const
+            * \brief Tests whether Type() is SequenceType.
+            * \return True for a sequence node.
+            */
             bool IsSequence() const;
+
+            /*!
+            * \fn bool IsMap() const
+            * \brief Tests whether Type() is MapType.
+            * \return True for a map node.
+            */
             bool IsMap() const;
+
+            /*!
+            * \fn bool IsScalar() const
+            * \brief Tests whether Type() is ScalarType.
+            * \return True for a scalar node.
+            */
             bool IsScalar() const;
 
+            /*!
+            * \fn void Clear()
+            * \brief Removes all children and scalar text and sets Type() to None.
+            */
             void Clear();
 
+            /*!
+            * \fn T As() const
+            * \brief Converts the scalar text to T.
+            * \tparam T - Destination type. std::string returns the raw text. bool accepts
+            *             "true", "yes" or "1" (case-insensitive) as true and any other text as false.
+            *             Other types are parsed with std::stringstream.
+            * \return Converted value. For a non-scalar or empty node the converted empty string is used.
+            */
             template<typename T> T As() const
             {
                 return Detail::StringConverter<T>::Get(AsString());
             }
 
+            /*!
+            * \fn T As(const T& defaultValue) const
+            * \brief Converts the scalar text to T, or returns defaultValue when conversion fails.
+            * \tparam T - Destination type. For std::string and bool, an empty scalar yields defaultValue.
+            *             For other types, defaultValue is used when the stream extraction fails.
+            * \param [in] defaultValue - Value returned when the scalar cannot be converted.
+            * \return Converted value or defaultValue.
+            */
             template<typename T> T As(const T& defaultValue) const
             {
                 return Detail::StringConverter<T>::Get(AsString(), defaultValue);
             }
 
+            /*!
+            * \fn size_t Size() const
+            * \brief Returns the number of children of a sequence or map.
+            * \return Child count, or 0 for None, ScalarType or a node with no implementation.
+            */
             size_t Size() const;
 
+            /*!
+            * \fn Node& Insert(const size_t index)
+            * \brief Converts this node to a sequence and inserts an empty child at index.
+            * \param [in] index - Insertion position. Values past the end append a child.
+            * \return Reference to the new child.
+            */
             Node& Insert(const size_t index);
 
+            /*!
+            * \fn Node& PushFront()
+            * \brief Converts this node to a sequence and inserts an empty child at the front.
+            * \return Reference to the new child.
+            */
             Node& PushFront();
 
+            /*!
+            * \fn Node& PushBack()
+            * \brief Converts this node to a sequence and appends an empty child.
+            * \return Reference to the new child.
+            */
             Node& PushBack();
 
+            /*!
+            * \fn Node& operator [] (const size_t index)
+            * \brief Converts this node to a sequence and returns the child at index.
+            * \param [in] index - Zero-based child index.
+            * \return The child, or a static empty None node when index is out of range.
+            *         A missing index is not created.
+            */
             Node& operator []  (const size_t index);
+
+            /*!
+            * \fn Node& operator [] (const std::string& key)
+            * \brief Converts this node to a map and returns the child named key.
+            * \param [in] key - Map key. A missing key is inserted as an empty None child.
+            * \return Reference to the existing or newly inserted child.
+            */
             Node& operator [] (const std::string& key);
 
+            /*!
+            * \fn void Erase(const size_t index)
+            * \brief Removes the sequence child at index.
+            * \param [in] index - Child to remove. No effect when this node is not a sequence
+            *                    or the index does not exist.
+            */
             void Erase(const size_t index);
+
+            /*!
+            * \fn void Erase(const std::string& key)
+            * \brief Removes the map child named key.
+            * \param [in] key - Key to remove. No effect when this node is not a map
+            *                  or the key does not exist.
+            */
             void Erase(const std::string& key);
 
+            /*!
+            * \fn Node& operator = (const Node& node)
+            * \brief Replaces this node with a deep copy of node.
+            * \param [in] node - Source node.
+            * \return *this.
+            */
             Node& operator = (const Node& node);
+
+            /*!
+            * \fn Node& operator = (const std::string& value)
+            * \brief Converts this node to a scalar that holds value.
+            * \param [in] value - Scalar text.
+            * \return *this.
+            */
             Node& operator = (const std::string& value);
+
+            /*!
+            * \fn Node& operator = (const char* value)
+            * \brief Converts this node to a scalar that holds value.
+            * \param [in] value - Zero-terminated scalar text. A null pointer becomes an empty string.
+            * \return *this.
+            */
             Node& operator = (const char* value);
 
+            /*!
+            * \fn Iterator Begin()
+            * \brief Returns an iterator to the first child of a sequence or map.
+            * \return Begin iterator, or an empty iterator when this node has no children.
+            */
             Iterator Begin();
+
+            /*!
+            * \fn ConstIterator Begin() const
+            * \brief Returns a const iterator to the first child of a sequence or map.
+            * \return Begin iterator, or an empty iterator when this node has no children.
+            */
             ConstIterator Begin() const;
 
+            /*!
+            * \fn Iterator End()
+            * \brief Returns a past-the-end iterator for a sequence or map.
+            * \return End iterator, or an empty iterator when this node has no children.
+            */
             Iterator End();
+
+            /*!
+            * \fn ConstIterator End() const
+            * \brief Returns a past-the-end const iterator for a sequence or map.
+            * \return End iterator, or an empty iterator when this node has no children.
+            */
             ConstIterator End() const;
 
         private:
@@ -300,26 +637,98 @@ namespace Cpl
             void* m_pImp; ///< Implementation of node class.
         };
 
+        /*! @ingroup cpl_yaml
+        * \fn void Parse(Node& root, const char* filename)
+        * \brief Reads a YAML file and stores the document in root.
+        * \param [out] root - Destination node. Existing contents are replaced.
+        * \param [in] filename - Path opened as a binary input file.
+        * \note Throws OperationException when the file cannot be opened, or ParsingException
+        *       when the file is not well-formed YAML.
+        */
         void Parse(Node& root, const char* filename);
+
+        /*! @ingroup cpl_yaml
+        * \fn void Parse(Node& root, std::istream& stream)
+        * \brief Parses YAML text from stream into root.
+        * \param [out] root - Destination node. Existing contents are replaced.
+        * \param [in] stream - Input stream positioned at the start of the document.
+        * \note Throws ParsingException when the text is not well-formed YAML.
+        */
         void Parse(Node& root, std::istream& stream);
+
+        /*! @ingroup cpl_yaml
+        * \fn void Parse(Node& root, const std::string& string)
+        * \brief Parses YAML text from string into root.
+        * \param [out] root - Destination node. Existing contents are replaced.
+        * \param [in] string - Complete YAML document.
+        * \note Throws ParsingException when the text is not well-formed YAML.
+        */
         void Parse(Node& root, const std::string& string);
+
+        /*! @ingroup cpl_yaml
+        * \fn void Parse(Node& root, const char* buffer, const size_t size)
+        * \brief Parses YAML text from a memory buffer into root.
+        * \param [out] root - Destination node. Existing contents are replaced.
+        * \param [in] buffer - Pointer to size bytes of YAML text. Need not be zero-terminated.
+        * \param [in] size - Number of bytes at buffer.
+        * \note Throws ParsingException when the text is not well-formed YAML.
+        */
         void Parse(Node& root, const char* buffer, const size_t size);
 
+        /*! @ingroup cpl_yaml
+        * \struct SerializeConfig
+        * \brief Formatting options for Serialize().
+        * \note SpaceIndentation must be at least 2 or Serialize() throws OperationException.
+        */
         struct SerializeConfig
         {
+            /*!
+            * \fn SerializeConfig(const size_t spaceIndentation = 2, const size_t scalarMaxLength = 64, const bool sequenceMapNewline = false, const bool mapScalarNewline = false)
+            * \brief Sets the four formatting fields.
+            * \param [in] spaceIndentation - Spaces added per nesting level. Must be at least 2 when serializing.
+            * \param [in] scalarMaxLength - Maximum plain-scalar length before folded style is used. 0 disables that limit.
+            * \param [in] sequenceMapNewline - If true, a map that is a sequence item starts on a new line.
+            * \param [in] mapScalarNewline - If true, a scalar that is a map value starts on a new line.
+            */
             SerializeConfig(const size_t spaceIndentation = 2,
                 const size_t scalarMaxLength = 64,
                 const bool sequenceMapNewline = false,
                 const bool mapScalarNewline = false);
 
             size_t SpaceIndentation;    ///< Number of spaces per indentation.
-            size_t ScalarMaxLength;     ///< Maximum length of scalars. Serialized as folder scalars if exceeded.
+            size_t ScalarMaxLength;     ///< Maximum length of scalars. Serialized as folded scalars if exceeded.
             bool SequenceMapNewline;    ///< Put maps on a new line if parent node is a sequence.
             bool MapScalarNewline;      ///< Put scalars on a new line if parent node is a map.
         };
 
+        /*! @ingroup cpl_yaml
+        * \fn void Serialize(const Node& root, const char* filename, const SerializeConfig& config = { 2, 64, false, false })
+        * \brief Writes root as YAML text to a file.
+        * \param [in] root - Document tree to write.
+        * \param [in] filename - Path opened for text output.
+        * \param [in] config - Indentation and folding options.
+        * \note Throws OperationException when the file cannot be opened or SpaceIndentation is less than 2.
+        */
         void Serialize(const Node& root, const char* filename, const SerializeConfig& config = { 2, 64, false, false });
+
+        /*! @ingroup cpl_yaml
+        * \fn void Serialize(const Node& root, std::ostream& stream, const SerializeConfig& config = { 2, 64, false, false })
+        * \brief Writes root as YAML text to stream.
+        * \param [in] root - Document tree to write.
+        * \param [out] stream - Destination stream.
+        * \param [in] config - Indentation and folding options.
+        * \note Throws OperationException when SpaceIndentation is less than 2.
+        */
         void Serialize(const Node& root, std::ostream& stream, const SerializeConfig& config = { 2, 64, false, false });
+
+        /*! @ingroup cpl_yaml
+        * \fn void Serialize(const Node& root, std::string& string, const SerializeConfig& config = { 2, 64, false, false })
+        * \brief Writes root as YAML text into string, replacing its previous contents.
+        * \param [in] root - Document tree to write.
+        * \param [out] string - Destination string.
+        * \param [in] config - Indentation and folding options.
+        * \note Throws OperationException when SpaceIndentation is less than 2.
+        */
         void Serialize(const Node& root, std::string& string, const SerializeConfig& config = { 2, 64, false, false });
 
         namespace Detail
