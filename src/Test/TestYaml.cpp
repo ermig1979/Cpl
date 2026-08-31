@@ -29,7 +29,7 @@
 
 namespace Test
 {
-    bool YamlSimpleTest()
+    bool YamlSimpleTest(const Options& options)
     {
         const std::string data =
             "data1: \n"
@@ -65,7 +65,7 @@ namespace Test
 
     //---------------------------------------------------------------------------------------------
 
-    bool YamlParamTest()
+    bool YamlParamTest(const Options& options)
     {
         struct SubParam
         {

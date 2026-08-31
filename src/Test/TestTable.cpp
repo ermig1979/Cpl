@@ -52,7 +52,7 @@ namespace Test
         return table;
     }
 
-    bool TableSimpleTest()
+    bool TableSimpleTest(const Options& options)
     {
         Cpl::Table table = GetTestTable();
 
@@ -79,7 +79,7 @@ namespace Test
         return true;
     }
 
-    bool TableSortableTest()
+    bool TableSortableTest(const Options& options)
     {
         Cpl::Table table = GetTestTable();
 

@@ -63,7 +63,7 @@ namespace
 
 namespace Test
 {
-    bool ParseUriTest()
+    bool ParseUriTest(const Options& options)
     {
         std::vector<std::pair<Cpl::String, std::array<Cpl::String, 4>>> testCases =
         {
@@ -92,7 +92,7 @@ namespace Test
         return true;
     }
 
-    bool StartsWithTest()
+    bool StartsWithTest(const Options& options)
     {
         std::vector<std::tuple<Cpl::String, Cpl::String, bool>> testCases =
         {
@@ -122,7 +122,7 @@ namespace Test
         return true;
     }
 
-    bool EndsWithTest()
+    bool EndsWithTest(const Options& options)
     {
         std::vector<std::tuple<Cpl::String, Cpl::String, bool>> testCases =
         {
@@ -152,7 +152,7 @@ namespace Test
         return true;
     }
 
-    bool SeparateStringTest()
+    bool SeparateStringTest(const Options& options)
     {
         std::vector<std::tuple<Cpl::String, Cpl::String, std::vector<Cpl::String>>> testCases =
         {
@@ -185,7 +185,7 @@ namespace Test
         return true;
     }
 
-    bool SeparateStringMultiTest()
+    bool SeparateStringMultiTest(const Options& options)
     {
         std::vector<std::tuple<Cpl::String, std::vector<Cpl::String>, std::vector<Cpl::String>>> testCases =
         {
@@ -228,7 +228,7 @@ namespace Test
         toStrTestImpl(ts...);
     };
 
-    bool ToStrTest()
+    bool ToStrTest(const Options& options)
     {
         /*
         This approach is used to maintain compatibility for old compilers.
@@ -256,7 +256,7 @@ namespace Test
         return true;
     }
 
-    bool CurrentDateTimeStringTest()
+    bool CurrentDateTimeStringTest(const Options& options)
     {
         std::vector<std::pair<Cpl::String, size_t>> testCases = 
         { 
@@ -314,7 +314,7 @@ namespace Test
         return true;
     }
 
-    bool ToValEmptyTest()
+    bool ToValEmptyTest(const Options& options)
     {
         // Empty and whitespace strings must not modify the value
         int intVal = 42;
@@ -342,7 +342,7 @@ namespace Test
         return true;
     }
 
-    bool TimeToStrTest()
+    bool TimeToStrTest(const Options& options)
     {
         std::vector<std::pair<double, std::pair<Cpl::String, Cpl::String>>> testCases =
         {

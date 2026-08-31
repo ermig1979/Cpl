@@ -819,7 +819,7 @@ namespace Test
     }
 
 
-    bool DoFileModifyTest() {
+    bool DoFileModifyTest(const Options& options) {
         bool ok = true;
         try {
             CPL_LOG_SS(Info, "Filesystem " << Cpl::FilesystemType());
@@ -838,7 +838,7 @@ namespace Test
         return false;
     };
 
-    bool DoFileExistanceTest() {
+    bool DoFileExistanceTest(const Options& options) {
         bool ok = true;
         try {
             CPL_LOG_SS(Info, "Filesystem " << Cpl::FilesystemType());
@@ -856,7 +856,7 @@ namespace Test
     };
 
 
-    bool DoFileInfoTest() {
+    bool DoFileInfoTest(const Options& options) {
         bool ok = true;
         try {
             CPL_LOG_SS(Info, "Filesystem " << Cpl::FilesystemType());

@@ -52,7 +52,7 @@ namespace Test
 
     CPL_PROP_STORAGE(PropStorage, PropConfig, storage);
 
-    bool PropTest()
+    bool PropTest(const Options& options)
     {
         PropStorage test, loaded;
 

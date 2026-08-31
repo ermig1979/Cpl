@@ -30,7 +30,7 @@
 namespace Test
 {
     using MemPool = Cpl::Xml::MemoryPool<char>;
-    bool XmlAllocateStringTest()
+    bool XmlAllocateStringTest(const Options& options)
     {
         MemPool pool;
 
@@ -148,7 +148,7 @@ namespace Test
         return true;
     }
 
-    bool XmlIteratorTest()
+    bool XmlIteratorTest(const Options& options)
     {
         using namespace Cpl::Xml;
 

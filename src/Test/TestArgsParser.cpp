@@ -38,7 +38,7 @@ namespace Test
         bool Check(const String& name0, const String& name1) { return HasArg(name0, name1); }
     };
 
-    bool HasArgTest()
+    bool HasArgTest(const Options& options)
     {
         int argc = 2;
         std::vector<std::string> args = {"test", "-h"};
@@ -50,7 +50,7 @@ namespace Test
         return a.Check("-h");
     }   
 
-    bool HasArg1Test()
+    bool HasArg1Test(const Options& options)
     {
         int argc = 2;
         std::vector<std::string> args = { "test", "-h" };
@@ -62,7 +62,7 @@ namespace Test
         return !a.Check("-g");
     }
 
-    bool HasArg2Test()
+    bool HasArg2Test(const Options& options)
     {
         int argc = 2;
         std::vector<std::string> args = { "test", "-h" };
