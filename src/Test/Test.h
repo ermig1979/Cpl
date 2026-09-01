@@ -1,7 +1,7 @@
 /*
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2021 Yermalayeu Ihar.
+* Copyright (c) 2021-2022 Yermalayeu Ihar.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@
 
 #include "Cpl/Defs.h"
 #include "Cpl/Args.h"
+#include "Cpl/File.h"
 #include "Cpl/Log.h"
 #include "Cpl/Performance.h"
 
@@ -37,3 +38,5 @@ namespace Test
     typedef Cpl::String String;
     typedef Cpl::Strings Strings;
 }
+
+#include "Test/TestOptions.h"

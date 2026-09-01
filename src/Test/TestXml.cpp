@@ -1,7 +1,7 @@
 /*
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar,
+* Copyright (c) 2021-2026 Yermalayeu Ihar,
 *               2023-2023 Daniil Germanenko.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,6 +23,8 @@
 * SOFTWARE.
 */
 
+#include "Test/Test.h"
+
 #include "Cpl/Xml.h"
 #include <iostream>
 #include <string>
@@ -30,7 +32,7 @@
 namespace Test
 {
     using MemPool = Cpl::Xml::MemoryPool<char>;
-    bool XmlAllocateStringTest()
+    bool XmlAllocateStringTest(const Options& options)
     {
         MemPool pool;
 
@@ -148,7 +150,7 @@ namespace Test
         return true;
     }
 
-    bool XmlIteratorTest()
+    bool XmlIteratorTest(const Options& options)
     {
         using namespace Cpl::Xml;
 

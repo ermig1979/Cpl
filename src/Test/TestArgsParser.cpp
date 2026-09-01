@@ -1,7 +1,7 @@
 /*
 * Tests for Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2022 Yermalayeu Ihar,
+* Copyright (c) 2021-2026 Yermalayeu Ihar,
 *               2021-2022 Andrey Drogolyub.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,7 +38,7 @@ namespace Test
         bool Check(const String& name0, const String& name1) { return HasArg(name0, name1); }
     };
 
-    bool HasArgTest()
+    bool HasArgTest(const Options& options)
     {
         int argc = 2;
         std::vector<std::string> args = {"test", "-h"};
@@ -50,7 +50,7 @@ namespace Test
         return a.Check("-h");
     }   
 
-    bool HasArg1Test()
+    bool HasArg1Test(const Options& options)
     {
         int argc = 2;
         std::vector<std::string> args = { "test", "-h" };
@@ -62,7 +62,7 @@ namespace Test
         return !a.Check("-g");
     }
 
-    bool HasArg2Test()
+    bool HasArg2Test(const Options& options)
     {
         int argc = 2;
         std::vector<std::string> args = { "test", "-h" };

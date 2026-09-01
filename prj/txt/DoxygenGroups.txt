@@ -1,0 +1,78 @@
+/*! @defgroup cpl_types CPL Types
+    \short Types of %Cpl Library.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_log Logging
+    \short Cpl::Log class and macros. 
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_args Argument Parser
+    \short Cpl::ArgsParser class.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_console Console
+    \short Cpl::Console namespace and ANSI terminal styling helpers.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_performance Performance
+    \short Cpl performance measurement classes and macros.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_html HTML
+    \short Cpl::Html class.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_table Table
+    \short Cpl::Table class.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_time Time
+    \short Cpl time-counter functions.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_string String
+    \short Cpl string conversion and manipulation functions.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_utils Utils
+    \short Cpl alignment, rounding and other utility functions.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_file File
+    \short Cpl file and directory path functions.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_geometry Geometry
+    \short Cpl 2D point, rectangle and polygon functions.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_param Param
+    \short Cpl parameter types, XML/YAML serialization and declaration macros.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_prop Prop
+    \short Cpl property types, XML metadata serialization and declaration macros.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_xml XML
+    \short Cpl::Xml parser, printer and file loader.
+*/
+
+/*! @ingroup cpl_types
+    @defgroup cpl_yaml YAML
+    \short Cpl::Yaml parser, node tree and serializer.
+*/

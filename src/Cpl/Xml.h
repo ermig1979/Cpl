@@ -1,7 +1,7 @@
 /*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2024 Yermalayeu Ihar,
+* Copyright (c) 2021-2026 Yermalayeu Ihar,
 *               2021-2022 Andrey Drogolyub,
 *               2023-2023 Daniil Germanenko.
 *
@@ -36,26 +36,65 @@
 
 namespace Cpl
 {
+    /*! @ingroup cpl_xml
+    * \namespace Cpl::Xml
+    * \brief In-place XML DOM parser, printer and file loader.
+    * \note Parse() writes into the source buffer unless non-destructive flags are set.
+    *       Nodes, attributes and strings are allocated from MemoryPool and are freed only
+    *       when the pool (or XmlDocument) is cleared or destroyed.
+    */
     namespace Xml
     {
+        /*! @ingroup cpl_xml
+        * \brief Size in bytes of the first MemoryPool block, allocated as a member array.
+        */
         const size_t STATIC_POOL_SIZE = 64 * 1024;
+
+        /*! @ingroup cpl_xml
+        * \brief Size in bytes of each additional MemoryPool block allocated on the heap.
+        */
         const size_t DYNAMIC_POOL_SIZE = 64 * 1024;
+
+        /*! @ingroup cpl_xml
+        * \brief Alignment in bytes of MemoryPool allocations. Equal to sizeof(void*).
+        */
         const size_t ALIGNMENT = sizeof(void*);
-        
+
+        /*! @ingroup cpl_xml
+        * \class ParseError
+        * \brief Exception thrown by XmlDocument::Parse when the source text is not well-formed XML.
+        */
         class ParseError : public std::exception
         {
         public:
+            /*!
+            * \fn ParseError(const char * what, void * where)
+            * \brief Stores the error description and a pointer into the source text.
+            * \param [in] what - Description of the parse error. Not copied; must outlive this object.
+            * \param [in] where - Position in the source text where the error was detected.
+            */
             ParseError(const char * what, void * where)
                 : _what(what)
                 , _where(where)
             {
             }
 
+            /*!
+            * \fn const char * What() const
+            * \brief Returns the error description given to the constructor.
+            * \return Pointer to the description string.
+            */
             virtual const char * What() const throw()
             {
                 return _what;
             }
 
+            /*!
+            * \fn Ch * Where() const
+            * \brief Returns the source-text position of the error, cast to character type Ch.
+            * \tparam Ch - Character type of the parsed document.
+            * \return Pointer into the source buffer passed to XmlDocument::Parse.
+            */
             template<class Ch> Ch * Where() const
             {
                 return (Ch*)_where;
@@ -70,33 +109,106 @@ namespace Cpl
         template<class Ch> class XmlAttribute;
         template<class Ch> class XmlDocument;
 
+        /*! @ingroup cpl_xml
+        * \brief Kind of an XmlNode in the document tree.
+        */
         enum NodeType
         {
-            NodeDocument,
-            NodeElement,
-            NodeData,
-            NodeCData,
-            NodeComment,
-            NodeDeclaration,
-            NodeDocType,
-            NodePi
+            NodeDocument,    //!< Document root. XmlDocument has this type.
+            NodeElement,     //!< Element node, for example a named start and end tag pair.
+            NodeData,        //!< Text data node (character data between tags).
+            NodeCData,       //!< CDATA section.
+            NodeComment,     //!< Comment node.
+            NodeDeclaration, //!< XML declaration node.
+            NodeDocType,     //!< Document type declaration node.
+            NodePi           //!< Processing-instruction node.
         };
 
+        /*! @ingroup cpl_xml
+        * \brief Do not create NodeData children. The first text fragment is stored as the
+        *        element value unless ParseNoElementValues is also set.
+        */
         const int ParseNoDataNodes = 0x1;
+
+        /*! @ingroup cpl_xml
+        * \brief Do not copy the first text fragment into the parent element value.
+        */
         const int ParseNoElementValues = 0x2;
+
+        /*! @ingroup cpl_xml
+        * \brief Do not write a zero terminator after parsed names and values.
+        *        NameSize() and ValueSize() must be used to read those strings.
+        */
         const int ParseNoStringTerminators = 0x4;
+
+        /*! @ingroup cpl_xml
+        * \brief Do not expand XML entities such as &amp;, &lt; or numeric character references.
+        */
         const int ParseNoEntityTranslation = 0x8;
+
+        /*! @ingroup cpl_xml
+        * \brief Treat the source as 8-bit characters and do not decode UTF-8 sequences
+        *        when expanding numeric character references.
+        */
         const int ParseNoUtf8 = 0x10;
+
+        /*! @ingroup cpl_xml
+        * \brief Create a NodeDeclaration child for an XML declaration.
+        */
         const int ParseDeclarationNode = 0x20;
+
+        /*! @ingroup cpl_xml
+        * \brief Create NodeComment children for comments.
+        */
         const int ParseCommentNodes = 0x40;
+
+        /*! @ingroup cpl_xml
+        * \brief Create a NodeDocType child for a document type declaration.
+        */
         const int ParseDocTypeNode = 0x80;
+
+        /*! @ingroup cpl_xml
+        * \brief Create NodePi children for processing instructions other than the XML declaration.
+        */
         const int ParsePiNodes = 0x100;
+
+        /*! @ingroup cpl_xml
+        * \brief Compare closing-tag names with the corresponding opening-tag names
+        *        and throw ParseError when they differ.
+        */
         const int ParseValidateClosingTags = 0x200;
+
+        /*! @ingroup cpl_xml
+        * \brief Strip leading and trailing whitespace from parsed text data.
+        */
         const int ParseTrimWhitespace = 0x400;
+
+        /*! @ingroup cpl_xml
+        * \brief Collapse each run of whitespace in text data to a single space character.
+        *        Modifies the source buffer.
+        */
         const int ParseNormalizeWhitespace = 0x800;
+
+        /*! @ingroup cpl_xml
+        * \brief Default Parse() flags. All bits are off.
+        */
         const int ParseDefault = 0;
+
+        /*! @ingroup cpl_xml
+        * \brief Parse flags that leave the source text unchanged:
+        *        ParseNoStringTerminators | ParseNoEntityTranslation.
+        */
         const int ParseNonDestructive = ParseNoStringTerminators | ParseNoEntityTranslation;
+
+        /*! @ingroup cpl_xml
+        * \brief Fastest Parse() flags: ParseNonDestructive | ParseNoDataNodes.
+        */
         const int ParseFasTest = ParseNonDestructive | ParseNoDataNodes;
+
+        /*! @ingroup cpl_xml
+        * \brief Parse flags that keep declaration, comment, DOCTYPE and PI nodes
+        *        and validate closing-tag names.
+        */
         const int ParseFull = ParseDeclarationNode | ParseCommentNodes | ParseDocTypeNode | ParsePiNodes | ParseValidateClosingTags;
 
         namespace Internal
@@ -159,12 +271,33 @@ namespace Cpl
             }
         }
 
+        /*! @ingroup cpl_xml
+        * \class MemoryPool
+        * \brief Aligned allocator used by XmlDocument for nodes, attributes and strings.
+        * \tparam Ch - Character type of the stored names and values. Default is char.
+        * \note The first STATIC_POOL_SIZE bytes are a member array. Further blocks of
+        *       DYNAMIC_POOL_SIZE (or larger) are allocated on the heap. Individual objects
+        *       are not freed; call Clear() or destroy the pool to release all blocks.
+        */
         template<class Ch = char> class MemoryPool
         {
         public:
+            /*!
+            * \typedef AllocFunc
+            * \brief Function that allocates size bytes and returns the block, or NULL on failure.
+            */
             typedef void *(AllocFunc)(size_t);
-            typedef void (FreeFunc)(void *); 
 
+            /*!
+            * \typedef FreeFunc
+            * \brief Function that releases a block previously returned by AllocFunc.
+            */
+            typedef void (FreeFunc)(void *);
+
+            /*!
+            * \fn MemoryPool()
+            * \brief Constructs an empty pool that uses new[] and delete[] until SetAllocator is called.
+            */
             MemoryPool()
                 : _allocFunc(0)
                 , _freeFunc(0)
@@ -172,11 +305,27 @@ namespace Cpl
                 Init();
             }
 
+            /*!
+            * \fn ~MemoryPool()
+            * \brief Releases every heap block owned by the pool.
+            */
             ~MemoryPool()
             {
                 Clear();
             }
 
+            /*!
+            * \fn XmlNode<Ch> * AllocateNode(NodeType type, const Ch *name = 0, const Ch *value = 0, size_t nameSize = 0, size_t valueSize = 0)
+            * \brief Allocates an XmlNode from the pool and optionally sets its name and value.
+            * \param [in] type - Node kind stored in XmlNode::Type().
+            * \param [in] name - Name pointer stored in the node, or NULL to leave the name empty.
+            *                    The characters are not copied.
+            * \param [in] value - Value pointer stored in the node, or NULL to leave the value empty.
+            *                     The characters are not copied.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] valueSize - Number of characters in value. 0 measures a zero-terminated value.
+            * \return Newly constructed node. Owned by this pool.
+            */
             XmlNode<Ch> * AllocateNode(NodeType type, const Ch *name = 0, const Ch *value = 0, 
                 size_t nameSize = 0, size_t valueSize = 0)
             {
@@ -199,6 +348,17 @@ namespace Cpl
                 return node;
             }
 
+            /*!
+            * \fn XmlAttribute<Ch> * AllocateAttribute(const Ch *name = 0, const Ch *value = 0, size_t nameSize = 0, size_t valueSize = 0)
+            * \brief Allocates an XmlAttribute from the pool and optionally sets its name and value.
+            * \param [in] name - Name pointer stored in the attribute, or NULL to leave the name empty.
+            *                    The characters are not copied.
+            * \param [in] value - Value pointer stored in the attribute, or NULL to leave the value empty.
+            *                     The characters are not copied.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] valueSize - Number of characters in value. 0 measures a zero-terminated value.
+            * \return Newly constructed attribute. Owned by this pool.
+            */
             XmlAttribute<Ch> * AllocateAttribute(const Ch *name = 0, const Ch *value = 0,
                 size_t nameSize = 0, size_t valueSize = 0)
             {
@@ -221,6 +381,18 @@ namespace Cpl
                 return attribute;
             }
 
+            /*!
+            * \fn Ch * AllocateString(const Ch *source = 0, size_t size = 0)
+            * \brief Allocates a zero-terminated string from the pool.
+            * \param [in] source - Characters to copy, or NULL to allocate an uninitialized buffer
+            *                     of size characters plus a terminator. At least one of source or
+            *                     size must be non-zero.
+            * \param [in] size - Maximum number of characters to copy from source, or the length
+            *                    of an uninitialized buffer when source is NULL. 0 copies source
+            *                    up to its zero terminator.
+            * \return Pointer to size+1 (or measured length+1) characters. The last character is 0.
+            *         Owned by this pool.
+            */
 #if __cplusplus >= 201703L
             [[nodiscard]] 
 #endif
@@ -246,6 +418,14 @@ namespace Cpl
                 return result;
             }
 
+            /*!
+            * \fn XmlNode<Ch> * CloneNode(const XmlNode<Ch> *source, XmlNode<Ch> *result = 0)
+            * \brief Deep-copies source and its descendants into this pool.
+            * \param [in] source - Node to clone. Name and value pointers are copied, not the characters.
+            * \param [in] result - Existing node to overwrite, or NULL to allocate a new node.
+            *                      When non-NULL, its children and attributes are removed first.
+            * \return result, or a newly allocated node when result is NULL. Owned by this pool.
+            */
             XmlNode<Ch> * CloneNode(const XmlNode<Ch> *source, XmlNode<Ch> *result = 0)
             {
                 if (result)
@@ -265,6 +445,11 @@ namespace Cpl
                 return result;
             }
 
+            /*!
+            * \fn void Clear()
+            * \brief Frees every heap block and resets the pool to the static member array.
+            * \note All nodes, attributes and strings previously returned by this pool become invalid.
+            */
             void Clear()
             {
                 while (_begin != _staticMemory)
@@ -279,6 +464,13 @@ namespace Cpl
                 Init();
             }
 
+            /*!
+            * \fn void SetAllocator(AllocFunc *af, FreeFunc *ff)
+            * \brief Installs custom heap allocation functions used for further dynamic blocks.
+            * \param [in] af - Allocator, or NULL to use new char[size].
+            * \param [in] ff - Deallocator matching af, or NULL to use delete[].
+            * \note Must be called while the pool still uses only the static member array.
+            */
             void SetAllocator(AllocFunc *af, FreeFunc *ff)
             {
                 assert(_begin == _staticMemory && _ptr == Align(_begin));
@@ -353,9 +545,21 @@ namespace Cpl
             FreeFunc *_freeFunc;
         };
 
+        /*! @ingroup cpl_xml
+        * \class XmlBase
+        * \brief Shared name, value and parent pointer of XmlNode and XmlAttribute.
+        * \tparam Ch - Character type of the name and value. Default is char.
+        * \note Name() and Value() store pointers; they do not copy characters.
+        *       The pointed-to data must outlive this object. When no name or value is set,
+        *       Name() and Value() return a static empty string and the size accessors return 0.
+        */
         template<class Ch = char> class XmlBase
         {
         public:
+            /*!
+            * \fn XmlBase()
+            * \brief Constructs an object with an empty name, empty value and no parent.
+            */
             XmlBase()
                 : _name(0)
                 , _value(0)
@@ -363,48 +567,97 @@ namespace Cpl
             {
             }
 
+            /*!
+            * \fn Ch * Name() const
+            * \brief Returns the name pointer, or a static empty string when no name is set.
+            * \return Zero-terminated name when ParseNoStringTerminators is off. Otherwise
+            *         use NameSize() to determine the length.
+            */
             Ch * Name() const
             {
                 return _name ? _name : NullStr();
             }
 
+            /*!
+            * \fn size_t NameSize() const
+            * \brief Returns the number of characters in the name.
+            * \return Stored name length, or 0 when no name is set.
+            */
             size_t NameSize() const
             {
                 return _name ? _nameSize : 0;
             }
 
+            /*!
+            * \fn Ch * Value() const
+            * \brief Returns the value pointer, or a static empty string when no value is set.
+            * \return Zero-terminated value when ParseNoStringTerminators is off. Otherwise
+            *         use ValueSize() to determine the length.
+            */
             Ch * Value() const
             {
                 return _value ? _value : NullStr();
             }
 
+            /*!
+            * \fn size_t ValueSize() const
+            * \brief Returns the number of characters in the value.
+            * \return Stored value length, or 0 when no value is set.
+            */
             size_t ValueSize() const
             {
                 return _value ? _valueSize : 0;
             }
 
+            /*!
+            * \fn void Name(const Ch *name, size_t size)
+            * \brief Stores a name pointer and length without copying characters.
+            * \param [in] name - Name characters. Must outlive this object.
+            * \param [in] size - Number of characters in name.
+            */
             void Name(const Ch *name, size_t size)
             {
                 _name = const_cast<Ch *>(name);
                 _nameSize = size;
             }
 
+            /*!
+            * \fn void Name(const Ch *name)
+            * \brief Stores a zero-terminated name pointer. The length is the number of characters before the terminator.
+            * \param [in] name - Zero-terminated name. Must outlive this object.
+            */
             void Name(const Ch *name)
             {
                 this->Name(name, Internal::Measure(name));
             }
 
+            /*!
+            * \fn void Value(const Ch *value, size_t size)
+            * \brief Stores a value pointer and length without copying characters.
+            * \param [in] value - Value characters. Must outlive this object.
+            * \param [in] size - Number of characters in value.
+            */
             void Value(const Ch *value, size_t size)
             {
                 _value = const_cast<Ch *>(value);
                 _valueSize = size;
             }
 
+            /*!
+            * \fn void Value(const Ch *value)
+            * \brief Stores a zero-terminated value pointer. The length is the number of characters before the terminator.
+            * \param [in] value - Zero-terminated value. Must outlive this object.
+            */
             void Value(const Ch *value)
             {
                 this->Value(value, Internal::Measure(value));
             }
 
+            /*!
+            * \fn XmlNode<Ch> * Parent() const
+            * \brief Returns the parent node, or NULL when this object is not attached.
+            * \return Parent XmlNode, or NULL.
+            */
             XmlNode<Ch> * Parent() const
             {
                 return _parent;
@@ -424,14 +677,31 @@ namespace Cpl
             XmlNode<Ch> * _parent;
         };
 
+        /*! @ingroup cpl_xml
+        * \class XmlAttribute
+        * \brief Name/value pair attached to an XmlNode.
+        * \tparam Ch - Character type of the name and value. Default is char.
+        * \note Attributes form a doubly linked list. Allocate them from the document MemoryPool
+        *       and attach them with XmlNode::AppendAttribute or a related method.
+        */
         template<class Ch = char> class XmlAttribute : public XmlBase<Ch>
         {
             friend class XmlNode<Ch>;
         public:
+            /*!
+            * \fn XmlAttribute()
+            * \brief Constructs an attribute with an empty name and value and no siblings.
+            */
             XmlAttribute()
             {
             }
 
+            /*!
+            * \fn XmlDocument<Ch> * document() const
+            * \brief Walks parent pointers to the document root.
+            * \return The ancestor of type NodeDocument, or NULL when this attribute is detached
+            *         or the root is not an XmlDocument.
+            */
             XmlDocument<Ch> *document() const
             {
                 if (XmlNode<Ch> *node = this->parent())
@@ -444,6 +714,16 @@ namespace Cpl
                     return 0;
             }
 
+            /*!
+            * \fn XmlAttribute<Ch> * PreviousAttribute(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
+            * \brief Returns the previous sibling attribute, optionally filtered by name.
+            * \param [in] name - Attribute name to search for, or NULL to return the immediate previous sibling.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] caseSensitive - If true, compare names with exact character values.
+            *                             If false, compare ASCII letters case-insensitively.
+            * \return Matching previous attribute, the immediate previous sibling when name is NULL
+            *         and this attribute has a parent, or NULL.
+            */
             XmlAttribute<Ch> *PreviousAttribute(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
             {
                 if (name)
@@ -459,6 +739,16 @@ namespace Cpl
                     return this->_parent ? _prevAttribute : 0;
             }
 
+            /*!
+            * \fn XmlAttribute<Ch> * NextAttribute(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
+            * \brief Returns the next sibling attribute, optionally filtered by name.
+            * \param [in] name - Attribute name to search for, or NULL to return the immediate next sibling.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] caseSensitive - If true, compare names with exact character values.
+            *                             If false, compare ASCII letters case-insensitively.
+            * \return Matching next attribute, the immediate next sibling when name is NULL
+            *         and this attribute has a parent, or NULL.
+            */
             XmlAttribute<Ch> *NextAttribute(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
             {
                 if (name)
@@ -479,10 +769,22 @@ namespace Cpl
             XmlAttribute<Ch> *_nextAttribute;
         };
 
+        /*! @ingroup cpl_xml
+        * \class XmlNode
+        * \brief Node in the XML tree: document, element, data, CDATA, comment, declaration, DOCTYPE or PI.
+        * \tparam Ch - Character type of the name and value. Default is char.
+        * \note Children and attributes form doubly linked lists. Allocate nodes from the document
+        *       MemoryPool. Removing a node unlinks it but does not free its memory.
+        */
         template<class Ch = char>
         class XmlNode : public XmlBase<Ch>
         {
         public:
+            /*!
+            * \fn XmlNode(NodeType type)
+            * \brief Constructs a node of the given type with no children, attributes or siblings.
+            * \param [in] type - Node kind stored in Type().
+            */
             XmlNode(NodeType type)
                 : _type(type)
                 , _firstNode(0)
@@ -494,11 +796,21 @@ namespace Cpl
             {
             }
 
+            /*!
+            * \fn NodeType Type() const
+            * \brief Returns the node kind given to the constructor or to Type(NodeType).
+            * \return Current NodeType.
+            */
             NodeType Type() const
             {
                 return _type;
             }
 
+            /*!
+            * \fn XmlDocument<Ch> * Document() const
+            * \brief Walks parent pointers to the document root.
+            * \return The ancestor of type NodeDocument, or NULL when the root is not an XmlDocument.
+            */
             XmlDocument<Ch> * Document() const
             {
                 XmlNode<Ch> *node = const_cast<XmlNode<Ch> *>(this);
@@ -507,6 +819,15 @@ namespace Cpl
                 return node->Type() == NodeDocument ? static_cast<XmlDocument<Ch> *>(node) : 0;
             }
 
+            /*!
+            * \fn XmlNode<Ch> * FirstNode(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
+            * \brief Returns the first child node, optionally filtered by name.
+            * \param [in] name - Child name to search for, or NULL to return the first child.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] caseSensitive - If true, compare names with exact character values.
+            *                             If false, compare ASCII letters case-insensitively.
+            * \return Matching child, the first child when name is NULL, or NULL.
+            */
             XmlNode<Ch> * FirstNode(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
             {
                 if (name)
@@ -522,6 +843,16 @@ namespace Cpl
                     return _firstNode;
             }
 
+            /*!
+            * \fn XmlNode<Ch> * LastNode(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
+            * \brief Returns the last child node, optionally filtered by name.
+            * \param [in] name - Child name to search for, or NULL to return the last child.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] caseSensitive - If true, compare names with exact character values.
+            *                             If false, compare ASCII letters case-insensitively.
+            * \return Matching child, the last child when name is NULL, or NULL.
+            * \note Asserts that this node has at least one child.
+            */
             XmlNode<Ch> * LastNode(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
             {
                 assert(_firstNode);
@@ -538,6 +869,16 @@ namespace Cpl
                     return _lastNode;
             }
 
+            /*!
+            * \fn XmlNode<Ch> * PreviousSibling(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
+            * \brief Returns the previous sibling node, optionally filtered by name.
+            * \param [in] name - Sibling name to search for, or NULL to return the immediate previous sibling.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] caseSensitive - If true, compare names with exact character values.
+            *                             If false, compare ASCII letters case-insensitively.
+            * \return Matching previous sibling, the immediate previous sibling when name is NULL, or NULL.
+            * \note Asserts that this node has a parent.
+            */
             XmlNode<Ch> * PreviousSibling(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
             {
                 assert(this->_parent);
@@ -554,6 +895,16 @@ namespace Cpl
                     return _prevSibling;
             }
 
+            /*!
+            * \fn XmlNode<Ch> * NextSibling(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
+            * \brief Returns the next sibling node, optionally filtered by name.
+            * \param [in] name - Sibling name to search for, or NULL to return the immediate next sibling.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] caseSensitive - If true, compare names with exact character values.
+            *                             If false, compare ASCII letters case-insensitively.
+            * \return Matching next sibling, the immediate next sibling when name is NULL, or NULL.
+            * \note Asserts that this node has a parent.
+            */
             XmlNode<Ch> *NextSibling(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
             {
                 assert(this->_parent);
@@ -570,6 +921,15 @@ namespace Cpl
                     return _nextSibling;
             }
 
+            /*!
+            * \fn XmlAttribute<Ch> * FirstAttribute(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
+            * \brief Returns the first attribute, optionally filtered by name.
+            * \param [in] name - Attribute name to search for, or NULL to return the first attribute.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] caseSensitive - If true, compare names with exact character values.
+            *                             If false, compare ASCII letters case-insensitively.
+            * \return Matching attribute, the first attribute when name is NULL, or NULL.
+            */
             XmlAttribute<Ch> *FirstAttribute(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
             {
                 if (name)
@@ -585,6 +945,16 @@ namespace Cpl
                     return _firstAttribute;
             }
 
+            /*!
+            * \fn XmlAttribute<Ch> * LastAttribute(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
+            * \brief Returns the last attribute, optionally filtered by name.
+            * \param [in] name - Attribute name to search for, or NULL to return the last attribute.
+            * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+            * \param [in] caseSensitive - If true, compare names with exact character values.
+            *                             If false, compare ASCII letters case-insensitively.
+            * \return Matching attribute, the last attribute when name is NULL and this node has
+            *         at least one attribute, or NULL.
+            */
             XmlAttribute<Ch> * LastAttribute(const Ch *name = 0, size_t nameSize = 0, bool caseSensitive = true) const
             {
                 if (name)
@@ -600,11 +970,21 @@ namespace Cpl
                     return _firstAttribute ? _lastAttribute : 0;
             }
 
+            /*!
+            * \fn void Type(NodeType type)
+            * \brief Changes the node kind.
+            * \param [in] type - New NodeType.
+            */
             void Type(NodeType type)
             {
                 _type = type;
             }
 
+            /*!
+            * \fn void PrependNode(XmlNode<Ch> *child)
+            * \brief Inserts child as the first child of this node.
+            * \param [in] child - Node to insert. Must have no parent and must not be a document node.
+            */
             void PrependNode(XmlNode<Ch> *child)
             {
                 assert(child && !child->parent() && child->Type() != NodeDocument);
@@ -623,6 +1003,11 @@ namespace Cpl
                 child->_prevSibling = 0;
             }
 
+            /*!
+            * \fn void AppendNode(XmlNode<Ch> *child)
+            * \brief Inserts child as the last child of this node.
+            * \param [in] child - Node to insert. Must have no parent and must not be a document node.
+            */
             void AppendNode(XmlNode<Ch> *child)
             {
                 assert(child && !child->Parent() && child->Type() != NodeDocument);
@@ -641,6 +1026,12 @@ namespace Cpl
                 child->_nextSibling = 0;
             }
 
+            /*!
+            * \fn void InsertNode(XmlNode<Ch> *where, XmlNode<Ch> *child)
+            * \brief Inserts child before where, or appends it when where is NULL.
+            * \param [in] where - Existing child of this node to insert before, or NULL to append.
+            * \param [in] child - Node to insert. Must have no parent and must not be a document node.
+            */
             void InsertNode(XmlNode<Ch> *where, XmlNode<Ch> *child)
             {
                 assert(!where || where->parent() == this);
@@ -659,6 +1050,11 @@ namespace Cpl
                 }
             }
 
+            /*!
+            * \fn void RemoveFirstNode()
+            * \brief Unlinks the first child. The child's memory stays in the pool.
+            * \note Asserts that this node has at least one child.
+            */
             void RemoveFirstNode()
             {
                 assert(FirstNode());
@@ -671,6 +1067,11 @@ namespace Cpl
                 child->_parent = 0;
             }
 
+            /*!
+            * \fn void RemoveLastNode()
+            * \brief Unlinks the last child. The child's memory stays in the pool.
+            * \note Asserts that this node has at least one child.
+            */
             void RemoveLastNode()
             {
                 assert(FirstNode());
@@ -685,6 +1086,11 @@ namespace Cpl
                 child->_parent = 0;
             }
 
+            /*!
+            * \fn void RemoveNode(XmlNode<Ch> *where)
+            * \brief Unlinks where from this node. The child's memory stays in the pool.
+            * \param [in] where - Child of this node to unlink.
+            */
             void RemoveNode(XmlNode<Ch> *where)
             {
                 assert(where && where->parent() == this);
@@ -701,6 +1107,10 @@ namespace Cpl
                 }
             }
 
+            /*!
+            * \fn void RemoveAllNodes()
+            * \brief Unlinks every child. Child memory stays in the pool.
+            */
             void RemoveAllNodes()
             {
                 for (XmlNode<Ch> *node = FirstNode(); node; node = node->_nextSibling)
@@ -708,6 +1118,11 @@ namespace Cpl
                 _firstNode = 0;
             }
 
+            /*!
+            * \fn void PrependAttribute(XmlAttribute<Ch> *attribute)
+            * \brief Inserts attribute as the first attribute of this node.
+            * \param [in] attribute - Attribute to insert. Must have no parent.
+            */
             void PrependAttribute(XmlAttribute<Ch> *attribute)
             {
                 assert(attribute && !attribute->parent());
@@ -726,6 +1141,11 @@ namespace Cpl
                 attribute->_prevAttribute = 0;
             }
 
+            /*!
+            * \fn void AppendAttribute(XmlAttribute<Ch> *attribute)
+            * \brief Inserts attribute as the last attribute of this node.
+            * \param [in] attribute - Attribute to insert. Must have no parent.
+            */
             void AppendAttribute(XmlAttribute<Ch> *attribute)
             {
                 assert(attribute && !attribute->Parent());
@@ -744,6 +1164,12 @@ namespace Cpl
                 attribute->_nextAttribute = 0;
             }
 
+            /*!
+            * \fn void InsertAttribute(XmlAttribute<Ch> *where, XmlAttribute<Ch> *attribute)
+            * \brief Inserts attribute before where, or appends it when where is NULL.
+            * \param [in] where - Existing attribute of this node to insert before, or NULL to append.
+            * \param [in] attribute - Attribute to insert. Must have no parent.
+            */
             void InsertAttribute(XmlAttribute<Ch> *where, XmlAttribute<Ch> *attribute)
             {
                 assert(!where || where->parent() == this);
@@ -762,6 +1188,11 @@ namespace Cpl
                 }
             }
 
+            /*!
+            * \fn void RemoveFirstAttribute()
+            * \brief Unlinks the first attribute. The attribute's memory stays in the pool.
+            * \note Asserts that this node has at least one attribute.
+            */
             void RemoveFirstAttribute()
             {
                 assert(FirstAttribute());
@@ -776,6 +1207,11 @@ namespace Cpl
                 _firstAttribute = attribute->_nextAttribute;
             }
 
+            /*!
+            * \fn void RemoveLastAttribute()
+            * \brief Unlinks the last attribute. The attribute's memory stays in the pool.
+            * \note Asserts that this node has at least one attribute.
+            */
             void RemoveLastAttribute()
             {
                 assert(FirstAttribute());
@@ -790,6 +1226,11 @@ namespace Cpl
                 attribute->_parent = 0;
             }
 
+            /*!
+            * \fn void RemoveAttribute(XmlAttribute<Ch> *where)
+            * \brief Unlinks where from this node. The attribute's memory stays in the pool.
+            * \param [in] where - Attribute of this node to unlink.
+            */
             void RemoveAttribute(XmlAttribute<Ch> *where)
             {
                 assert(FirstAttribute() && where->parent() == this);
@@ -805,6 +1246,10 @@ namespace Cpl
                 }
             }
 
+            /*!
+            * \fn void RemoveAllAttributes()
+            * \brief Unlinks every attribute. Attribute memory stays in the pool.
+            */
             void RemoveAllAttributes()
             {
                 for (XmlAttribute<Ch> *attribute = FirstAttribute(); attribute; attribute = attribute->_nextAttribute)
@@ -825,14 +1270,36 @@ namespace Cpl
             XmlNode<Ch> *_nextSibling;
         };
 
+        /*! @ingroup cpl_xml
+        * \class XmlDocument
+        * \brief XML document: a NodeDocument root plus the MemoryPool that owns the tree.
+        * \tparam Ch - Character type of the parsed text. Default is char.
+        * \note Parse() writes into the source buffer unless non-destructive flags are set.
+        *       The source buffer must remain valid for the lifetime of the document.
+        */
         template<class Ch = char> class XmlDocument : public XmlNode<Ch>, public MemoryPool<Ch>
         {
         public:
+            /*!
+            * \fn XmlDocument()
+            * \brief Constructs an empty document of type NodeDocument.
+            */
             XmlDocument()
                 : XmlNode<Ch>(NodeDocument)
             {
             }
 
+            /*!
+            * \fn void Parse(Ch * text, size_t length)
+            * \brief Parses zero or more root-level nodes from text and appends them to this document.
+            * \tparam Flags - Combination of Parse* flag constants. Use ParseDefault for the default behaviour.
+            * \param [in,out] text - Source XML. Not copied. May be overwritten unless Flags includes
+            *                       ParseNonDestructive (and does not include whitespace-normalizing flags).
+            *                       Must be readable for length characters and should be zero-terminated.
+            * \param [in] length - Number of characters in text, not counting a required terminator.
+            * \note Existing children and attributes are removed first. Throws ParseError when the
+            *       text is not well-formed XML or when a required '<' is missing.
+            */
             template<int Flags> void Parse(Ch * text, size_t length)
             {
                 assert(text);
@@ -854,6 +1321,10 @@ namespace Cpl
                 }
             }
 
+            /*!
+            * \fn void Clear()
+            * \brief Unlinks all children and attributes and releases every heap block of the pool.
+            */
             void Clear()
             {
                 this->RemoveAllNodes();
@@ -1733,37 +2204,90 @@ namespace Cpl
             }
         };
 
+        /*! @ingroup cpl_xml
+        * \class NodeIterator
+        * \brief Bidirectional iterator over the children of an XmlNode.
+        * \tparam Ch - Character type of the iterated nodes.
+        */
         template<class Ch> class NodeIterator
         {
         public:
+            /*!
+            * \typedef value_type
+            * \brief Type of the iterated node.
+            */
             typedef XmlNode<Ch> value_type;
+
+            /*!
+            * \typedef reference
+            * \brief Reference to the iterated node.
+            */
             typedef XmlNode<Ch> & reference;
+
+            /*!
+            * \typedef pointer
+            * \brief Pointer to the iterated node.
+            */
             typedef XmlNode<Ch> * pointer;
+
+            /*!
+            * \typedef difference_type
+            * \brief Distance type required by iterator traits.
+            */
             typedef std::ptrdiff_t difference_type;
+
+            /*!
+            * \typedef iterator_category
+            * \brief Bidirectional iterator tag.
+            */
             typedef std::bidirectional_iterator_tag iterator_category;
 
+            /*!
+            * \fn NodeIterator()
+            * \brief Constructs a singular iterator that compares equal to a past-the-end iterator.
+            */
             NodeIterator()
                 : _node(0)
             {
             }
 
+            /*!
+            * \fn NodeIterator(XmlNode<Ch> *node)
+            * \brief Constructs an iterator at the first child of node.
+            * \param [in] node - Parent whose children are iterated.
+            */
             NodeIterator(XmlNode<Ch> *node)
                 : _node(node->FirstNode())
             {
             }
 
+            /*!
+            * \fn reference operator *() const
+            * \brief Returns the current child node.
+            * \return Reference to the current XmlNode. Asserts that the iterator is not past-the-end.
+            */
             reference operator *() const
             {
                 assert(_node);
                 return *_node;
             }
 
+            /*!
+            * \fn pointer operator->() const
+            * \brief Returns a pointer to the current child node.
+            * \return Pointer to the current XmlNode. Asserts that the iterator is not past-the-end.
+            */
             pointer operator->() const
             {
                 assert(_node);
                 return _node;
             }
 
+            /*!
+            * \fn NodeIterator& operator++()
+            * \brief Advances to the next sibling.
+            * \return *this. Asserts that the iterator is not past-the-end.
+            */
             NodeIterator& operator++()
             {
                 assert(_node);
@@ -1771,6 +2295,11 @@ namespace Cpl
                 return *this;
             }
 
+            /*!
+            * \fn NodeIterator operator++(int)
+            * \brief Advances to the next sibling and returns the previous iterator value.
+            * \return Copy of the iterator before it was advanced.
+            */
             NodeIterator operator++(int)
             {
                 NodeIterator tmp = *this;
@@ -1778,6 +2307,11 @@ namespace Cpl
                 return tmp;
             }
 
+            /*!
+            * \fn NodeIterator& operator--()
+            * \brief Moves to the previous sibling.
+            * \return *this. Asserts that a previous sibling exists.
+            */
             NodeIterator& operator--()
             {
                 assert(_node && _node->PreviousSibling());
@@ -1785,6 +2319,11 @@ namespace Cpl
                 return *this;
             }
 
+            /*!
+            * \fn NodeIterator operator--(int)
+            * \brief Moves to the previous sibling and returns the previous iterator value.
+            * \return Copy of the iterator before it was moved.
+            */
             NodeIterator operator--(int)
             {
                 NodeIterator tmp = *this;
@@ -1792,11 +2331,23 @@ namespace Cpl
                 return tmp;
             }
 
+            /*!
+            * \fn bool operator ==(const NodeIterator<Ch> &rhs)
+            * \brief Compares two iterators for equality.
+            * \param [in] rhs - Other iterator.
+            * \return true when both iterators point to the same node (including both past-the-end).
+            */
             bool operator ==(const NodeIterator<Ch> &rhs)
             {
                 return _node == rhs._node;
             }
 
+            /*!
+            * \fn bool operator !=(const NodeIterator<Ch> &rhs)
+            * \brief Compares two iterators for inequality.
+            * \param [in] rhs - Other iterator.
+            * \return true when the iterators point to different nodes.
+            */
             bool operator !=(const NodeIterator<Ch> &rhs)
             {
                 return _node != rhs._node;
@@ -1808,37 +2359,90 @@ namespace Cpl
 
         };
 
+        /*! @ingroup cpl_xml
+        * \class AttributeIterator
+        * \brief Bidirectional iterator over the attributes of an XmlNode.
+        * \tparam Ch - Character type of the iterated attributes.
+        */
         template<class Ch> class AttributeIterator
         {
         public:
+            /*!
+            * \typedef value_type
+            * \brief Type of the iterated attribute.
+            */
             typedef XmlAttribute<Ch> value_type;
+
+            /*!
+            * \typedef reference
+            * \brief Reference to the iterated attribute.
+            */
             typedef XmlAttribute<Ch> &reference;
+
+            /*!
+            * \typedef pointer
+            * \brief Pointer to the iterated attribute.
+            */
             typedef XmlAttribute<Ch> *pointer;
+
+            /*!
+            * \typedef difference_type
+            * \brief Distance type required by iterator traits.
+            */
             typedef std::ptrdiff_t difference_type;
+
+            /*!
+            * \typedef iterator_category
+            * \brief Bidirectional iterator tag.
+            */
             typedef std::bidirectional_iterator_tag iterator_category;
 
+            /*!
+            * \fn AttributeIterator()
+            * \brief Constructs a singular iterator that compares equal to a past-the-end iterator.
+            */
             AttributeIterator()
                 : _attribute(0)
             {
             }
 
+            /*!
+            * \fn AttributeIterator(XmlNode<Ch> *node)
+            * \brief Constructs an iterator at the first attribute of node.
+            * \param [in] node - Node whose attributes are iterated.
+            */
             AttributeIterator(XmlNode<Ch> *node)
                 : _attribute(node->FirstAttribute())
             {
             }
 
+            /*!
+            * \fn reference operator *() const
+            * \brief Returns the current attribute.
+            * \return Reference to the current XmlAttribute. Asserts that the iterator is not past-the-end.
+            */
             reference operator *() const
             {
                 assert(_attribute);
                 return *_attribute;
             }
 
+            /*!
+            * \fn pointer operator->() const
+            * \brief Returns a pointer to the current attribute.
+            * \return Pointer to the current XmlAttribute. Asserts that the iterator is not past-the-end.
+            */
             pointer operator->() const
             {
                 assert(_attribute);
                 return _attribute;
             }
 
+            /*!
+            * \fn AttributeIterator& operator++()
+            * \brief Advances to the next attribute.
+            * \return *this. Asserts that the iterator is not past-the-end.
+            */
             AttributeIterator& operator++()
             {
                 assert(_attribute);
@@ -1846,6 +2450,11 @@ namespace Cpl
                 return *this;
             }
 
+            /*!
+            * \fn AttributeIterator operator++(int)
+            * \brief Advances to the next attribute and returns the previous iterator value.
+            * \return Copy of the iterator before it was advanced.
+            */
             AttributeIterator operator++(int)
             {
                 AttributeIterator tmp = *this;
@@ -1853,6 +2462,11 @@ namespace Cpl
                 return tmp;
             }
 
+            /*!
+            * \fn AttributeIterator& operator--()
+            * \brief Moves to the previous attribute.
+            * \return *this. Asserts that a previous attribute exists.
+            */
             AttributeIterator& operator--()
             {
                 assert(_attribute && _attribute->PreviousAttribute());
@@ -1860,6 +2474,11 @@ namespace Cpl
                 return *this;
             }
 
+            /*!
+            * \fn AttributeIterator operator--(int)
+            * \brief Moves to the previous attribute and returns the previous iterator value.
+            * \return Copy of the iterator before it was moved.
+            */
             AttributeIterator operator--(int)
             {
                 AttributeIterator tmp = *this;
@@ -1867,11 +2486,23 @@ namespace Cpl
                 return tmp;
             }
 
+            /*!
+            * \fn bool operator ==(const AttributeIterator<Ch> &rhs)
+            * \brief Compares two iterators for equality.
+            * \param [in] rhs - Other iterator.
+            * \return true when both iterators point to the same attribute (including both past-the-end).
+            */
             bool operator ==(const AttributeIterator<Ch> &rhs)
             {
                 return _attribute == rhs._attribute;
             }
 
+            /*!
+            * \fn bool operator !=(const AttributeIterator<Ch> &rhs)
+            * \brief Compares two iterators for inequality.
+            * \param [in] rhs - Other iterator.
+            * \return true when the iterators point to different attributes.
+            */
             bool operator !=(const AttributeIterator<Ch> &rhs)
             {
                 return _attribute != rhs._attribute;
@@ -1883,6 +2514,9 @@ namespace Cpl
 
         };
 
+        /*! @ingroup cpl_xml
+        * \brief Print() flag that writes markup without tab indentation or trailing newlines.
+        */
         const int PrintNoIndenting = 0x1;
 
         namespace Internal
@@ -2155,35 +2789,84 @@ namespace Cpl
             }
         }
 
+        /*! @ingroup cpl_xml
+        * \brief Writes node and its descendants to an output iterator as XML text.
+        * \tparam OutIt - Output iterator whose value type accepts Ch.
+        * \tparam Ch - Character type of the node tree.
+        * \param [in,out] out - Destination iterator. Advanced as characters are written.
+        * \param [in] node - Root of the tree to print. A document node prints only its children.
+        * \param [in] flags - 0 for indented output, or PrintNoIndenting to omit tabs and newlines.
+        * \return out after the last written character.
+        * \note Special characters in text and attribute values are written as XML entities
+        *       (&lt;, &gt;, &amp;, &apos;, &quot;) except inside CDATA, comments, DOCTYPE and PI nodes.
+        */
         template<class OutIt, class Ch> inline OutIt Print(OutIt out, const XmlNode<Ch> &node, int flags = 0)
         {
             return Internal::PrintNode(out, &node, flags, 0);
         }
 
+        /*! @ingroup cpl_xml
+        * \brief Writes node and its descendants to an output stream as XML text.
+        * \tparam Ch - Character type of the stream and of the node tree.
+        * \param [in,out] out - Destination stream.
+        * \param [in] node - Root of the tree to print.
+        * \param [in] flags - 0 for indented output, or PrintNoIndenting to omit tabs and newlines.
+        * \return out.
+        */
         template<class Ch> inline std::basic_ostream<Ch> & Print(std::basic_ostream<Ch> &out, const XmlNode<Ch> &node, int flags = 0)
         {
             Print(std::ostream_iterator<Ch>(out), node, flags);
             return out;
         }
 
+        /*! @ingroup cpl_xml
+        * \brief Writes node to out using Print() with default flags (indented).
+        * \tparam Ch - Character type of the stream and of the node tree.
+        * \param [in,out] out - Destination stream.
+        * \param [in] node - Root of the tree to print.
+        * \return out.
+        */
         template<class Ch> inline std::basic_ostream<Ch> & operator <<(std::basic_ostream<Ch> & out, const XmlNode<Ch> & node)
         {
             return Print(out, node);
         }
 
+        /*! @ingroup cpl_xml
+        * \class File
+        * \brief Loads a zero-terminated XML source buffer from a file, memory or input stream.
+        * \tparam Ch - Character type of the buffer. Default is char.
+        * \note Data() is suitable as the text argument of XmlDocument::Parse. Size() includes
+        *       the terminating zero, so the character count passed to Parse() is Size() - 1
+        *       when the buffer is non-empty.
+        */
         template<class Ch = char> class File
         {
         public:
+            /*!
+            * \fn File()
+            * \brief Constructs an empty buffer. Data() is empty until Open or an initializing constructor is used.
+            */
             File()
             {
             }
 
+            /*!
+            * \fn File(const char * fileName)
+            * \brief Loads the contents of fileName. Throws std::runtime_error if the file cannot be opened.
+            * \param [in] fileName - Path passed to Open().
+            */
             File(const char * fileName)
             {
                 if (!Open(fileName))
                     throw std::runtime_error(std::string("Can't open file ") + fileName);
             }
 
+            /*!
+            * \fn File(const Ch * data, size_t size)
+            * \brief Copies size characters from data and appends a zero terminator.
+            * \param [in] data - Source characters. size characters are copied.
+            * \param [in] size - Number of characters to copy.
+            */
             File(const Ch * data, size_t size)
             {
                 _data.resize(size + 1);
@@ -2191,6 +2874,11 @@ namespace Cpl
                 _data[size] = 0;
             }
 
+            /*!
+            * \fn File(std::basic_istream<Ch> & is)
+            * \brief Reads the entire seekable stream into the buffer and appends a zero terminator.
+            * \param [in,out] is - Input stream. skipws is cleared. Throws std::runtime_error on a read error.
+            */
             File(std::basic_istream<Ch> & is)
             {
                 decltype(_data) tdata;
@@ -2206,6 +2894,12 @@ namespace Cpl
                 _data = std::move(tdata);
             }
 
+            /*!
+            * \fn bool Open(const char * fileName)
+            * \brief Replaces the buffer with the contents of fileName plus a zero terminator.
+            * \param [in] fileName - Path opened as a binary ifstream.
+            * \return true when the file was opened and read. false when the file cannot be opened.
+            */
             bool Open(const char * fileName)
             {
                 std::basic_ifstream<Ch> ifs(fileName, std::ios::binary);
@@ -2221,16 +2915,31 @@ namespace Cpl
                 return true;
             }
 
+            /*!
+            * \fn Ch * Data()
+            * \brief Returns a pointer to the mutable zero-terminated buffer.
+            * \return Pointer to Size() characters. The last character is 0 when the buffer is non-empty.
+            */
             Ch * Data()
             {
                 return _data.data();
             }
 
+            /*!
+            * \fn const Ch * Data() const
+            * \brief Returns a pointer to the zero-terminated buffer.
+            * \return Pointer to Size() characters. The last character is 0 when the buffer is non-empty.
+            */
             const Ch * Data() const
             {
                 return _data.data();
             }
 
+            /*!
+            * \fn size_t Size() const
+            * \brief Returns the buffer length including the terminating zero.
+            * \return Number of characters in the buffer, including the terminator. 0 for a default-constructed File.
+            */
             size_t Size() const
             {
                 return _data.size();
@@ -2240,6 +2949,16 @@ namespace Cpl
             std::vector<Ch> _data;
         };
 
+        /*! @ingroup cpl_xml
+        * \brief Counts child nodes of node, optionally filtered by name.
+        * \tparam Ch - Character type of the node tree.
+        * \param [in] node - Parent whose children are counted.
+        * \param [in] name - Child name to match, or NULL to count every child.
+        * \param [in] nameSize - Number of characters in name. 0 measures a zero-terminated name.
+        * \param [in] caseSensitive - If true, compare names with exact character values.
+        *                             If false, compare ASCII letters case-insensitively.
+        * \return Number of matching children.
+        */
         template<class Ch> inline size_t CountChildren(XmlNode<Ch>* node, const Ch* name = 0, size_t nameSize = 0, bool caseSensitive = true)
         {
             XmlNode<Ch>* child = node->FirstNode(name, nameSize, caseSensitive);
@@ -2252,6 +2971,12 @@ namespace Cpl
             return count;
         }
 
+        /*! @ingroup cpl_xml
+        * \brief Counts the attributes attached to node.
+        * \tparam Ch - Character type of the node tree.
+        * \param [in] node - Node whose attributes are counted.
+        * \return Number of attributes.
+        */
         template<class Ch> inline size_t CountAttributes(XmlNode<Ch> * node)
         {
             XmlAttribute<Ch> *attr = node->FirstAttribute();

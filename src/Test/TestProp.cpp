@@ -52,7 +52,7 @@ namespace Test
 
     CPL_PROP_STORAGE(PropStorage, PropConfig, storage);
 
-    bool PropTest()
+    bool PropTest(const Options& options)
     {
         PropStorage test, loaded;
 
@@ -61,17 +61,17 @@ namespace Test
 
         test.SetProperty("first.name", "new_name");
 
-        test.Save("prop_short.xml", false);
-        test.Save("prop_full.xml", true);
+        test.Save(options.OutputPath("prop_short.xml"), false);
+        test.Save(options.OutputPath("prop_full.xml"), true);
 
-        if (!loaded.Load("prop_full.xml"))
+        if (!loaded.Load(options.OutputPath("prop_full.xml")))
             return false;
 
         if (!loaded.Equal(test))
         {
             CPL_LOG_SS(Error, "loaded full != original");
-            loaded.Save("prop_short_loaded.xml", false);
-            loaded.Save("prop_gfull_loaded.xml", true);
+            loaded.Save(options.OutputPath("prop_short_loaded.xml"), false);
+            loaded.Save(options.OutputPath("prop_gfull_loaded.xml"), true);
             return false;
         }
 

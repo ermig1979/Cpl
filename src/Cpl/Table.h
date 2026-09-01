@@ -1,7 +1,7 @@
 ﻿/*
 * Common Purpose Library (http://github.com/ermig1979/Cpl).
 *
-* Copyright (c) 2021-2024 Yermalayeu Ihar.
+* Copyright (c) 2021-2026 Yermalayeu Ihar.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -29,22 +29,45 @@
 
 namespace Cpl
 {
+    /*! @ingroup cpl_table
+    * \class Table
+    * \brief Rectangular table with column headers, cell values, alignment and optional HTML/text export.
+    * \note The table size is fixed at construction. Headers, row properties and cells are then filled
+    *       with SetHeader, SetRowProp and SetCell. GenerateText writes an ASCII table; GenerateHtml
+    *       writes an HTML table, optionally with CSS, JavaScript and click-to-sort headers.
+    */
     class Table
     {
     public:
+        /*!
+        * \enum Alignment
+        * \brief Horizontal alignment of a column header and of the cells in that column.
+        */
         enum Alignment
         {
-            Left,
-            Center,
-            Right,
+            Left,   //!< Align text to the left.
+            Center, //!< Center text.
+            Right,  //!< Align text to the right.
         };
 
+        /*!
+        * \enum Color
+        * \brief Text color of a cell.
+        * \note In text output a red cell is marked with '*' after the value. In HTML the cell
+        *       receives the CSS class "red" or "blk".
+        */
         enum Color
         {
-            Black,
-            Red,
+            Black, //!< Default black text.
+            Red,   //!< Red text.
         };
 
+        /*!
+        * \fn Table(size_t width, size_t height)
+        * \brief Constructs an empty table of the given size.
+        * \param [in] width - Number of columns.
+        * \param [in] height - Number of rows.
+        */
         Table(size_t width, size_t height)
             : _width(width)
             , _height(height)
@@ -52,26 +75,61 @@ namespace Cpl
             Init();
         }
 
+        /*!
+        * \fn size_t Height() const
+        * \brief Returns the number of rows.
+        * \return Row count given to the constructor.
+        */
         size_t Height() const
         {
             return _height;
         }
 
+        /*!
+        * \fn size_t Width() const
+        * \brief Returns the number of columns.
+        * \return Column count given to the constructor.
+        */
         size_t Width() const
         {
             return _width;
         }
 
+        /*!
+        * \fn void SetHeader(size_t col, const String& name, bool separator = false, Alignment alignment = Left)
+        * \brief Sets the name, vertical separator and alignment of a column.
+        * \param [in] col - Zero-based column index.
+        * \param [in] name - Header text shown in the first row.
+        * \param [in] separator - If true, draw a vertical separator after this column.
+        * \param [in] alignment - Horizontal alignment of the header and of the cells in this column.
+        */
         void SetHeader(size_t col, const String& name, bool separator = false, Alignment alignment = Left)
         {
             _headers[col] = Header(name, separator, alignment);
         }
 
+        /*!
+        * \fn void SetRowProp(size_t row, bool separator = false, bool bold = false)
+        * \brief Sets the separator and bold style of a row.
+        * \param [in] row - Zero-based row index.
+        * \param [in] separator - If true, draw a horizontal separator after this row in text output
+        *                         (ignored for the last row).
+        * \param [in] bold - If true, render the row in bold with a gray background in HTML output.
+        */
         void SetRowProp(size_t row, bool separator = false, bool bold = false)
         {
             _rows[row] = RowProp(separator, bold);
         }
 
+        /*!
+        * \fn void SetCell(size_t col, size_t row, const String& value, Color color = Black, const String & link = "")
+        * \brief Sets the value, color and optional hyperlink of a cell.
+        * \param [in] col - Zero-based column index.
+        * \param [in] row - Zero-based row index.
+        * \param [in] value - Cell text. Also used to grow the column width for text output.
+        * \param [in] color - Cell text color. Black by default.
+        * \param [in] link - Optional URL. If not empty, HTML output wraps the cell text in an anchor.
+        */
         void SetCell(size_t col, size_t row, const String& value, Color color = Black, const String & link = "")
         {
             Cell& cell = _cells[row * _width + col];
@@ -81,6 +139,14 @@ namespace Cpl
             _headers[col].width = std::max(_headers[col].width, value.size());
         }
 
+        /*!
+        * \fn String GenerateText(size_t indent_ = 0)
+        * \brief Builds an ASCII representation of the table.
+        * \param [in] indent_ - Number of spaces prepended to each line.
+        * \return Multi-line string with a header row, dash separators and cell values.
+        * \note Column widths follow the longest header or cell in the column. Alignment pads the
+        *       cell text. A red cell is marked with '*' after the value instead of a trailing space.
+        */
         String GenerateText(size_t indent_ = 0)
         {
             std::stringstream header, separator, table, indent;
@@ -117,6 +183,19 @@ namespace Cpl
             return table.str();
         }
 
+        /*!
+        * \fn String GenerateHtml(size_t indent = 0, bool firstTime = true, bool sortable = false, bool ignoreAlignment = false)
+        * \brief Builds an HTML representation of the table.
+        * \param [in] indent - Initial indent level of the Html writer. Each level is two spaces.
+        * \param [in] firstTime - If true, emit the CSS style block (and the sort script when sortable is true).
+        *                         Set false when the page already contains those assets from an earlier table.
+        * \param [in] sortable - If true, add clickable column headers and JavaScript that sorts rows.
+        * \param [in] ignoreAlignment - If true, all columns are centered.
+        * \return HTML markup of the table, including optional style and script blocks.
+        * \note When sortable is true, right-aligned columns are rendered as centered, and a column
+        *       whose cells are all numeric is sorted as numbers. Cell links become href anchors.
+        *       Bold rows use a gray background.
+        */
         String GenerateHtml(size_t indent = 0, bool firstTime = true, bool sortable = false, bool ignoreAlignment = false)
         {
             std::stringstream stream;
