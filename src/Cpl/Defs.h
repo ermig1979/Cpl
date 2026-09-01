@@ -39,7 +39,7 @@
 #include <limits>
 #include <list>
 
-#define CPL_VERSION "1.0.0"
+#define CPL_VERSION "1.0.1"
 
 #if defined(_MSC_VER)
 #define CPL_INLINE __forceinline
