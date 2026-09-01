@@ -39,6 +39,8 @@
 #include <limits>
 #include <list>
 
+#define CPL_VERSION "1.0.0"
+
 #if defined(_MSC_VER)
 #define CPL_INLINE __forceinline
 #define CPL_FUNCTION __FUNCTION__
