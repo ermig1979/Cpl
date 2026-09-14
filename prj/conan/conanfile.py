@@ -5,6 +5,10 @@ from conan.errors import ConanException
 from conan.tools.files import copy, load, save
 from conan.tools.scm import Git
 
+# "auto_header_only" in `implements` exists since Conan 2.0.9; older Conan ignores the
+# attribute silently and would produce split package ids under the same recipe revision.
+required_conan_version = ">=2.0.9"
+
 
 class CplConan(ConanFile):
     name = "cpl"
@@ -15,6 +19,13 @@ class CplConan(ConanFile):
     topics = ("header-only", "utility", "c++")
     package_type = "header-library"
     settings = "os", "compiler", "build_type", "arch"
+    # Clears the package id (Conan does it only when BOTH hold: package_type is
+    # "header-library" AND "auto_header_only" is listed here; a package_id() method
+    # would override this). Without it every profile axis (compiler.cppstd,
+    # build_type, compiler.version, ...) splits the id of a package
+    # whose content is the same headers. package() must therefore stay
+    # settings-independent: one id serves every profile.
+    implements = ["auto_header_only"]
     no_copy_source = True
 
     def _repo_root(self):
