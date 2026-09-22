@@ -208,12 +208,15 @@ namespace Test
     TEST_ADD(ParamMap);
     TEST_ADD(ParamMapBug);
     TEST_ADD(ParamMapEqualEveryEntry);
+    TEST_ADD(ParamXmlLoadChildFailure);
+    TEST_ADD(ParamYamlLoadChildFailure);
     TEST_ADD(ParamLimited);
     TEST_ADD(ParamLimitedTernaryArgument);
     TEST_ADD(ParamTemplate);
 
     TEST_ADD(ParamVectorV2);
     TEST_ADD(ParamMapV2);
+    TEST_ADD(ParamV2XmlLoadChildFailure);
 
     TEST_ADD(Prop);
     TEST_ADD(PropStorageCopy);

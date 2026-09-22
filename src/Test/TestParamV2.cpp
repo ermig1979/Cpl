@@ -29,6 +29,52 @@
 
 namespace Test
 {
+    // A child that fails to load fails the whole load, the rule ParamXmlLoadChildFailure pins for
+    // the containers of Param.h.
+    bool ParamV2XmlLoadChildFailureTest(const Options& options)
+    {
+        struct Leaf
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+        };
+
+        // A map fails its own load on an element of a foreign name, which makes it the child that
+        // fails inside each of the containers below.
+        struct Entry
+        {
+            CPL_PARAM_MAP(String, Leaf, sub);
+            CPL_PARAM_VALUE(Int, x, 0);
+        };
+
+        struct VectorParam
+        {
+            CPL_PARAM_VECTOR_V2(Entry, list);
+        };
+
+        struct MapParam
+        {
+            CPL_PARAM_MAP_V2(String, Entry, map);
+        };
+
+        CPL_PARAM_HOLDER(VectorHolder, VectorParam, test);
+        CPL_PARAM_HOLDER(MapHolder, MapParam, test);
+
+        CPL_LOG_SS(Info, "Both loads below must fail.");
+
+        if (!LoadFails<VectorHolder>(options, "load_failure_vector_v2.xml",
+            "<test><list><item><sub><bogus/></sub><x>5</x></item><item><x>7</x></item></list></test>"))
+            return false;
+
+        if (!LoadFails<MapHolder>(options, "load_failure_map_v2.xml",
+            "<test><map>"
+            "<item><first>a</first><second><sub><bogus/></sub><x>5</x></second></item>"
+            "<item><first>b</first><second><x>7</x></second></item>"
+            "</map></test>"))
+            return false;
+
+        return true;
+    }
+
     bool ParamVectorV2Test(const Options& options)
     {
         struct ChildParam

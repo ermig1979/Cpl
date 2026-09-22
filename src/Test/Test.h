@@ -51,3 +51,29 @@ namespace Test
 }
 
 #include "Test/TestOptions.h"
+
+namespace Test
+{
+    /*!
+    * Writes text to the file name in the output directory and loads a Holder from it, in the format
+    * the extension of name selects. Returns true when that load fails, which is what the caller
+    * expects of text; a load that reports success is logged as an error.
+    */
+    template<class Holder> bool LoadFails(const Options& options, const String& name, const String& text)
+    {
+        const String path = options.OutputPath(name);
+        // WriteToFile reports success with -1 and failure with 0.
+        if (Cpl::WriteToFile(path, text.c_str(), text.size()) == 0)
+        {
+            CPL_LOG_SS(Error, "Can't write " << path << "!");
+            return false;
+        }
+        Holder holder;
+        if (holder.Load(path))
+        {
+            CPL_LOG_SS(Error, "The load of " << name << " reports success, though it has to fail!");
+            return false;
+        }
+        return true;
+    }
+}
