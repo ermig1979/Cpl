@@ -168,6 +168,13 @@ namespace Cpl
     * \note Declare a holder with CPL_PROP_STORAGE. operator() returns T.
     *       The constructor walks two levels of children (groups, then properties) and
     *       fills an internal map used by SetProperty and GetProperty.
+    *       In XML a structure may hold one storage only: whatever its name, a storage writes under
+    *       a node named "storage" and loads from the first such node of its parent, so storages of
+    *       one structure take the values of each other: a second storage loads the node of the
+    *       first one, and after a short save, which leaves out a storage that has not changed, the
+    *       first storage loads the node of the second one. The load reports success in both cases.
+    *       The map lies after the ParamStruct part, so End() is overridden: an enclosing structure
+    *       steps over the whole storage, while the own children stop at ChildEnd().
     *       A copy rebuilds that map from its own fields, so every storage owns an independent set
     *       of properties; an assignment keeps its own map, because it writes the children of T in
     *       place and leaves their addresses unchanged. A storage is not movable: a move request
@@ -175,8 +182,11 @@ namespace Cpl
     *       XML save writes a "storage" / "map" tree: a "count" child and one "item" per
     *       property (or per Changed() property when full is false). Each item has
     *       "first" (the dotted name) and "second" (the ParamProp XML).
-    *       XML load skips unknown names after a Debug log; a missing "storage", "map",
-    *       "first" or "second" node, or a "second" without "value", fails the load.
+    *       XML load skips unknown names after a Debug log. An absent "storage" node inside a
+    *       structure leaves the storage as it is and is not a failure; at the top of a file it
+    *       fails the load, as does a missing "map", "first" or "second" node, or a "second"
+    *       without "value". YAML loads a storage as a plain structure, so there a file without
+    *       its node loads with success at the top as well.
     */
     template<class T> struct ParamStorage : public Cpl::ParamStruct<T>
     {
@@ -245,11 +255,21 @@ namespace Cpl
             BuildMap();
         }
 
+        // The map lies after the ParamStruct part, so the end inherited from it would leave a
+        // storage used as a field of another structure overlapping the field declared after it.
+        Unknown* End() const override
+        {
+            return (Unknown*)(this + 1);
+        }
+
         bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
         {
+            // Inside a structure an absent node is not a failure: a short save leaves out a storage
+            // that has not changed. At the top of a file the node is always written, so a file
+            // without it is not a file of a storage.
             Xml::XmlNode<char>* xmlStorage = xmlParent->FirstNode("storage");
             if (xmlStorage == NULL)
-                return false;
+                return xmlParent->Type() != Xml::NodeDocument;
             Xml::XmlNode<char>* xmlMap = xmlStorage->FirstNode("map");
             if (xmlMap == NULL)
                 return false;
@@ -315,7 +335,7 @@ namespace Cpl
     private:
         void BuildMap()
         {
-            for (Unknown* group = this->ChildBeg(); group < this->End(); group = group->End())
+            for (Unknown* group = this->ChildBeg(); group < this->ChildEnd(); group = group->End())
             {
                 for (Unknown* prop = ((UnknownGroup*)group)->ChildBeg(); prop < group->End(); prop = prop->End())
                 {

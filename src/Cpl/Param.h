@@ -638,7 +638,9 @@ namespace Cpl
     * \brief Parameter node whose children are the consecutive Param fields of a user struct T.
     * \tparam T - User struct that contains only Param-derived members declared with the CPL_PARAM_* macros.
     * \note Declare instances with CPL_PARAM_STRUCT or CPL_PARAM_STRUCT_MOD, or a root with CPL_PARAM_HOLDER.
-    *       Children are walked in memory from the first field of T up to the end of this node.
+    *       Children are walked in memory from the first field of T up to ChildEnd(), the end of
+    *       the ParamStruct part. A derived class that adds fields of its own must override End(),
+    *       which the enclosing node uses to reach the field declared after this one.
     *       XML and YAML represent the struct as a named map of those children.
     */
     template<class T> struct ParamStruct : public Cpl::Param<T>
@@ -650,7 +652,7 @@ namespace Cpl
         */
         bool Changed() const override
         {
-            for (const Unknown* child = this->ChildBeg(); child < this->End(); child = child->End())
+            for (const Unknown* child = this->ChildBeg(); child < this->ChildEnd(); child = child->End())
             {
                 if (child->Changed())
                     return true;
@@ -677,14 +679,23 @@ namespace Cpl
             return (Unknown*)(&this->_value); 
         }
 
+        // A derived class may add fields of its own, so its End() lies past them. The walk over
+        // the children of this structure stops at the end of the ParamStruct part instead.
+        // Virtual, because ParamStorage reaches a group through ParamStruct<int>*, where this + 1
+        // would give the size of that type instead of the size of the group.
+        virtual Unknown* ChildEnd() const
+        {
+            return (Unknown*)(this + 1);
+        }
+
         bool EqualNode(const Unknown* other) const override
         {
             const ParamStruct* that = (ParamStruct*)other;
             for (Unknown* tc = this->ChildBeg(), *oc = that->ChildBeg();; tc = tc->End(), oc = oc->End())
             {
-                if (tc >= this->End())
-                    return oc >= that->End();
-                if (oc >= that->End())
+                if (tc >= this->ChildEnd())
+                    return oc >= that->ChildEnd();
+                if (oc >= that->ChildEnd())
                     return false;
                 if (!tc->EqualNode(oc))
                     return false;
@@ -694,7 +705,7 @@ namespace Cpl
         void CloneNode(const Unknown * other) override
         {
             const ParamStruct* that = (ParamStruct*)other;
-            for (Unknown* tc = this->ChildBeg(), *oc = that->ChildBeg(); tc < this->End(); tc = tc->End(), oc = oc->End())
+            for (Unknown* tc = this->ChildBeg(), *oc = that->ChildBeg(); tc < this->ChildEnd(); tc = tc->End(), oc = oc->End())
                 tc->CloneNode(oc);
         }
 
@@ -703,7 +714,7 @@ namespace Cpl
             Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
             if (xmlCurrent)
             {
-                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->ChildEnd(); paramChild = paramChild->End())
                 {
                     if (!paramChild->LoadNodeXml(xmlCurrent))
                         return false;
@@ -715,7 +726,7 @@ namespace Cpl
         void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
-            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->ChildEnd(); paramChild = paramChild->End())
             {
                 if (full || paramChild->Changed())
                     paramChild->SaveNodeXml(xmlDoc, xmlCurrent, full);
@@ -730,7 +741,7 @@ namespace Cpl
             {
                 if (current.Type() != Yaml::Node::MapType)
                     return false;
-                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->ChildEnd(); paramChild = paramChild->End())
                 {
                     if (!paramChild->LoadNodeYaml(current))
                         return false;
@@ -742,7 +753,7 @@ namespace Cpl
         void SaveNodeYaml(Yaml::Node& node, bool full) const override
         {
             Yaml::Node& current = node[this->Name()];
-            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->ChildEnd(); paramChild = paramChild->End())
             {
                 if (full || paramChild->Changed())
                     paramChild->SaveNodeYaml(current, full);
