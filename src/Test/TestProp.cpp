@@ -499,6 +499,52 @@ namespace Test
         return true;
     }
 
+    // The name is known from the types alone: no storage object takes part in this initialization.
+    static const char* const WIDTH_NAME = CPL_PROP_FULL_NAME(PropConfig, first, width);
+
+    // The configuration may be a parameter of a template, where the names of its fields depend on it.
+    template<class Config> const char* WidthName()
+    {
+        return CPL_PROP_FULL_NAME(Config, first, width);
+    }
+
+    bool PropStaticNameTest(const Options& options)
+    {
+        // A constant expression, so the name is available wherever a literal is.
+        constexpr const char* name = CPL_PROP_FULL_NAME(PropConfig, first, name);
+        if (String(name) != "first.name" || String(WIDTH_NAME) != "first.width")
+        {
+            CPL_LOG_SS(Error, "The static names are \'" << name << "\' and \'" << WIDTH_NAME << "\'!");
+            return false;
+        }
+
+        if (String(WidthName<PropConfig>()) != "first.width")
+        {
+            CPL_LOG_SS(Error, "The static name built in a template is \'" << WidthName<PropConfig>() << "\'!");
+            return false;
+        }
+
+        // Every field also carries its own name.
+        if (String(PropConfig::Param_first::StaticName()) != "first"
+            || String(FirstGroup::Param_width::StaticName()) != "width")
+        {
+            CPL_LOG_SS(Error, "The field names are \'" << PropConfig::Param_first::StaticName() << "\' and \'"
+                << FirstGroup::Param_width::StaticName() << "\'!");
+            return false;
+        }
+
+        // The static name and the one the storage registers must be the same string.
+        PropStorage storage;
+        if (storage().first().width.FullName() != WIDTH_NAME)
+        {
+            CPL_LOG_SS(Error, "The storage registered \'" << storage().first().width.FullName()
+                << "\' while the static name is \'" << WIDTH_NAME << "\'!");
+            return false;
+        }
+
+        return true;
+    }
+
     bool PropFullNameTest(const Options& options)
     {
         PropStorage storage;

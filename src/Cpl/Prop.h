@@ -29,6 +29,7 @@
 #include "Cpl/Param.h"
 #include "Cpl/Log.h"
 
+#include <type_traits>
 #include <utility>
 
 namespace Cpl
@@ -43,6 +44,8 @@ namespace Cpl
     *       Inside a ParamStruct a property is saved to and loaded from a node of its own name.
     *       FullName() returns the name the property is registered under in its ParamStorage - the
     *       key of the map, which the property points at - and an empty string outside a storage.
+    *       StaticName() returns the same name without an object; CPL_PROP_FULL_NAME builds the
+    *       dotted one at compile time.
     *       SaveBodyXml writes the descriptive body - "value", "desc", "value_min", "value_max"
     *       and "value_default"; LoadBodyXml reads the "value" child back, fails without it, and
     *       drops the rest.
@@ -462,9 +465,108 @@ namespace Cpl
             }
         }
     };
+
+    /*! @ingroup cpl_prop
+    * \struct StaticNameOf
+    * \brief Value() returns StaticName() of T, which every field and holder macro declares, or an
+    *        empty string when T has none.
+    */
+    template<class T> struct StaticNameOf
+    {
+        template<class U> static constexpr const char* Get(decltype(&U::StaticName))
+        {
+            return U::StaticName();
+        }
+
+        template<class U> static constexpr const char* Get(...)
+        {
+            return "";
+        }
+
+        static constexpr const char* Value()
+        {
+            return Get<T>(0);
+        }
+    };
+
+    /*! @ingroup cpl_prop
+    * \struct CheckedName
+    * \brief Checks the two fields named by CPL_PROP_FULL_NAME and hands its dotted name back.
+    * \tparam Group - Type of the group field, config::Param_<group>.
+    * \tparam Prop - Type of the property field inside the struct of that group.
+    * \note Value() returns its argument unchanged, the work is done by the checks below. They
+    *       reject a name that no ParamStorage registers: a group in place of a property, a
+    *       property or a storage in place of a group, a field declared by hand rather than by a
+    *       macro, and a field whose StaticName() is not the name of the field, as with
+    *       CPL_PARAM_HOLDER.
+    */
+    template<class Group, class Prop> struct CheckedName
+    {
+        static_assert(std::is_base_of<Cpl::ParamStruct<typename Group::Type>, Group>::value,
+            "CPL_PROP_FULL_NAME: the second argument must be a group declared with CPL_PROP_GROUP.");
+        // A storage is a structure too, but the storage holding it skips it, see the note of ParamStorage.
+        static_assert(!std::is_base_of<Cpl::ParamStorage<typename Group::Type>, Group>::value,
+            "CPL_PROP_FULL_NAME: the second argument must be a group, not a storage.");
+        static_assert(std::is_base_of<Cpl::ParamProp<typename Prop::Type>, Prop>::value,
+            "CPL_PROP_FULL_NAME: the third argument must be a property declared with CPL_PROP or CPL_PROP_EX.");
+        // BuildMap takes the key of a property from the names of its nodes, and only a field
+        // declared by a macro has StaticName(), where that name and the name of the field are one
+        // and the same token. A field written by hand gives its node any name it likes, so the
+        // dotted name built out of the field names would not be the key it gets in the map.
+        // Every macro gives a field a name that is not empty.
+        static_assert(StaticNameOf<Group>::Value()[0] != '\0' && StaticNameOf<Prop>::Value()[0] != '\0',
+            "CPL_PROP_FULL_NAME: both fields must be declared by a macro, which gives them StaticName().");
+
+        // A holder macro takes the name of the node apart from the name of its type, so StaticName()
+        // of a field declared with it is not the name of the field. A field without StaticName() is
+        // reported by the check above and passes this one.
+        static constexpr bool SameNames(const char* group, const char* prop)
+        {
+            return IsFieldName(StaticNameOf<Group>::Value(), group) && IsFieldName(StaticNameOf<Prop>::Value(), prop);
+        }
+
+        template<bool sameNames> static constexpr const char* Value(const char* fullName)
+        {
+            static_assert(sameNames, "CPL_PROP_FULL_NAME: StaticName() of both fields must be the name of the field, "
+                "as a field declared with CPL_PROP_GROUP, CPL_PROP or CPL_PROP_EX has it.");
+            return fullName;
+        }
+
+    private:
+        static constexpr bool IsFieldName(const char* name, const char* field)
+        {
+            return name[0] == '\0' || Equal(name, field);
+        }
+
+        static constexpr bool Equal(const char* a, const char* b)
+        {
+            return *a == *b && (*a == '\0' || Equal(a + 1, b + 1));
+        }
+    };
 }
 
 //-------------------------------------------------------------------------------------------------
+
+/*! @ingroup cpl_prop
+* \def CPL_PROP_FULL_NAME(config, group, prop)
+* \brief Builds the dotted name "group.prop" of a property from the field names, without an object.
+* \param config - Struct that declares the group field with CPL_PROP_GROUP.
+* \param group - Field name of the group inside config.
+* \param prop - Field name of the property inside the struct of the group.
+* \note The result is a compile time constant equal to the key the property gets in the map of a
+*       ParamStorage over config, the string ParamProp::FullName() returns for it. What does not
+*       compile: a group or a property that does not exist, a property of another group, a group
+*       in place of a property and the other way round, a storage in place of a group, and a field
+*       declared by hand or by a holder macro instead of CPL_PROP_GROUP, CPL_PROP or CPL_PROP_EX,
+*       whose node may carry a name of its own. See Cpl::CheckedName.
+*       config may be a parameter of a template.
+*/
+#define CPL_PROP_FULL_NAME(config, group, prop) \
+    CPL_PROP_CHECKED_NAME(config, group, prop)::template Value< \
+        CPL_PROP_CHECKED_NAME(config, group, prop)::SameNames(#group, #prop)>(#group "." #prop)
+
+#define CPL_PROP_CHECKED_NAME(config, group, prop) \
+    Cpl::CheckedName<typename config::Param_##group, typename config::Param_##group::Type::Param_##prop>
 
 /*! @ingroup cpl_prop
 * \def CPL_PROP(type, name, value, descr)
