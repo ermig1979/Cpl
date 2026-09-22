@@ -970,12 +970,18 @@ namespace Cpl
                 const Unknown* oChildEnd = that->ChildEnd(o->second);
                 const Unknown* tChild = this->ChildBeg(t->second);
                 const Unknown* tChildEnd = this->ChildEnd(t->second);
+                // The end of the children of one entry is not the end of the map: the walk goes
+                // on with the next entry.
                 for (;; oChild = oChild->End(), tChild = tChild->End())
                 {
                     if (tChild >= tChildEnd)
-                        return oChild >= oChildEnd;
+                    {
+                        if (oChild < oChildEnd)
+                            return false;
+                        break;
+                    }
                     if (oChild >= oChildEnd)
-                        return tChild >= tChildEnd;
+                        return false;
                     if (!oChild->EqualNode(tChild))
                         return false;
                 }
