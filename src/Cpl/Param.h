@@ -675,11 +675,10 @@ namespace Cpl
                 if (tc >= this->End())
                     return oc >= that->End();
                 if (oc >= that->End())
-                    return tc >= this->End();
+                    return false;
                 if (!tc->EqualNode(oc))
                     return false;
             }
-            return true;
         }
 
         void CloneNode(const Unknown * other) override
