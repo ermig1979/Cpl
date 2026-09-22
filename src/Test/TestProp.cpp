@@ -107,6 +107,32 @@ namespace Test
 
     CPL_PARAM_HOLDER(NestedStorageHolder, NestedStorageGroup, nested);
 
+    struct TwoGroupConfig
+    {
+        CPL_PROP_GROUP(PlainGroup, first);
+        CPL_PROP_GROUP(StringGroup, second);
+    };
+
+    // A storage standing where a group is expected. Its own children are groups, so a walk that
+    // takes it for a group reports every one of them instead of reporting the storage itself.
+    struct StorageInStorageConfig
+    {
+        struct Param_nested : public Cpl::ParamStorage<TwoGroupConfig>
+        {
+            typedef Cpl::ParamStorage<TwoGroupConfig> Base;
+            Param_nested() : Base("nested") {}
+        } nested;
+
+        CPL_PROP_GROUP(PlainGroup, plain);
+    };
+
+    CPL_PROP_STORAGE(StorageInStorage, StorageInStorageConfig, storage);
+
+    static void CollectErrors(Cpl::Log::Level, const char* msg, void* userData)
+    {
+        ((Strings*)userData)->push_back(String(msg));
+    }
+
 #if defined(__unix__) || defined(__APPLE__)
     // The child that is not a property stands between two properties and the configuration has a
     // second group, so a walk that gives up on the whole group, or on the whole storage, at the
@@ -135,6 +161,19 @@ namespace Test
 
     CPL_PROP_STORAGE(NonPropertyStorage, NonPropertyConfig, storage);
 
+    // A configuration that declares children of its own kind between its groups. The walk over
+    // the children of a storage reaches a group through ParamStruct<int>* and asks it where its
+    // children end, which a node of another kind answers with a method of its own, so the body of
+    // the test below has to run in a child process as well.
+    struct NonGroupConfig
+    {
+        CPL_PROP_GROUP(PlainGroup, first);
+        CPL_PARAM_VECTOR(int, numbers);
+        CPL_PARAM_VALUE(int, plain, 5);
+        CPL_PROP_GROUP(StringGroup, last);
+    };
+
+    CPL_PROP_STORAGE(NonGroupStorage, NonGroupConfig, storage);
 #endif
 
     // The assert of the macro has to see each of its three arguments as one operand of the
@@ -584,7 +623,74 @@ namespace Test
             return true;
         });
     }
+
+    bool PropStorageChildWithoutGroupTest(const Options& options)
+    {
+        CPL_LOG_SS(Info, "The child process below must report the two children of the storage that are not groups.");
+        return RunIsolated([]() -> bool
+        {
+            NonGroupStorage storage;
+
+            // The groups on both sides of those children keep their properties: the walk goes on
+            // over the children of the storage.
+            const String names[] = { "first.width", "first.height", "last.name" };
+            for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+            {
+                String registered;
+                if (!storage.GetProperty(names[i], registered))
+                {
+                    CPL_LOG_SS(Error, "The property \'" << names[i] << "\' is not registered!");
+                    return false;
+                }
+            }
+
+            if (storage().plain() != 5)
+            {
+                CPL_LOG_SS(Error, "The plain parameter holds " << storage().plain()
+                    << " instead of 5, the walk over the storage has written into it!");
+                return false;
+            }
+
+            return true;
+        });
+    }
 #endif
+
+    bool PropStorageInStorageTest(const Options& options)
+    {
+        CPL_LOG_SS(Info, "The error below must name the child of the storage that is not a group.");
+
+        Strings errors;
+        const int writer = Cpl::Log::Global().AddWriter(Cpl::Log::Error, CollectErrors, &errors);
+
+        StorageInStorage storage;
+
+        Cpl::Log::Global().RemoveWriter(writer);
+
+        // One message about the storage itself, not one per group inside it.
+        if (errors.size() != 1)
+        {
+            CPL_LOG_SS(Error, "The construction reported " << errors.size()
+                << " errors instead of one about the child that is not a group!");
+            return false;
+        }
+
+        if (errors[0].find("'nested'") == String::npos)
+        {
+            CPL_LOG_SS(Error, "The reported error does not name the child that is not a group: \'"
+                << errors[0] << "\'!");
+            return false;
+        }
+
+        String value;
+        if (!storage.GetProperty("plain.width", value))
+        {
+            CPL_LOG_SS(Error, "The property \'plain.width\' is not registered!");
+            return false;
+        }
+
+        return true;
+    }
 
     bool PropExTernaryArgumentTest(const Options& options)
     {

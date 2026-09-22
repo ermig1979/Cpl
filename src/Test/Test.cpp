@@ -232,7 +232,9 @@ namespace Test
     TEST_ADD(PropStorageAsChild);
 #if defined(__unix__) || defined(__APPLE__)
     TEST_ADD(PropStorageGroupWithNonProperty);
+    TEST_ADD(PropStorageChildWithoutGroup);
 #endif
+    TEST_ADD(PropStorageInStorage);
     TEST_ADD(PropExTernaryArgument);
 
     TEST_ADD(PerformanceSimple);
