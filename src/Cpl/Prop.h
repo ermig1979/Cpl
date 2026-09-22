@@ -416,8 +416,8 @@ namespace Cpl
         {
             for (Unknown* group = this->ChildBeg(); group < this->ChildEnd(); group = group->End())
             {
-                // A child that is not a group holds no properties, and the walk below would take its
-                // value for a row of nodes, which sends the walk into memory that holds no node.
+                // A child that is not a group holds no properties and answers the question below
+                // with a method of its own, which sends the walk into memory that holds no node.
                 if (!group->IsStruct())
                 {
                     CPL_LOG_SS(Error, "The child '" << group->Name() << "' of the storage '" << this->Name()
@@ -425,7 +425,10 @@ namespace Cpl
                     continue;
                 }
 
-                for (Unknown* prop = ((UnknownGroup*)group)->ChildBeg(); prop < group->End(); prop = prop->End())
+                // The properties of a group end where its ParamStruct part does: End() of the
+                // group lies past the fields the group itself may add.
+                UnknownGroup* groupNode = (UnknownGroup*)group;
+                for (Unknown* prop = groupNode->ChildBeg(); prop < groupNode->ChildEnd(); prop = prop->End())
                 {
                     // Every pointer of the map is used as a property, so a child of another kind
                     // has no place in it and the virtual call below would land in a slot such a
