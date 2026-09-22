@@ -83,6 +83,26 @@ namespace Test
 
     CPL_PROP_STORAGE(LimitedStorage, LimitedConfig, storage);
 
+    // The assert of the macro has to see each of its three arguments as one operand of the
+    // comparison, so each of them in turn is written as an expression of its own: the precedence
+    // of ?: takes such an argument apart unless the macro wraps it.
+#if !defined(NDEBUG) && (defined(__unix__) || defined(__APPLE__))
+    struct TernaryDefaultGroup
+    {
+        CPL_PROP_EX(int, size, true ? 100 : 0, 0, 10, "Default out of the declared range.");
+    };
+
+    struct TernaryMaxGroup
+    {
+        CPL_PROP_EX(int, size, 100, 0, true ? 10 : 1000, "Default above the declared maximum.");
+    };
+
+    struct TernaryMinGroup
+    {
+        CPL_PROP_EX(int, size, 5, true ? 0 : 1, 10, "Default inside the declared range.");
+    };
+#endif
+
     bool PropTest(const Options& options)
     {
         PropStorage test, loaded;
@@ -391,5 +411,57 @@ namespace Test
         }
 
         return true;
+    }
+
+    bool PropExTernaryArgumentTest(const Options& options)
+    {
+#if defined(NDEBUG) || !(defined(__unix__) || defined(__APPLE__))
+        CPL_LOG_SS(Info, "The test needs an active assert and a child process, it is skipped in this build.");
+        return true;
+#else
+        CPL_LOG_SS(Info, "The first two child processes below must be terminated by the assert of CPL_PROP_EX.");
+        const bool defaultConstructed = RunIsolated([]() -> bool
+        {
+            TernaryDefaultGroup group;
+            return group.size()() == 100;
+        });
+
+        if (defaultConstructed)
+        {
+            CPL_LOG_SS(Error, "The assert of CPL_PROP_EX accepted a default outside [Min(), Max()] "
+                << "written as a ternary expression!");
+            return false;
+        }
+
+        const bool maxConstructed = RunIsolated([]() -> bool
+        {
+            TernaryMaxGroup group;
+            return group.size()() == 100;
+        });
+
+        if (maxConstructed)
+        {
+            CPL_LOG_SS(Error, "The assert of CPL_PROP_EX accepted a default above a maximum "
+                << "written as a ternary expression!");
+            return false;
+        }
+
+        // A bound written as a ternary expression must not turn a default that lies inside the
+        // range into a failing assert.
+        const bool minConstructed = RunIsolated([]() -> bool
+        {
+            TernaryMinGroup group;
+            return group.size()() == 5;
+        });
+
+        if (!minConstructed)
+        {
+            CPL_LOG_SS(Error, "The assert of CPL_PROP_EX rejected a default inside [Min(), Max()] "
+                << "with a minimum written as a ternary expression!");
+            return false;
+        }
+
+        return true;
+#endif
     }
 }
