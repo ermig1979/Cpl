@@ -40,7 +40,8 @@ namespace Cpl
     *       ToVal and XML load write the parsed value directly and do not apply that range check.
     *       Inside a ParamStruct a property is saved to and loaded from a node of its own name.
     *       SaveBodyXml writes the descriptive body - "value", "desc", "value_min", "value_max"
-    *       and "value_default"; LoadBodyXml reads the "value" child back and drops the rest.
+    *       and "value_default"; LoadBodyXml reads the "value" child back, fails without it, and
+    *       drops the rest.
     *       Only ParamStorage calls them, under a node of its own per property.
     *       The body leaves no text value empty: SaveBodyXml writes a single space instead, for an
     *       empty string as well as for "value_min" and "value_max" when Limited() is false. Inside
@@ -115,11 +116,14 @@ namespace Cpl
             return Cpl::ParamValue<T>::LoadNodeXml(xmlParent);
         }
 
+        // The body of a property is its item in the map of a storage, so a body without a value is
+        // a broken item and fails the load, the way an item without a body does.
         virtual bool LoadBodyXml(Xml::XmlNode<char>* xmlParent)
         {
             Xml::XmlNode<char>* xmlValue = xmlParent->FirstNode("value");
-            if(xmlValue)
-                Cpl::ToVal(xmlValue->Value(), this->_value);
+            if (!xmlValue)
+                return false;
+            Cpl::ToVal(xmlValue->Value(), this->_value);
             return true;
         }
 
@@ -172,7 +176,7 @@ namespace Cpl
     *       property (or per Changed() property when full is false). Each item has
     *       "first" (the dotted name) and "second" (the ParamProp XML).
     *       XML load skips unknown names after a Debug log; a missing "storage", "map",
-    *       "first" or "second" node fails the load.
+    *       "first" or "second" node, or a "second" without "value", fails the load.
     */
     template<class T> struct ParamStorage : public Cpl::ParamStruct<T>
     {
