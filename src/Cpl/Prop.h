@@ -108,6 +108,13 @@ namespace Cpl
         {
         }
 
+        // A property is the only kind of node ParamStorage may reach through ParamProp<int>*,
+        // see the note of Param::IsProp.
+        bool IsProp() const override
+        {
+            return true;
+        }
+
         // ParamLimited loads through the validator, which replaces a value outside [Min(), Max()]
         // with the default one. A property takes the value of the file as it is, the way the class
         // promises and the way LoadBodyXml does it for ParamStorage.
@@ -168,11 +175,16 @@ namespace Cpl
     * \note Declare a holder with CPL_PROP_STORAGE. operator() returns T.
     *       The constructor walks two levels of children (groups, then properties) and
     *       fills an internal map used by SetProperty and GetProperty.
+    *       A group holds properties only: a child of another kind is skipped with an Error in the
+    *       log and stays out of the map, so SetProperty and GetProperty do not know its name and
+    *       the XML of the storage, written and read through that map, neither saves nor loads it.
     *       In XML a structure may hold one storage only: whatever its name, a storage writes under
     *       a node named "storage" and loads from the first such node of its parent, so storages of
     *       one structure take the values of each other: a second storage loads the node of the
     *       first one, and after a short save, which leaves out a storage that has not changed, the
     *       first storage loads the node of the second one. The load reports success in both cases.
+    *       YAML has no map: a storage is saved and loaded there as a plain structure, every child
+    *       by its own node name, so a skipped child goes to YAML.
     *       The map lies after the ParamStruct part, so End() is overridden: an enclosing structure
     *       steps over the whole storage, while the own children stop at ChildEnd().
     *       A copy rebuilds that map from its own fields, so every storage owns an independent set
@@ -339,6 +351,16 @@ namespace Cpl
             {
                 for (Unknown* prop = ((UnknownGroup*)group)->ChildBeg(); prop < group->End(); prop = prop->End())
                 {
+                    // Every pointer of the map is used as a property, so a child of another kind
+                    // has no place in it and the virtual call below would land in a slot such a
+                    // node fills with a method of its own.
+                    if (!prop->IsProp())
+                    {
+                        CPL_LOG_SS(Error, "The child '" << prop->Name() << "' of the group '" << group->Name()
+                            << "' is not a property! It is skipped, declare it with CPL_PROP or CPL_PROP_EX.");
+                        continue;
+                    }
+
                     String name = group->Name() + "." + prop->Name();
                     _map[name] = (UnknownProp*)prop;
                 }

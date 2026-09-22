@@ -364,6 +364,15 @@ namespace Cpl
 
         virtual Unknown* End() const = 0;
 
+        // ParamStorage walks the children of a group as Unknown* and reaches a property through
+        // ParamProp<int>*, whose own virtual methods occupy slots that a node of another kind
+        // fills with methods of its own, so a child that is not a property must be told apart
+        // before it is reached that way.
+        virtual bool IsProp() const
+        {
+            return false;
+        }
+
         virtual bool EqualNode(const Unknown* other) const = 0;
 
         virtual void CloneNode(const Unknown* other) = 0;
