@@ -133,7 +133,32 @@ namespace Test
         ((Strings*)userData)->push_back(String(msg));
     }
 
+    // A broken walk over the children of a group reads a field of that group as a node, so the
+    // body of the test below has to run in a child process. Where there is no fork RunIsolated
+    // calls it in the process of the runner and such a read takes the whole runner down, so the
+    // test is declared on the platforms that have fork.
 #if defined(__unix__) || defined(__APPLE__)
+    struct OwnFieldGroup
+    {
+        CPL_PROP(int, width, 640, "Image width.");
+        CPL_PROP(int, height, 480, "Image height.");
+    };
+
+    // A group that adds a field of its own and overrides End(), the way the note of ParamStruct
+    // prescribes. CPL_PROP_GROUP declares no such field, so the group is written by hand.
+    struct OwnFieldConfig
+    {
+        struct Param_group : public Cpl::ParamStruct<OwnFieldGroup>
+        {
+            typedef Cpl::ParamStruct<OwnFieldGroup> Base;
+            Param_group() : Base("group"), extra(0) {}
+            int extra;
+            Unknown* End() const override { return (Unknown*)(this + 1); }
+        } group;
+    };
+
+    CPL_PROP_STORAGE(OwnFieldStorage, OwnFieldConfig, storage);
+
     // The child that is not a property stands between two properties and the configuration has a
     // second group, so a walk that gives up on the whole group, or on the whole storage, at the
     // first such child is told apart from one that skips the child alone.
@@ -747,6 +772,39 @@ namespace Test
     }
 
 #if defined(__unix__) || defined(__APPLE__)
+    bool PropStorageGroupWithOwnFieldTest(const Options& options)
+    {
+        // The walk that fills the map of a storage is bounded by End() of the group, which lies
+        // past the fields the group adds, so the field of this group is read as one more property.
+        // The storage is built in a child process because that read crashes.
+        return RunIsolated([]() -> bool
+        {
+            OwnFieldStorage storage;
+
+            // A walk that stops too early loses properties instead of crashing, so every declared
+            // name must be found in the map.
+            const String names[] = { "group.width", "group.height" };
+            for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+            {
+                String value;
+                if (!storage.GetProperty(names[i], value))
+                {
+                    CPL_LOG_SS(Error, "The property \'" << names[i] << "\' is not registered!");
+                    return false;
+                }
+            }
+
+            if (storage().group().height.FullName() != "group.height")
+            {
+                CPL_LOG_SS(Error, "The full name of the last property is \'"
+                    << storage().group().height.FullName() << "\'!");
+                return false;
+            }
+
+            return true;
+        });
+    }
+
     bool PropStorageGroupWithNonPropertyTest(const Options& options)
     {
         CPL_LOG_SS(Info, "The child process below must report the child of a group that is not a property.");

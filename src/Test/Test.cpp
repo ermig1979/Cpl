@@ -234,6 +234,7 @@ namespace Test
     TEST_ADD(PropStorageXmlLoadForeign);
     TEST_ADD(PropStorageAsChild);
 #if defined(__unix__) || defined(__APPLE__)
+    TEST_ADD(PropStorageGroupWithOwnField);
     TEST_ADD(PropStorageGroupWithNonProperty);
     TEST_ADD(PropStorageChildWithoutGroup);
 #endif
