@@ -27,6 +27,8 @@
 
 #include "Cpl/Prop.h"
 
+#include <fstream>
+#include <sstream>
 #include <utility>
 
 namespace Test
@@ -82,6 +84,28 @@ namespace Test
     };
 
     CPL_PROP_STORAGE(LimitedStorage, LimitedConfig, storage);
+
+    // A configuration of its own keeps the test clear of the zero float of PropConfig, which
+    // trips the known undefined behaviour of ToStr in String.h under UBSan.
+    struct NestedConfig
+    {
+        CPL_PROP_GROUP(PlainGroup, plain);
+    };
+
+    // CPL_PROP_STORAGE declares a root holder only, so a storage used as a field of another
+    // structure has to be declared by hand, the way that macro does it.
+    struct NestedStorageGroup
+    {
+        struct Param_storage : public Cpl::ParamStorage<NestedConfig>
+        {
+            typedef Cpl::ParamStorage<NestedConfig> Base;
+            Param_storage() : Base("storage") {}
+        } storage;
+
+        CPL_PROP(int, tail, 7, "A field declared after the storage.");
+    };
+
+    CPL_PARAM_HOLDER(NestedStorageHolder, NestedStorageGroup, nested);
 
     // The assert of the macro has to see each of its three arguments as one operand of the
     // comparison, so each of them in turn is written as an expression of its own: the precedence
@@ -421,6 +445,65 @@ namespace Test
         return LoadFails<LimitedStorage>(options, "prop_storage_no_value.xml",
             "<storage><map><item><first>group.width</first>"
             "<second><desc>Image width.</desc></second></item></map></storage>");
+    }
+
+    // A storage saved at the top of a file always writes its node, so a file without one is not a
+    // file of a storage and fails the load; only inside a structure is an absent node allowed.
+    bool PropStorageXmlLoadForeignTest(const Options& options)
+    {
+        CPL_LOG_SS(Info, "The load below must fail.");
+        return LoadFails<LimitedStorage>(options, "prop_storage_foreign.xml",
+            "<other><group><width>100</width></group></other>");
+    }
+
+    bool PropStorageAsChildTest(const Options& options)
+    {
+        // ParamStorage adds a field of its own, so the walk over the children of the enclosing
+        // structure must step over the whole storage to reach the field declared after it.
+        // A short save leaves out the storage, none of whose properties has changed, and the
+        // absent node must not fail the load of the file that save wrote.
+        const String pathFull = options.OutputPath("prop_storage_as_child_full.xml");
+        const String pathShort = options.OutputPath("prop_storage_as_child_short.xml");
+
+        return RunIsolated([&pathFull, &pathShort]() -> bool
+        {
+            const bool fulls[] = { true, false };
+            const String paths[] = { pathFull, pathShort };
+            for (size_t i = 0; i < sizeof(fulls) / sizeof(fulls[0]); ++i)
+            {
+                NestedStorageHolder test, loaded;
+
+                test().tail() = 11;
+                test.Save(paths[i], fulls[i]);
+
+                // The short case checks an absent node only while the save leaves the storage out.
+                if (!fulls[i])
+                {
+                    std::ifstream ifs(paths[i].c_str());
+                    std::stringstream text;
+                    text << ifs.rdbuf();
+                    if (text.str().find("<storage") != String::npos)
+                    {
+                        CPL_LOG_SS(Error, "The short save wrote the storage that has not changed to " << paths[i] << "!");
+                        return false;
+                    }
+                }
+
+                if (!loaded.Load(paths[i]))
+                {
+                    CPL_LOG_SS(Error, "Can\'t load the saved file " << paths[i] << "!");
+                    return false;
+                }
+
+                if (loaded().tail()() != 11)
+                {
+                    CPL_LOG_SS(Error, "The tail loaded from " << paths[i] << " is " << loaded().tail()() << " instead of 11!");
+                    return false;
+                }
+            }
+
+            return true;
+        });
     }
 
     bool PropExTernaryArgumentTest(const Options& options)
