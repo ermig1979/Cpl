@@ -122,7 +122,7 @@ namespace Test
         {
             CPL_LOG_SS(Error, "loaded full != original");
             loaded.Save(options.OutputPath("prop_short_loaded.xml"), false);
-            loaded.Save(options.OutputPath("prop_gfull_loaded.xml"), true);
+            loaded.Save(options.OutputPath("prop_full_loaded.xml"), true);
             return false;
         }
 
