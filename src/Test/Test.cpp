@@ -208,6 +208,7 @@ namespace Test
     TEST_ADD(ParamMap);
     TEST_ADD(ParamMapBug);
     TEST_ADD(ParamLimited);
+    TEST_ADD(ParamLimitedTernaryArgument);
     TEST_ADD(ParamTemplate);
 
     TEST_ADD(ParamVectorV2);

@@ -384,6 +384,85 @@ namespace Test
 
 namespace Test
 {
+    // The assert of the macro has to see each of its three arguments as one operand of the
+    // comparison, so each of them in turn is written as an expression of its own: the precedence
+    // of ?: takes such an argument apart unless the macro wraps it. The parameters are declared
+    // where the assert is active and a child process is available, because a failing assert
+    // aborts the process that runs it.
+#if !defined(NDEBUG) && (defined(__unix__) || defined(__APPLE__))
+    struct TernaryDefaultLimitedParam
+    {
+        CPL_PARAM_LIMITED(int, size, true ? 100 : 0, 0, 10);
+    };
+
+    struct TernaryMaxLimitedParam
+    {
+        CPL_PARAM_LIMITED(int, size, 100, 0, true ? 10 : 1000);
+    };
+
+    struct TernaryMinLimitedParam
+    {
+        CPL_PARAM_LIMITED(int, size, 5, true ? 0 : 1, 10);
+    };
+#endif
+
+    bool ParamLimitedTernaryArgumentTest(const Options& options)
+    {
+#if defined(NDEBUG) || !(defined(__unix__) || defined(__APPLE__))
+        CPL_LOG_SS(Info, "The test needs an active assert and a child process, it is skipped in this build.");
+        return true;
+#else
+        CPL_LOG_SS(Info, "The first two child processes below must be terminated by the assert of CPL_PARAM_LIMITED.");
+        const bool defaultConstructed = RunIsolated([]() -> bool
+        {
+            TernaryDefaultLimitedParam param;
+            return param.size()() == 100;
+        });
+
+        if (defaultConstructed)
+        {
+            CPL_LOG_SS(Error, "The assert of CPL_PARAM_LIMITED accepted a default outside [Min(), Max()] "
+                << "written as a ternary expression!");
+            return false;
+        }
+
+        const bool maxConstructed = RunIsolated([]() -> bool
+        {
+            TernaryMaxLimitedParam param;
+            return param.size()() == 100;
+        });
+
+        if (maxConstructed)
+        {
+            CPL_LOG_SS(Error, "The assert of CPL_PARAM_LIMITED accepted a default above a maximum "
+                << "written as a ternary expression!");
+            return false;
+        }
+
+        // A bound written as a ternary expression must not turn a default that lies inside the
+        // range into a failing assert.
+        const bool minConstructed = RunIsolated([]() -> bool
+        {
+            TernaryMinLimitedParam param;
+            return param.size()() == 5;
+        });
+
+        if (!minConstructed)
+        {
+            CPL_LOG_SS(Error, "The assert of CPL_PARAM_LIMITED rejected a default inside [Min(), Max()] "
+                << "with a minimum written as a ternary expression!");
+            return false;
+        }
+
+        return true;
+#endif
+    }
+}
+
+//---------------------------------------------------------------------------------------------
+
+namespace Test
+{
     template <class T> struct PropParam
     {
         CPL_PARAM_VALUE(T, value, T());
