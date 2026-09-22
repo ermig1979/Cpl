@@ -107,6 +107,36 @@ namespace Test
 
     CPL_PARAM_HOLDER(NestedStorageHolder, NestedStorageGroup, nested);
 
+#if defined(__unix__) || defined(__APPLE__)
+    // The child that is not a property stands between two properties and the configuration has a
+    // second group, so a walk that gives up on the whole group, or on the whole storage, at the
+    // first such child is told apart from one that skips the child alone.
+    struct NonPropertyGroup
+    {
+        CPL_PROP(int, width, 640, "Image width.");
+        CPL_PARAM_VALUE(int, plain, 5);
+        CPL_PROP(int, height, 480, "Image height.");
+    };
+
+    struct NonPropertySecondGroup
+    {
+        CPL_PROP(String, name, "frame", "frame name");
+    };
+
+    // A group that declares a plain parameter next to its properties. The walk that fills the map
+    // of a storage takes every child of a group for a property and calls a virtual method of
+    // ParamProp on it, which lands in the slot another kind of node fills with a method of its
+    // own, so the body of the test below has to run in a child process too.
+    struct NonPropertyConfig
+    {
+        CPL_PROP_GROUP(NonPropertyGroup, group);
+        CPL_PROP_GROUP(NonPropertySecondGroup, second);
+    };
+
+    CPL_PROP_STORAGE(NonPropertyStorage, NonPropertyConfig, storage);
+
+#endif
+
     // The assert of the macro has to see each of its three arguments as one operand of the
     // comparison, so each of them in turn is written as an expression of its own: the precedence
     // of ?: takes such an argument apart unless the macro wraps it.
@@ -505,6 +535,56 @@ namespace Test
             return true;
         });
     }
+
+#if defined(__unix__) || defined(__APPLE__)
+    bool PropStorageGroupWithNonPropertyTest(const Options& options)
+    {
+        CPL_LOG_SS(Info, "The child process below must report the child of a group that is not a property.");
+        return RunIsolated([]() -> bool
+        {
+            NonPropertyStorage storage;
+
+            // Every property declared around the skipped child must be in the map: the walk goes
+            // on over the group and over the groups that follow it.
+            const String names[] = { "group.width", "group.height", "second.name" };
+            for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+            {
+                String registered;
+                if (!storage.GetProperty(names[i], registered))
+                {
+                    CPL_LOG_SS(Error, "The property \'" << names[i] << "\' is not registered!");
+                    return false;
+                }
+            }
+
+            String value;
+
+            // A child that is not a property has no dotted name: nothing in the map may point at
+            // it, because every pointer of that map is used as a ParamProp.
+            if (storage.GetProperty("group.plain", value))
+            {
+                CPL_LOG_SS(Error, "The child \'group.plain\' is not a property, "
+                    << "but it is registered as one!");
+                return false;
+            }
+
+            if (storage.SetProperty("group.plain", "42"))
+            {
+                CPL_LOG_SS(Error, "The child \'group.plain\' is not a property, but it is written as one!");
+                return false;
+            }
+
+            if (storage().group().plain() != 5)
+            {
+                CPL_LOG_SS(Error, "The plain parameter holds " << storage().group().plain()
+                    << " instead of 5, the walk over the group has written into it!");
+                return false;
+            }
+
+            return true;
+        });
+    }
+#endif
 
     bool PropExTernaryArgumentTest(const Options& options)
     {

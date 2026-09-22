@@ -230,6 +230,9 @@ namespace Test
     TEST_ADD(PropStorageXmlLoadNoValue);
     TEST_ADD(PropStorageXmlLoadForeign);
     TEST_ADD(PropStorageAsChild);
+#if defined(__unix__) || defined(__APPLE__)
+    TEST_ADD(PropStorageGroupWithNonProperty);
+#endif
     TEST_ADD(PropExTernaryArgument);
 
     TEST_ADD(PerformanceSimple);
