@@ -413,6 +413,16 @@ namespace Test
         return true;
     }
 
+    // An item of the map names a property and has a body, but the body has no value: the file is
+    // broken the same way as an item without a body, which fails the load.
+    bool PropStorageXmlLoadNoValueTest(const Options& options)
+    {
+        CPL_LOG_SS(Info, "The load below must fail.");
+        return LoadFails<LimitedStorage>(options, "prop_storage_no_value.xml",
+            "<storage><map><item><first>group.width</first>"
+            "<second><desc>Image width.</desc></second></item></map></storage>");
+    }
+
     bool PropExTernaryArgumentTest(const Options& options)
     {
 #if defined(NDEBUG) || !(defined(__unix__) || defined(__APPLE__))

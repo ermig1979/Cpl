@@ -227,6 +227,7 @@ namespace Test
     TEST_ADD(PropInStructRoundTrip);
     TEST_ADD(PropStringInStructRoundTrip);
     TEST_ADD(PropXmlLoadKeepsOutOfRange);
+    TEST_ADD(PropStorageXmlLoadNoValue);
     TEST_ADD(PropExTernaryArgument);
 
     TEST_ADD(PerformanceSimple);
