@@ -54,6 +54,35 @@ namespace Test
 
     CPL_PROP_STORAGE(PropStorage, PropConfig, storage);
 
+    struct PlainGroup
+    {
+        CPL_PROP(int, width, 640, "Image width.");
+        CPL_PROP(int, height, 480, "Image height.");
+    };
+
+    CPL_PARAM_HOLDER(PlainHolder, PlainGroup, plain);
+
+    struct StringGroup
+    {
+        CPL_PROP(String, name, "frame", "frame name");
+    };
+
+    CPL_PARAM_HOLDER(StringHolder, StringGroup, text);
+
+    struct LimitedGroup
+    {
+        CPL_PROP_EX(int, width, 640, 16, 1920, "Image width.");
+    };
+
+    CPL_PARAM_HOLDER(LimitedHolder, LimitedGroup, limited);
+
+    struct LimitedConfig
+    {
+        CPL_PROP_GROUP(LimitedGroup, group);
+    };
+
+    CPL_PROP_STORAGE(LimitedStorage, LimitedConfig, storage);
+
     bool PropTest(const Options& options)
     {
         PropStorage test, loaded;
@@ -256,6 +285,108 @@ namespace Test
         if (!moved.GetProperty("first.name", value) || value != "moved")
         {
             CPL_LOG_SS(Error, "The storage assigned from a destroyed one holds '" << value << "' instead of 'moved'!");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool PropInStructRoundTripTest(const Options& options)
+    {
+        PlainHolder test, loaded;
+
+        test().width() = 400;
+        test().height() = 300;
+
+        test.Save(options.OutputPath("prop_in_struct_full.xml"), true);
+
+        if (!loaded.Load(options.OutputPath("prop_in_struct_full.xml")))
+        {
+            CPL_LOG_SS(Error, "Can't load the saved file!");
+            return false;
+        }
+
+        if (!loaded.Equal(test))
+        {
+            CPL_LOG_SS(Error, "The loaded holder has width " << loaded().width()() << " and height " << loaded().height()()
+                << " instead of " << test().width()() << " and " << test().height()() << "!");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool PropStringInStructRoundTripTest(const Options& options)
+    {
+        StringHolder test, loaded;
+
+        // A string property can not be assigned through operator(): the bounds of ParamValidator
+        // come from std::numeric_limits<String>, where both of them are an empty string.
+        test().name.ToVal("new_name");
+
+        test.Save(options.OutputPath("prop_string_in_struct_full.xml"), true);
+
+        if (!loaded.Load(options.OutputPath("prop_string_in_struct_full.xml")))
+        {
+            CPL_LOG_SS(Error, "Can't load the saved file!");
+            return false;
+        }
+
+        if (!loaded.Equal(test))
+        {
+            CPL_LOG_SS(Error, "The loaded name is '" << loaded().name()() << "' instead of '" << test().name()() << "'!");
+            return false;
+        }
+
+        return true;
+    }
+
+    // The class promises that an XML load writes the parsed value as it is, so a value outside
+    // [Min(), Max()] survives the load instead of being replaced by Default() as operator() does.
+    // The test pins that promise for both load paths. Inside a structure it guards the override
+    // of LoadNodeXml in ParamProp: without it ParamLimited loads through the validator and 9000
+    // turns into 640.
+    bool PropXmlLoadKeepsOutOfRangeTest(const Options& options)
+    {
+        const String structPath = options.OutputPath("prop_out_of_range_struct.xml");
+        const String structXml = "<limited><width>9000</width></limited>";
+        // WriteToFile reports success with -1 and failure with 0.
+        if (Cpl::WriteToFile(structPath, structXml.c_str(), structXml.size()) == 0)
+        {
+            CPL_LOG_SS(Error, "Can\'t write the file of the structure!");
+            return false;
+        }
+
+        LimitedHolder holder;
+        if (!holder.Load(structPath))
+        {
+            CPL_LOG_SS(Error, "Can\'t load the file of the structure!");
+            return false;
+        }
+        if (holder().width()() != 9000)
+        {
+            CPL_LOG_SS(Error, "The width of the structure is " << holder().width()() << " instead of 9000!");
+            return false;
+        }
+
+        const String storagePath = options.OutputPath("prop_out_of_range_storage.xml");
+        const String storageXml = "<storage><map><item><first>group.width</first>"
+            "<second><value>9000</value></second></item></map></storage>";
+        if (Cpl::WriteToFile(storagePath, storageXml.c_str(), storageXml.size()) == 0)
+        {
+            CPL_LOG_SS(Error, "Can\'t write the file of the storage!");
+            return false;
+        }
+
+        LimitedStorage storage;
+        if (!storage.Load(storagePath))
+        {
+            CPL_LOG_SS(Error, "Can\'t load the file of the storage!");
+            return false;
+        }
+        if (storage().group().width()() != 9000)
+        {
+            CPL_LOG_SS(Error, "The width of the storage is " << storage().group().width()() << " instead of 9000!");
             return false;
         }
 

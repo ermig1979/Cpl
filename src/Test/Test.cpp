@@ -219,6 +219,9 @@ namespace Test
     TEST_ADD(PropStorageCopyOutlivesSource);
     TEST_ADD(PropStorageMoveConstructOutlivesSource);
     TEST_ADD(PropStorageMoveAssignOutlivesSource);
+    TEST_ADD(PropInStructRoundTrip);
+    TEST_ADD(PropStringInStructRoundTrip);
+    TEST_ADD(PropXmlLoadKeepsOutOfRange);
 
     TEST_ADD(PerformanceSimple);
     TEST_ADD(PerformanceStdThread);
