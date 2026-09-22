@@ -476,11 +476,13 @@ namespace Cpl
 * \note Limited() stays false, so XML "value_min" and "value_max" are a single space.
 *       Assignment through operator() still uses ParamLimited range checks against
 *       std::numeric_limits<type>::min() and max().
+*       StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PROP(type, name, value, descr) \
 struct Param_##name : public Cpl::ParamProp<type> \
 { \
     typedef Cpl::ParamProp<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) { this->_value = this->Default(); } \
     type Default() const override { return value; } \
     Cpl::String Description() const override { return descr; } \
@@ -497,11 +499,13 @@ struct Param_##name : public Cpl::ParamProp<type> \
 * \param descr - Description string returned by Description().
 * \note Limited() is true. operator() rejects assignments outside [min, max] and restores value.
 *       ToVal and XML load still write the parsed value without that check.
+*       StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PROP_EX(type, name, value, min, max, descr) \
 struct Param_##name : public Cpl::ParamProp<type> \
 { \
     typedef Cpl::ParamProp<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) { assert((min) <= (value) && (value) <= (max)); this->_value = this->Default(); } \
     type Default() const override { return value; } \
     type Min() const override { return min; } \
@@ -526,10 +530,12 @@ struct Param_##name : public Cpl::ParamProp<type> \
 * \param name - Root node name passed to the ParamStorage constructor.
 * \note The holder is default-constructible. operator() returns type. Use SetProperty and
 *       GetProperty with dotted names "group.prop". Save and Load use the ParamStorage XML format.
+*       StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PROP_STORAGE(storage, type, name) \
 struct storage : public Cpl::ParamStorage<type> \
 { \
     typedef Cpl::ParamStorage<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     storage() : Base(#name) {} \
 };

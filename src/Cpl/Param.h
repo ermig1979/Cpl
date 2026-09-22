@@ -1196,11 +1196,13 @@ namespace Cpl
 * \param type - Stored value type. Must support Cpl::%ToStr, Cpl::%ToVal and operator==.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \param value - Default value. Changed() is true when the stored value differs from this default.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_VALUE(type, name, value) \
 struct Param_##name : public Cpl::ParamValue<type> \
 { \
     typedef Cpl::ParamValue<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) { this->_value = this->Default(); } \
     type Default() const override { return value; } \
 } name;
@@ -1213,11 +1215,13 @@ struct Param_##name : public Cpl::ParamValue<type> \
 * \param value - Default value. Must satisfy min <= value <= max.
 * \param min - Inclusive lower bound. Out-of-range assignment stores value and logs a warning.
 * \param max - Inclusive upper bound.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_LIMITED(type, name, value, min, max) \
 struct Param_##name : public Cpl::ParamLimited<type> \
 { \
     typedef Cpl::ParamLimited<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) { assert((min) <= (value) && (value) <= (max)); this->_value = this->Default(); } \
     type Default() const override { return value; } \
     type Min() const override { return min; } \
@@ -1229,11 +1233,13 @@ struct Param_##name : public Cpl::ParamLimited<type> \
 * \brief Declares a nested parameter structure field.
 * \param type - User struct whose members are Param fields declared with the CPL_PARAM_* macros.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_STRUCT(type, name) \
 struct Param_##name : public Cpl::ParamStruct<type> \
 { \
     typedef Cpl::ParamStruct<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) {} \
 } name;
 
@@ -1243,11 +1249,13 @@ struct Param_##name : public Cpl::ParamStruct<type> \
 * \param type - User struct whose members are Param fields declared with the CPL_PARAM_* macros.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \param value - Initial value of type copied into the field.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_STRUCT_MOD(type, name, value) \
 struct Param_##name : public Cpl::ParamStruct<type> \
 { \
     typedef Cpl::ParamStruct<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) { this->_value = value; } \
 } name;
 
@@ -1257,11 +1265,13 @@ struct Param_##name : public Cpl::ParamStruct<type> \
 * \param type - Item type. Typically a user struct of Param fields.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \note operator() returns std::vector of type. XML items are named "item"; YAML uses a sequence.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_VECTOR(type, name) \
 struct Param_##name : public Cpl::ParamVector<type> \
 { \
     typedef Cpl::ParamVector<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) {} \
 } name;
 
@@ -1273,11 +1283,13 @@ struct Param_##name : public Cpl::ParamVector<type> \
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \note operator() returns std::map of key to type. XML items use "item" / "first" / "second";
 *       YAML uses a mapping from the stringified key.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_MAP(key, type, name) \
 struct Param_##name : public Cpl::ParamMap<key, type> \
 { \
     typedef Cpl::ParamMap<key, type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) {} \
 } name;
 
@@ -1382,10 +1394,12 @@ namespace Cpl \
 * \param holder - Name of the generated holder type.
 * \param type - User struct whose members are Param fields declared with the CPL_PARAM_* macros.
 * \param name - Root XML element or YAML key written by Save and expected by Load.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_HOLDER(holder, type, name) \
 struct holder : public Cpl::ParamStruct<type> \
 { \
     typedef Cpl::ParamStruct<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     holder() : Base(#name) {} \
 };
