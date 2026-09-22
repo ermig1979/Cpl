@@ -38,9 +38,17 @@ namespace Cpl
     * \note Declare instances with CPL_PROP or CPL_PROP_EX. operator() returns a ParamValidator,
     *       so `field() = x` rejects values outside [Min(), Max()] and restores Default().
     *       ToVal and XML load write the parsed value directly and do not apply that range check.
-    *       XML save writes children "value", "desc", "value_min", "value_max" and "value_default".
-    *       When Limited() is false, "value_min" and "value_max" are a single space.
-    *       Empty strings are written as a single space. XML load reads only the "value" child.
+    *       Inside a ParamStruct a property is saved to and loaded from a node of its own name.
+    *       SaveBodyXml writes the descriptive body - "value", "desc", "value_min", "value_max"
+    *       and "value_default"; LoadBodyXml reads the "value" child back and drops the rest.
+    *       Only ParamStorage calls them, under a node of its own per property.
+    *       The body leaves no text value empty: SaveBodyXml writes a single space instead, for an
+    *       empty string as well as for "value_min" and "value_max" when Limited() is false. Inside
+    *       a ParamStruct the value goes as it is, so an empty string becomes an empty node there.
+    *       A string property that is empty or holds whitespace only does not survive a save and a
+    *       load, in a storage and in a ParamStruct alike: the XML parser drops text made of
+    *       whitespace only and ToVal of a String ignores an empty one, so the property keeps the
+    *       value it had before the load.
     */
     template<class T> struct ParamProp: public Cpl::ParamLimited<T>
     {
@@ -99,7 +107,15 @@ namespace Cpl
         {
         }
 
+        // ParamLimited loads through the validator, which replaces a value outside [Min(), Max()]
+        // with the default one. A property takes the value of the file as it is, the way the class
+        // promises and the way LoadBodyXml does it for ParamStorage.
         bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
+        {
+            return Cpl::ParamValue<T>::LoadNodeXml(xmlParent);
+        }
+
+        virtual bool LoadBodyXml(Xml::XmlNode<char>* xmlParent)
         {
             Xml::XmlNode<char>* xmlValue = xmlParent->FirstNode("value");
             if(xmlValue)
@@ -112,7 +128,7 @@ namespace Cpl
             return value.empty() ? " " : value.c_str();
         }
 
-        void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        virtual void SaveBodyXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent) const
         {
             Xml::XmlNode<char>* xmlValue = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString("value"));
             xmlValue->Value(xmlDoc.AllocateString(NotEmpty(Cpl::ToStr(this->_value))));
@@ -247,7 +263,7 @@ namespace Cpl
                 Xml::XmlNode<char>* xmlSecond = xmlItem->FirstNode("second");
                 if (xmlSecond == NULL)
                     return false;
-                if (!it->second->LoadNodeXml(xmlSecond))
+                if (!it->second->LoadBodyXml(xmlSecond))
                     return false;
             }
             return true;
@@ -282,7 +298,7 @@ namespace Cpl
                     xmlItem->AppendNode(xmlFirst);
 
                     Xml::XmlNode<char>* xmlSecond = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString("second"));
-                    it->second->SaveNodeXml(xmlDoc, xmlSecond, true);
+                    it->second->SaveBodyXml(xmlDoc, xmlSecond);
                     xmlItem->AppendNode(xmlSecond);
 
                     xmlMap->AppendNode(xmlItem);
