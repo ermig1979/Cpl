@@ -29,6 +29,8 @@
 #include "Cpl/Param.h"
 #include "Cpl/Log.h"
 
+#include <utility>
+
 namespace Cpl
 {
     /*! @ingroup cpl_prop
@@ -241,8 +243,13 @@ namespace Cpl
     *       one structure take the values of each other: a second storage loads the node of the
     *       first one, and after a short save, which leaves out a storage that has not changed, the
     *       first storage loads the node of the second one. The load reports success in both cases.
+    *       A dotted name taken twice, possible only with nodes written by hand, stays with the
+    *       property that got it first; the other one is reported, gets no full name and stays out
+    *       of the map in the same way.
     *       YAML has no map: a storage is saved and loaded there as a plain structure, every child
-    *       by its own node name, so a skipped child goes to YAML.
+    *       by its own node name, so a skipped child goes to YAML, and two nodes of one name share
+    *       one key there: the one declared last is what a save leaves, and a load gives both of
+    *       them the value of that key.
     *       The map lies after the ParamStruct part, so End() is overridden: an enclosing structure
     *       steps over the whole storage, while the own children stop at ChildEnd().
     *       A copy rebuilds that map from its own fields, so every storage owns an independent set
@@ -442,8 +449,15 @@ namespace Cpl
 
                     String name = group->Name() + "." + prop->Name();
                     UnknownProp* property = (UnknownProp*)prop;
-                    _map[name] = property;
-                    property->SetFullName(&_map.find(name)->first);
+                    std::pair<typename Map::iterator, bool> inserted =
+                        _map.insert(typename Map::value_type(name, property));
+                    if (!inserted.second)
+                    {
+                        CPL_LOG_SS(Error, "The name '" << name << "' of a property of the storage '" << this->Name()
+                            << "' is taken already! The property is skipped, the name stays with the first one.");
+                        continue;
+                    }
+                    property->SetFullName(&inserted.first->first);
                 }
             }
         }
