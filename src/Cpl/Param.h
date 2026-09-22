@@ -373,6 +373,15 @@ namespace Cpl
             return false;
         }
 
+        // The same for a group: ParamStorage reaches one through ParamStruct<int>* and asks it
+        // for ChildEnd(), the first virtual method ParamStruct declares of its own, whose slot a
+        // node of another kind fills with a method of its own, and that method answers with
+        // anything but the end of a row of children.
+        virtual bool IsStruct() const
+        {
+            return false;
+        }
+
         virtual bool EqualNode(const Unknown* other) const = 0;
 
         virtual void CloneNode(const Unknown* other) = 0;
@@ -686,6 +695,13 @@ namespace Cpl
         CPL_INLINE Unknown* ChildBeg() const
         { 
             return (Unknown*)(&this->_value); 
+        }
+
+        // A structure is the only kind of node ParamStorage may reach through ParamStruct<int>*,
+        // see the note of Param::IsStruct.
+        bool IsStruct() const override
+        {
+            return true;
         }
 
         // A derived class may add fields of its own, so its End() lies past them. The walk over

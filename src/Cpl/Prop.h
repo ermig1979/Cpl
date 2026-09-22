@@ -175,9 +175,12 @@ namespace Cpl
     * \note Declare a holder with CPL_PROP_STORAGE. operator() returns T.
     *       The constructor walks two levels of children (groups, then properties) and
     *       fills an internal map used by SetProperty and GetProperty.
-    *       A group holds properties only: a child of another kind is skipped with an Error in the
-    *       log and stays out of the map, so SetProperty and GetProperty do not know its name and
-    *       the XML of the storage, written and read through that map, neither saves nor loads it.
+    *       A storage holds groups only and a group holds properties only: a child of another kind
+    *       is skipped with an Error in the log and stays out of the map, so SetProperty and
+    *       GetProperty do not know its name and the XML of the storage, written and read through
+    *       that map, neither saves nor loads it.
+    *       A storage inside a storage is such a child too, it is reported and skipped; the nested
+    *       one keeps its own map and serves its properties through its own SetProperty and GetProperty.
     *       In XML a structure may hold one storage only: whatever its name, a storage writes under
     *       a node named "storage" and loads from the first such node of its parent, so storages of
     *       one structure take the values of each other: a second storage loads the node of the
@@ -274,6 +277,14 @@ namespace Cpl
             return (Unknown*)(this + 1);
         }
 
+        // A storage is a structure, but not a group: its children are groups, not properties, so
+        // the walk of an enclosing storage must report the storage itself instead of reporting
+        // every group inside it. Nesting a storage in a storage is not supported.
+        bool IsStruct() const override
+        {
+            return false;
+        }
+
         bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
         {
             // Inside a structure an absent node is not a failure: a short save leaves out a storage
@@ -349,6 +360,15 @@ namespace Cpl
         {
             for (Unknown* group = this->ChildBeg(); group < this->ChildEnd(); group = group->End())
             {
+                // A child that is not a group holds no properties, and the walk below would take its
+                // value for a row of nodes, which sends the walk into memory that holds no node.
+                if (!group->IsStruct())
+                {
+                    CPL_LOG_SS(Error, "The child '" << group->Name() << "' of the storage '" << this->Name()
+                        << "' is not a group! It is skipped, declare it with CPL_PROP_GROUP.");
+                    continue;
+                }
+
                 for (Unknown* prop = ((UnknownGroup*)group)->ChildBeg(); prop < group->End(); prop = prop->End())
                 {
                     // Every pointer of the map is used as a property, so a child of another kind
