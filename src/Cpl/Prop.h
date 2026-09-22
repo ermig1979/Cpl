@@ -148,6 +148,10 @@ namespace Cpl
     * \note Declare a holder with CPL_PROP_STORAGE. operator() returns T.
     *       The constructor walks two levels of children (groups, then properties) and
     *       fills an internal map used by SetProperty and GetProperty.
+    *       A copy rebuilds that map from its own fields, so every storage owns an independent set
+    *       of properties; an assignment keeps its own map, because it writes the children of T in
+    *       place and leaves their addresses unchanged. A storage is not movable: a move request
+    *       binds to the copy and leaves the source untouched.
     *       XML save writes a "storage" / "map" tree: a "count" child and one "item" per
     *       property (or per Changed() property when full is false). Each item has
     *       "first" (the dotted name) and "second" (the ParamProp XML).
@@ -190,6 +194,22 @@ namespace Cpl
             return true;
         }
 
+        // _map points at the property subobjects of this very object, so a copy builds its own map
+        // instead of taking the pointers of the source. An assignment keeps the map it has: the
+        // base assigns the children in place, so their addresses do not change. A storage is not
+        // movable, see the note of Param, so a move request copies.
+        ParamStorage(const ParamStorage& other)
+            : Base(other)
+        {
+            BuildMap();
+        }
+
+        ParamStorage& operator = (const ParamStorage& other)
+        {
+            Base::operator = (other);
+            return *this;
+        }
+
     protected:
         typedef Cpl::ParamStruct<T> Base;
         typedef Cpl::Param<int> Unknown;
@@ -202,14 +222,7 @@ namespace Cpl
         ParamStorage(const String& name)
             : Base(name)
         {
-            for (Unknown* group = this->ChildBeg(); group < this->End(); group = group->End())
-            {
-                for (Unknown* prop = ((UnknownGroup*)group)->ChildBeg(); prop < group->End(); prop = prop->End())
-                {
-                    String name = group->Name() + "." + prop->Name();
-                    _map[name] = (UnknownProp*)prop;
-                }
-            }
+            BuildMap();
         }
 
         bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
@@ -277,6 +290,19 @@ namespace Cpl
             }
             xmlStorage->AppendNode(xmlMap);
             xmlParent->AppendNode(xmlStorage);
+        }
+
+    private:
+        void BuildMap()
+        {
+            for (Unknown* group = this->ChildBeg(); group < this->End(); group = group->End())
+            {
+                for (Unknown* prop = ((UnknownGroup*)group)->ChildBeg(); prop < group->End(); prop = prop->End())
+                {
+                    String name = group->Name() + "." + prop->Name();
+                    _map[name] = (UnknownProp*)prop;
+                }
+            }
         }
     };
 }

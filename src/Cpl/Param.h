@@ -300,6 +300,14 @@ namespace Cpl
             return result;
         }
 
+        // A node is copied, never moved. Its name comes from the place it is declared in, while a
+        // move would take that name from the source and leave the source node nameless, writing
+        // empty XML elements and YAML keys. Declaring the copy members suppresses the implicit
+        // move ones, so a move request binds to a copy.
+        Param(const Param& other) = default;
+
+        Param& operator = (const Param& other) = default;
+
     protected:
         String _name;
         Type _value;
