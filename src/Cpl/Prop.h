@@ -39,6 +39,8 @@ namespace Cpl
     *       so `field() = x` rejects values outside [Min(), Max()] and restores Default().
     *       ToVal and XML load write the parsed value directly and do not apply that range check.
     *       Inside a ParamStruct a property is saved to and loaded from a node of its own name.
+    *       FullName() returns the name the property is registered under in its ParamStorage - the
+    *       key of the map, which the property points at - and an empty string outside a storage.
     *       SaveBodyXml writes the descriptive body - "value", "desc", "value_min", "value_max"
     *       and "value_default"; LoadBodyXml reads the "value" child back, fails without it, and
     *       drops the rest.
@@ -88,6 +90,20 @@ namespace Cpl
         }
 
         /*!
+        * \fn String FullName() const
+        * \brief Returns the dotted name "group.prop" of this property inside its ParamStorage.
+        * \return A copy of the name this property is registered under in the map of the storage,
+        *         or an empty string when the property does not belong to a ParamStorage.
+        * \note The name is returned by value because the key it is taken from belongs to the map
+        *       of the storage: that map dies with the storage and is destroyed before the
+        *       properties are, so a reference into it would outlive what it points at.
+        */
+        CPL_INLINE String FullName() const
+        {
+            return _fullName ? *_fullName : String();
+        }
+
+        /*!
         * \fn void ToVal(const String & str)
         * \brief Parses a string into the stored value.
         * \param [in] str - Text recognized by Cpl::%ToVal for type T.
@@ -99,12 +115,35 @@ namespace Cpl
             return Cpl::ToVal<T>(str, this->_value);
         }
 
+        // The full name belongs to the place a property occupies in a storage, not to its value, so
+        // a copy never takes it from the source: it would point into a storage that does not hold
+        // the copy. An assignment keeps the full name this property already has, while the node
+        // name is assigned by Param along with the value. A property is not movable, see the note
+        // of Param, so a move request copies.
+        ParamProp(const ParamProp& other)
+            : Base(other)
+            , _fullName(NULL)
+        {
+        }
+
+        ParamProp& operator = (const ParamProp& other)
+        {
+            Base::operator = (other);
+            return *this;
+        }
+
     protected:
         typedef Cpl::ParamLimited<T> Base;
         typedef Cpl::Param<int> Unknown;
 
+        // The name of a property is the key it has in the map of its storage, so the property
+        // keeps the address of that key instead of a copy of the string. Keys of std::map do not
+        // move, and BuildMap points every property at the key of its own storage.
+        const String* _fullName;
+
         ParamProp(const String& name)
             : Base(name)
+            , _fullName(NULL)
         {
         }
 
@@ -113,6 +152,21 @@ namespace Cpl
         bool IsProp() const override
         {
             return true;
+        }
+
+        // ParamStorage keeps every property as ParamProp<int>*, whatever the stored type is, and
+        // the offset of _fullName depends on that type, so the field is reached through a virtual
+        // method only.
+        virtual CPL_INLINE void SetFullName(const String* fullName)
+        {
+            _fullName = fullName;
+        }
+
+        // The field above lies after the ParamValue part, whose End() would leave the walk over the
+        // properties of a group inside it.
+        Unknown* End() const override
+        {
+            return (Unknown*)(this + 1);
         }
 
         // ParamLimited loads through the validator, which replaces a value outside [Min(), Max()]
@@ -173,8 +227,9 @@ namespace Cpl
     * \tparam T - User struct whose members are property groups declared with CPL_PROP_GROUP.
     *             Each group is a struct of CPL_PROP / CPL_PROP_EX fields.
     * \note Declare a holder with CPL_PROP_STORAGE. operator() returns T.
-    *       The constructor walks two levels of children (groups, then properties) and
-    *       fills an internal map used by SetProperty and GetProperty.
+    *       The constructor walks two levels of children (groups, then properties), fills an
+    *       internal map used by SetProperty and GetProperty and gives every property the dotted
+    *       name it is registered under, which ParamProp::FullName() returns.
     *       A storage holds groups only and a group holds properties only: a child of another kind
     *       is skipped with an Error in the log and stays out of the map, so SetProperty and
     *       GetProperty do not know its name and the XML of the storage, written and read through
@@ -192,8 +247,9 @@ namespace Cpl
     *       steps over the whole storage, while the own children stop at ChildEnd().
     *       A copy rebuilds that map from its own fields, so every storage owns an independent set
     *       of properties; an assignment keeps its own map, because it writes the children of T in
-    *       place and leaves their addresses unchanged. A storage is not movable: a move request
-    *       binds to the copy and leaves the source untouched.
+    *       place and leaves their addresses unchanged, and a property keeps the name of its own
+    *       storage, because ParamProp never assigns that name from the source. A storage is not
+    *       movable: a move request binds to the copy and leaves the source untouched.
     *       XML save writes a "storage" / "map" tree: a "count" child and one "item" per
     *       property (or per Changed() property when full is false). Each item has
     *       "first" (the dotted name) and "second" (the ParamProp XML).
@@ -382,7 +438,9 @@ namespace Cpl
                     }
 
                     String name = group->Name() + "." + prop->Name();
-                    _map[name] = (UnknownProp*)prop;
+                    UnknownProp* property = (UnknownProp*)prop;
+                    _map[name] = property;
+                    property->SetFullName(&_map.find(name)->first);
                 }
             }
         }

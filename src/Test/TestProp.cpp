@@ -454,6 +454,177 @@ namespace Test
         return true;
     }
 
+    bool PropFullNameTest(const Options& options)
+    {
+        PropStorage storage;
+
+        // A property of a storage knows the name it is registered under, for any stored type.
+        if (storage().first().name.FullName() != "first.name"
+            || storage().first().width.FullName() != "first.width"
+            || storage().second().coeff.FullName() != "second.coeff")
+        {
+            CPL_LOG_SS(Error, "The full names are \'" << storage().first().name.FullName() << "\', \'"
+                << storage().first().width.FullName() << "\' and \'"
+                << storage().second().coeff.FullName() << "\'!");
+            return false;
+        }
+
+        // A copy builds its map anew, so its properties get their names as well.
+        PropStorage copy = storage;
+        if (copy().first().name.FullName() != "first.name")
+        {
+            CPL_LOG_SS(Error, "The full name of a copy is \'" << copy().first().name.FullName() << "\'!");
+            return false;
+        }
+
+        // A move request binds to the copy, which rebuilds the map; an assignment carries the
+        // names with the fields it assigns.
+        PropStorage moved = std::move(copy);
+        PropStorage assigned;
+        assigned = storage;
+        if (moved().first().name.FullName() != "first.name"
+            || assigned().first().name.FullName() != "first.name")
+        {
+            CPL_LOG_SS(Error, "The full names after a move and an assignment are \'"
+                << moved().first().name.FullName() << "\' and \'"
+                << assigned().first().name.FullName() << "\'!");
+            return false;
+        }
+
+        // A move assignment binds to the copy assignment: the destination keeps the names of its
+        // own map and the source keeps everything it had, its names included.
+        PropStorage moveAssigned;
+        moveAssigned = std::move(assigned);
+        if (moveAssigned().first().name.FullName() != "first.name"
+            || assigned().first().name.FullName() != "first.name")
+        {
+            CPL_LOG_SS(Error, "The full names after a move assignment are \'"
+                << moveAssigned().first().name.FullName() << "\' and \'"
+                << assigned().first().name.FullName() << "\'!");
+            return false;
+        }
+
+        // The name must not depend on the object it was assigned from: it has to stay correct
+        // after that object is destroyed.
+        PropStorage outlivesCopy, outlivesMove;
+        {
+            PropStorage source;
+            outlivesCopy = source;
+            outlivesMove = std::move(source);
+        }
+        if (outlivesCopy().first().name.FullName() != "first.name"
+            || outlivesMove().first().name.FullName() != "first.name")
+        {
+            CPL_LOG_SS(Error, "The full names after the source is destroyed are \'"
+                << outlivesCopy().first().name.FullName() << "\' and \'"
+                << outlivesMove().first().name.FullName() << "\'!");
+            return false;
+        }
+
+        // A group taken out of a storage by value is registered nowhere, so its properties have
+        // no full name and must not keep pointing into the storage they came from. The copy is
+        // checked as it was built: an assignment of it into another group would drop the name of
+        // the source anyway and hide a copy constructor that takes it.
+        FirstGroup detachedAssign;
+        {
+            PropStorage source;
+
+            const FirstGroup detachedCopy(source().first());
+            if (!detachedCopy.name.FullName().empty())
+            {
+                CPL_LOG_SS(Error, "A copied property reports \'" << detachedCopy.name.FullName()
+                    << "\' instead of nothing!");
+                return false;
+            }
+
+            detachedAssign = source().first();
+        }
+        if (!detachedAssign.name.FullName().empty())
+        {
+            CPL_LOG_SS(Error, "An assigned property reports \'" << detachedAssign.name.FullName()
+                << "\' instead of nothing!");
+            return false;
+        }
+
+        return true;
+    }
+
+    // The name of a property must be a value of its own, not a reference into the map of the
+    // storage: that map dies with the storage, and inside the storage it is destroyed before the
+    // properties are, so a reference into it dangles while the property is still alive.
+    bool PropFullNameOutlivesStorageTest(const Options& options)
+    {
+        PropStorage storage;
+
+        // Two calls alive at the same time must designate two different objects. One object means
+        // the name is handed out by reference, and the caller holds the memory of the storage.
+        const String& first = storage().first().name.FullName();
+        const String& second = storage().first().name.FullName();
+        if (&first == &second)
+        {
+            CPL_LOG_SS(Error, "Two calls of FullName() gave one object, so the name is a reference into the storage!");
+            return false;
+        }
+
+        // The name a caller keeps has to survive the storage it was taken from. The body runs in a
+        // child process because a reference into a destroyed storage is a read of freed memory.
+        return RunIsolated([]() -> bool
+        {
+            PropStorage* source = new PropStorage();
+            const String& kept = (*source)().first().name.FullName();
+            delete source;
+
+            if (kept != "first.name")
+            {
+                CPL_LOG_SS(Error, "The kept name is \'" << kept << "\' after the storage is destroyed!");
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    // The map of a storage keeps every property as ParamProp<int>*, whatever its real type is,
+    // so a property is reached through virtual methods only. The test pins that access for the
+    // types of one configuration and, with it, the walk that fills the map.
+    bool PropStorageMixedTypeAccessTest(const Options& options)
+    {
+        PropStorage storage;
+
+        const String names[] = { "first.name", "first.width", "second.path", "second.type" };
+        const String values[] = { "camera", "800", "model.bin", "5" };
+        static_assert(sizeof(names) / sizeof(names[0]) == sizeof(values) / sizeof(values[0]),
+            "Every name needs a value.");
+        const size_t count = sizeof(names) / sizeof(names[0]);
+
+        for (size_t i = 0; i < count; ++i)
+        {
+            if (!storage.SetProperty(names[i], values[i]))
+            {
+                CPL_LOG_SS(Error, "The property \'" << names[i] << "\' is unknown!");
+                return false;
+            }
+        }
+
+        for (size_t i = 0; i < count; ++i)
+        {
+            String value;
+            if (!storage.GetProperty(names[i], value))
+            {
+                CPL_LOG_SS(Error, "The property \'" << names[i] << "\' is unknown!");
+                return false;
+            }
+            if (value != values[i])
+            {
+                CPL_LOG_SS(Error, "The property \'" << names[i] << "\' is \'" << value
+                    << "\' instead of \'" << values[i] << "\'!");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     // The class promises that an XML load writes the parsed value as it is, so a value outside
     // [Min(), Max()] survives the load instead of being replaced by Default() as operator() does.
     // The test pins that promise for both load paths. Inside a structure it guards the override
