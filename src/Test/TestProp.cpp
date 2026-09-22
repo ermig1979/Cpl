@@ -128,6 +128,26 @@ namespace Test
 
     CPL_PROP_STORAGE(StorageInStorage, StorageInStorageConfig, storage);
 
+    // A property written by hand gives its node any name it likes, so it can take the name of a
+    // property declared next to it, and both ask the storage for one key.
+    struct DuplicateGroup
+    {
+        CPL_PROP(int, width, 640, "Image width.");
+
+        struct Param_twin : public Cpl::ParamProp<int>
+        {
+            typedef Cpl::ParamProp<int> Base;
+            Param_twin() : Base("width") { this->_value = 480; }
+        } twin;
+    };
+
+    struct DuplicateConfig
+    {
+        CPL_PROP_GROUP(DuplicateGroup, group);
+    };
+
+    CPL_PROP_STORAGE(DuplicateStorage, DuplicateConfig, storage);
+
     static void CollectErrors(Cpl::Log::Level, const char* msg, void* userData)
     {
         ((Strings*)userData)->push_back(String(msg));
@@ -915,6 +935,43 @@ namespace Test
         if (!storage.GetProperty("plain.width", value))
         {
             CPL_LOG_SS(Error, "The property \'plain.width\' is not registered!");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool PropStorageDuplicateNameTest(const Options& options)
+    {
+        CPL_LOG_SS(Info, "The error below must report the second property that asks for a name already taken.");
+
+        Strings errors;
+        const int writer = Cpl::Log::Global().AddWriter(Cpl::Log::Error, CollectErrors, &errors);
+
+        DuplicateStorage storage;
+
+        Cpl::Log::Global().RemoveWriter(writer);
+
+        if (errors.size() != 1)
+        {
+            CPL_LOG_SS(Error, "The construction reported " << errors.size()
+                << " errors instead of one about the name taken twice!");
+            return false;
+        }
+
+        // The name stays with the property that got it first.
+        String value;
+        if (!storage.GetProperty("group.width", value) || value != "640")
+        {
+            CPL_LOG_SS(Error, "The name \'group.width\' serves the value \'" << value << "\' instead of 640!");
+            return false;
+        }
+
+        // The other one is registered nowhere, so it has no full name.
+        if (!storage().group().twin.FullName().empty())
+        {
+            CPL_LOG_SS(Error, "The property left out of the map reports \'"
+                << storage().group().twin.FullName() << "\' instead of nothing!");
             return false;
         }
 

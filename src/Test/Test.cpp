@@ -239,6 +239,7 @@ namespace Test
     TEST_ADD(PropStorageChildWithoutGroup);
 #endif
     TEST_ADD(PropStorageInStorage);
+    TEST_ADD(PropStorageDuplicateName);
     TEST_ADD(PropExTernaryArgument);
 
     TEST_ADD(PerformanceSimple);
