@@ -361,7 +361,7 @@ struct Param_##name : public Cpl::ParamProp<type> \
 struct Param_##name : public Cpl::ParamProp<type> \
 { \
     typedef Cpl::ParamProp<type> Base; \
-    Param_##name() : Base(#name) { assert(min <= value && value <= max); this->_value = this->Default(); } \
+    Param_##name() : Base(#name) { assert((min) <= (value) && (value) <= (max)); this->_value = this->Default(); } \
     type Default() const override { return value; } \
     type Min() const override { return min; } \
     type Max() const override { return max; } \
