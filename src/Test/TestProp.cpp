@@ -27,6 +27,8 @@
 
 #include "Cpl/Prop.h"
 
+#include <utility>
+
 namespace Test
 {
     struct FirstGroup
@@ -72,6 +74,188 @@ namespace Test
             CPL_LOG_SS(Error, "loaded full != original");
             loaded.Save(options.OutputPath("prop_short_loaded.xml"), false);
             loaded.Save(options.OutputPath("prop_gfull_loaded.xml"), true);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool PropStorageCopyTest(const Options& options)
+    {
+        PropStorage original;
+        original.SetProperty("first.name", "original");
+
+        PropStorage copy(original);
+
+        String value;
+        if (!copy.GetProperty("first.name", value) || value != "original")
+        {
+            CPL_LOG_SS(Error, "The copy holds '" << value << "' instead of 'original'!");
+            return false;
+        }
+
+        copy.SetProperty("first.name", "copy");
+
+        if (!copy.GetProperty("first.name", value) || value != "copy")
+        {
+            CPL_LOG_SS(Error, "The copy holds '" << value << "' instead of 'copy'!");
+            return false;
+        }
+        if (!original.GetProperty("first.name", value) || value != "original")
+        {
+            CPL_LOG_SS(Error, "A property set through the copy changed the original to '" << value << "'!");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool PropStorageAssignTest(const Options& options)
+    {
+        PropStorage original, assigned;
+        original.SetProperty("first.name", "original");
+
+        assigned = original;
+
+        String value;
+        if (!assigned.GetProperty("first.name", value) || value != "original")
+        {
+            CPL_LOG_SS(Error, "The assigned storage holds '" << value << "' instead of 'original'!");
+            return false;
+        }
+
+        assigned.SetProperty("first.name", "assigned");
+
+        if (!assigned.GetProperty("first.name", value) || value != "assigned")
+        {
+            CPL_LOG_SS(Error, "The assigned storage holds '" << value << "' instead of 'assigned'!");
+            return false;
+        }
+        if (!original.GetProperty("first.name", value) || value != "original")
+        {
+            CPL_LOG_SS(Error, "A property set through the assigned storage changed the original to '" << value << "'!");
+            return false;
+        }
+
+        assigned = original;
+
+        if (!assigned.GetProperty("first.name", value) || value != "original")
+        {
+            CPL_LOG_SS(Error, "The overwritten storage holds '" << value << "' instead of 'original'!");
+            return false;
+        }
+
+        assigned.SetProperty("first.name", "overwritten");
+
+        if (!original.GetProperty("first.name", value) || value != "original")
+        {
+            CPL_LOG_SS(Error, "A property set through the overwritten storage changed the original to '" << value << "'!");
+            return false;
+        }
+
+        // A storage, a group and a property are assigned through their base classes as well.
+        PropStorage source, target;
+        source().first().width() = 800;
+        source().first().height() = 600;
+        source().second().type() = 5;
+        Cpl::ParamStorage<PropConfig>& storageBase = target;
+        storageBase = source;
+        Cpl::Param<SecondGroup>& groupBase = target().second;
+        groupBase = original().second;
+        Cpl::ParamProp<int>& propBase = target().first().height;
+        propBase = original().first().height;
+        if (target().first().width() != 800 || target().first().height() != 480 || target().second().type() != 3)
+        {
+            CPL_LOG_SS(Error, "The storage assigned through its base classes holds width " << target().first().width()
+                << ", height " << target().first().height() << " and type " << target().second().type() << "!");
+            return false;
+        }
+
+        return true;
+    }
+
+    // Builds a storage out of a source that dies on return, so the result outlives the object it
+    // was built from. A block cannot do it: a copy declared outside the block is built before it.
+    static PropStorage CopyOfDestroyedStorage()
+    {
+        PropStorage source;
+        source.SetProperty("first.name", "source");
+        return PropStorage(source);
+    }
+
+    // The same through a move request, which binds to the copy constructor, since a storage is not
+    // movable. The source is read after the request, while it is still alive.
+    static PropStorage MoveOfDestroyedStorage(String& sourceValue)
+    {
+        PropStorage source;
+        source.SetProperty("first.name", "source");
+        PropStorage moved(std::move(source));
+        source.GetProperty("first.name", sourceValue);
+        return moved;
+    }
+
+    bool PropStorageCopyOutlivesSourceTest(const Options& options)
+    {
+        PropStorage copy(CopyOfDestroyedStorage());
+
+        copy.SetProperty("first.name", "copy");
+
+        String value;
+        if (!copy.GetProperty("first.name", value) || value != "copy")
+        {
+            CPL_LOG_SS(Error, "The copy of a destroyed storage holds '" << value << "' instead of 'copy'!");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool PropStorageMoveConstructOutlivesSourceTest(const Options& options)
+    {
+        String sourceValue;
+        PropStorage moved(MoveOfDestroyedStorage(sourceValue));
+
+        if (sourceValue != "source")
+        {
+            CPL_LOG_SS(Error, "A move request left the source holding '" << sourceValue << "' instead of 'source'!");
+            return false;
+        }
+
+        moved.SetProperty("first.name", "moved");
+
+        String value;
+        if (!moved.GetProperty("first.name", value) || value != "moved")
+        {
+            CPL_LOG_SS(Error, "The storage built out of a destroyed one holds '" << value << "' instead of 'moved'!");
+            return false;
+        }
+
+        return true;
+    }
+
+    bool PropStorageMoveAssignOutlivesSourceTest(const Options& options)
+    {
+        PropStorage moved;
+        String value;
+        {
+            PropStorage source;
+            source.SetProperty("first.name", "source");
+
+            // A storage is not movable, so this binds to the copy assignment.
+            moved = std::move(source);
+
+            if (!source.GetProperty("first.name", value) || value != "source")
+            {
+                CPL_LOG_SS(Error, "A move request left the source holding '" << value << "' instead of 'source'!");
+                return false;
+            }
+        }
+
+        moved.SetProperty("first.name", "moved");
+
+        if (!moved.GetProperty("first.name", value) || value != "moved")
+        {
+            CPL_LOG_SS(Error, "The storage assigned from a destroyed one holds '" << value << "' instead of 'moved'!");
             return false;
         }
 

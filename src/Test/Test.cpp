@@ -214,6 +214,11 @@ namespace Test
     TEST_ADD(ParamMapV2);
 
     TEST_ADD(Prop);
+    TEST_ADD(PropStorageCopy);
+    TEST_ADD(PropStorageAssign);
+    TEST_ADD(PropStorageCopyOutlivesSource);
+    TEST_ADD(PropStorageMoveConstructOutlivesSource);
+    TEST_ADD(PropStorageMoveAssignOutlivesSource);
 
     TEST_ADD(PerformanceSimple);
     TEST_ADD(PerformanceStdThread);
