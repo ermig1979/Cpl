@@ -207,7 +207,12 @@ namespace Cpl
         * \param [in] size - Number of bytes at data.
         * \param [in] format - ParamFormatXml or ParamFormatYaml. ParamFormatByExt is not valid here.
         * \return true on success. false if format is unsupported, the text cannot be parsed,
-        *         or a node has an unexpected YAML type.
+        *         or any node of the tree fails its own load, for example a YAML node of an
+        *         unexpected type or an XML element of a vector or a map under a foreign name.
+        *         The load stops at that node and leaves the object loaded in part: the nodes read
+        *         before it hold the new values, the nodes after it are not read, and a vector or a
+        *         map may already have the size or the keys of the file, with the elements it has not
+        *         read yet in their default state.
         */
         bool Load(const char* data, size_t size, ParamFormat format)
         {
@@ -243,7 +248,12 @@ namespace Cpl
         * \param [in,out] is - Source stream positioned at the start of an XML or YAML document.
         * \param [in] format - ParamFormatXml or ParamFormatYaml. ParamFormatByExt is not valid here.
         * \return true on success. false if format is unsupported, the text cannot be parsed,
-        *         or a node has an unexpected YAML type.
+        *         or any node of the tree fails its own load, for example a YAML node of an
+        *         unexpected type or an XML element of a vector or a map under a foreign name.
+        *         The load stops at that node and leaves the object loaded in part: the nodes read
+        *         before it hold the new values, the nodes after it are not read, and a vector or a
+        *         map may already have the size or the keys of the file, with the elements it has not
+        *         read yet in their default state.
         */
         bool Load(std::istream& is, ParamFormat format)
         {
@@ -696,7 +706,7 @@ namespace Cpl
                 for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
                 {
                     if (!paramChild->LoadNodeXml(xmlCurrent))
-                        return true;
+                        return false;
                 }
             }
             return true;
@@ -723,7 +733,7 @@ namespace Cpl
                 for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
                 {
                     if (!paramChild->LoadNodeYaml(current))
-                        return true;
+                        return false;
                 }
             }
             return true;
@@ -832,7 +842,7 @@ namespace Cpl
                     for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                     {
                         if (!paramChild->LoadNodeXml(xmlItem))
-                            return true;
+                            return false;
                     }
                     xmlItem = xmlItem->NextSibling();
                 }
@@ -873,7 +883,7 @@ namespace Cpl
                     for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                     {
                         if (!paramChild->LoadNodeYaml(current[i]))
-                            return true;
+                            return false;
                     }
                 }
             }
@@ -1028,7 +1038,7 @@ namespace Cpl
                             for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                             {
                                 if (!paramChild->LoadNodeXml(xmlValue))
-                                    return true;
+                                    return false;
                             }
                         }
                     }
@@ -1083,7 +1093,7 @@ namespace Cpl
                         for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                         {
                             if (!paramChild->LoadNodeYaml((*it).second))
-                                return true;
+                                return false;
                         }
                     }
                 }
