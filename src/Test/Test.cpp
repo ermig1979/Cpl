@@ -207,6 +207,7 @@ namespace Test
     TEST_ADD(ParamEnum);
     TEST_ADD(ParamMap);
     TEST_ADD(ParamMapBug);
+    TEST_ADD(ParamMapEqualEveryEntry);
     TEST_ADD(ParamLimited);
     TEST_ADD(ParamLimitedTernaryArgument);
     TEST_ADD(ParamTemplate);

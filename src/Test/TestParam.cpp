@@ -354,6 +354,42 @@ namespace Test
 
 namespace Test
 {
+    bool ParamMapEqualEveryEntryTest(const Options& options)
+    {
+        struct ValueParam
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+        };
+
+        struct TestParam
+        {
+            CPL_PARAM_MAP(String, ValueParam, map);
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        // The maps differ in their second entry only, so a comparison that stops after the first
+        // one takes them for equal.
+        TestParamHolder first, second;
+        first().map()["a"].value() = 1;
+        first().map()["b"].value() = 2;
+        second().map()["a"].value() = 1;
+        second().map()["b"].value() = 3;
+
+        if (first.Equal(second))
+        {
+            CPL_LOG_SS(Error, "Two maps that differ in their second entry are taken for equal!");
+            return false;
+        }
+
+        return true;
+    }
+}
+
+//---------------------------------------------------------------------------------------------
+
+namespace Test
+{
     bool ParamLimitedTest(const Options& options)
     {
         struct TestParam
