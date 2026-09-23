@@ -87,7 +87,7 @@ namespace Cpl
                     for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                     {
                         if (!paramChild->LoadNodeXml(xmlItem))
-                            return true;
+                            return false;
                     }
                     xmlItem = xmlItem->NextSibling(itemName.c_str(), itemName.size());
                 }
@@ -187,7 +187,7 @@ namespace Cpl
                             for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                             {
                                 if (!paramChild->LoadNodeXml(xmlValue))
-                                    return true;
+                                    return false;
                             }
                         }
                     }
@@ -238,11 +238,13 @@ namespace Cpl
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \note operator() returns std::vector of type. XML writes "count" then "item" children;
 *       YAML uses a sequence, as in CPL_PARAM_VECTOR.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_VECTOR_V2(type, name) \
 struct Param_##name : public Cpl::ParamVectorV2<type> \
 { \
     typedef Cpl::ParamVectorV2<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) {} \
 } name;
 
@@ -254,10 +256,12 @@ struct Param_##name : public Cpl::ParamVectorV2<type> \
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \note operator() returns std::map of key to type. XML writes "count" then "item" /
 *       "first" / "second"; YAML uses a mapping from the stringified key, as in CPL_PARAM_MAP.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_MAP_V2(key, type, name) \
 struct Param_##name : public Cpl::ParamMapV2<key, type> \
 { \
     typedef Cpl::ParamMapV2<key, type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) {} \
 } name;

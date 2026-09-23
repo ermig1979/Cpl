@@ -354,6 +354,151 @@ namespace Test
 
 namespace Test
 {
+    bool ParamMapEqualEveryEntryTest(const Options& options)
+    {
+        struct ValueParam
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+        };
+
+        struct TestParam
+        {
+            CPL_PARAM_MAP(String, ValueParam, map);
+        };
+
+        CPL_PARAM_HOLDER(TestParamHolder, TestParam, test);
+
+        // The maps differ in their second entry only, so a comparison that stops after the first
+        // one takes them for equal.
+        TestParamHolder first, second;
+        first().map()["a"].value() = 1;
+        first().map()["b"].value() = 2;
+        second().map()["a"].value() = 1;
+        second().map()["b"].value() = 3;
+
+        if (first.Equal(second))
+        {
+            CPL_LOG_SS(Error, "Two maps that differ in their second entry are taken for equal!");
+            return false;
+        }
+
+        return true;
+    }
+}
+
+//---------------------------------------------------------------------------------------------
+
+namespace Test
+{
+    // A child that fails to load fails the whole load: a container that takes the failure for a
+    // success leaves every child after the failed one with the value it had before.
+    bool ParamXmlLoadChildFailureTest(const Options& options)
+    {
+        struct Leaf
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+        };
+
+        // A map fails its own load on an element of a foreign name, which makes it the child that
+        // fails inside each of the containers below.
+        struct Entry
+        {
+            CPL_PARAM_MAP(String, Leaf, sub);
+            CPL_PARAM_VALUE(Int, x, 0);
+        };
+
+        struct StructParam
+        {
+            CPL_PARAM_VALUE(Int, head, 0);
+            CPL_PARAM_MAP(String, Leaf, sub);
+            CPL_PARAM_VALUE(Int, tail, 0);
+        };
+
+        struct MapParam
+        {
+            CPL_PARAM_MAP(String, Entry, map);
+        };
+
+        struct VectorParam
+        {
+            CPL_PARAM_VECTOR(Entry, list);
+        };
+
+        CPL_PARAM_HOLDER(StructHolder, StructParam, test);
+        CPL_PARAM_HOLDER(MapHolder, MapParam, test);
+        CPL_PARAM_HOLDER(VectorHolder, VectorParam, test);
+
+        CPL_LOG_SS(Info, "The three loads below must fail.");
+
+        if (!LoadFails<StructHolder>(options, "load_failure_struct.xml",
+            "<test><head>1</head><sub><bogus/></sub><tail>9</tail></test>"))
+            return false;
+
+        if (!LoadFails<MapHolder>(options, "load_failure_map.xml",
+            "<test><map>"
+            "<item><first>a</first><second><sub><bogus/></sub><x>5</x></second></item>"
+            "<item><first>b</first><second><x>7</x></second></item>"
+            "</map></test>"))
+            return false;
+
+        if (!LoadFails<VectorHolder>(options, "load_failure_vector.xml",
+            "<test><list><item><sub><bogus/></sub><x>5</x></item><item><x>7</x></item></list></test>"))
+            return false;
+
+        return true;
+    }
+
+    // The same rule for YAML, where a value that is not a scalar fails the load of a plain parameter.
+    bool ParamYamlLoadChildFailureTest(const Options& options)
+    {
+        struct Leaf
+        {
+            CPL_PARAM_VALUE(Int, value, 0);
+        };
+
+        struct StructParam
+        {
+            CPL_PARAM_VALUE(Int, head, 0);
+            CPL_PARAM_VALUE(Int, x, 0);
+            CPL_PARAM_VALUE(Int, tail, 0);
+        };
+
+        struct MapParam
+        {
+            CPL_PARAM_MAP(String, Leaf, map);
+        };
+
+        struct VectorParam
+        {
+            CPL_PARAM_VECTOR(Leaf, list);
+        };
+
+        CPL_PARAM_HOLDER(StructHolder, StructParam, test);
+        CPL_PARAM_HOLDER(MapHolder, MapParam, test);
+        CPL_PARAM_HOLDER(VectorHolder, VectorParam, test);
+
+        CPL_LOG_SS(Info, "The three loads below must fail.");
+
+        if (!LoadFails<StructHolder>(options, "load_failure_struct.yml",
+            "test:\n  head: 1\n  x:\n    a: 1\n  tail: 9\n"))
+            return false;
+
+        if (!LoadFails<MapHolder>(options, "load_failure_map.yml",
+            "test:\n  map:\n    a:\n      value:\n        b: 1\n    c:\n      value: 7\n"))
+            return false;
+
+        if (!LoadFails<VectorHolder>(options, "load_failure_vector.yml",
+            "test:\n  list:\n    - value:\n        b: 1\n    - value: 7\n"))
+            return false;
+
+        return true;
+    }
+}
+
+//---------------------------------------------------------------------------------------------
+
+namespace Test
+{
     bool ParamLimitedTest(const Options& options)
     {
         struct TestParam
@@ -377,6 +522,85 @@ namespace Test
             return false;
 
         return loaded.Equal(test);
+    }
+}
+
+//---------------------------------------------------------------------------------------------
+
+namespace Test
+{
+    // The assert of the macro has to see each of its three arguments as one operand of the
+    // comparison, so each of them in turn is written as an expression of its own: the precedence
+    // of ?: takes such an argument apart unless the macro wraps it. The parameters are declared
+    // where the assert is active and a child process is available, because a failing assert
+    // aborts the process that runs it.
+#if !defined(NDEBUG) && (defined(__unix__) || defined(__APPLE__))
+    struct TernaryDefaultLimitedParam
+    {
+        CPL_PARAM_LIMITED(int, size, true ? 100 : 0, 0, 10);
+    };
+
+    struct TernaryMaxLimitedParam
+    {
+        CPL_PARAM_LIMITED(int, size, 100, 0, true ? 10 : 1000);
+    };
+
+    struct TernaryMinLimitedParam
+    {
+        CPL_PARAM_LIMITED(int, size, 5, true ? 0 : 1, 10);
+    };
+#endif
+
+    bool ParamLimitedTernaryArgumentTest(const Options& options)
+    {
+#if defined(NDEBUG) || !(defined(__unix__) || defined(__APPLE__))
+        CPL_LOG_SS(Info, "The test needs an active assert and a child process, it is skipped in this build.");
+        return true;
+#else
+        CPL_LOG_SS(Info, "The first two child processes below must be terminated by the assert of CPL_PARAM_LIMITED.");
+        const bool defaultConstructed = RunIsolated([]() -> bool
+        {
+            TernaryDefaultLimitedParam param;
+            return param.size()() == 100;
+        });
+
+        if (defaultConstructed)
+        {
+            CPL_LOG_SS(Error, "The assert of CPL_PARAM_LIMITED accepted a default outside [Min(), Max()] "
+                << "written as a ternary expression!");
+            return false;
+        }
+
+        const bool maxConstructed = RunIsolated([]() -> bool
+        {
+            TernaryMaxLimitedParam param;
+            return param.size()() == 100;
+        });
+
+        if (maxConstructed)
+        {
+            CPL_LOG_SS(Error, "The assert of CPL_PARAM_LIMITED accepted a default above a maximum "
+                << "written as a ternary expression!");
+            return false;
+        }
+
+        // A bound written as a ternary expression must not turn a default that lies inside the
+        // range into a failing assert.
+        const bool minConstructed = RunIsolated([]() -> bool
+        {
+            TernaryMinLimitedParam param;
+            return param.size()() == 5;
+        });
+
+        if (!minConstructed)
+        {
+            CPL_LOG_SS(Error, "The assert of CPL_PARAM_LIMITED rejected a default inside [Min(), Max()] "
+                << "with a minimum written as a ternary expression!");
+            return false;
+        }
+
+        return true;
+#endif
     }
 }
 

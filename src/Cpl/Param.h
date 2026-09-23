@@ -207,7 +207,12 @@ namespace Cpl
         * \param [in] size - Number of bytes at data.
         * \param [in] format - ParamFormatXml or ParamFormatYaml. ParamFormatByExt is not valid here.
         * \return true on success. false if format is unsupported, the text cannot be parsed,
-        *         or a node has an unexpected YAML type.
+        *         or any node of the tree fails its own load, for example a YAML node of an
+        *         unexpected type or an XML element of a vector or a map under a foreign name.
+        *         The load stops at that node and leaves the object loaded in part: the nodes read
+        *         before it hold the new values, the nodes after it are not read, and a vector or a
+        *         map may already have the size or the keys of the file, with the elements it has not
+        *         read yet in their default state.
         */
         bool Load(const char* data, size_t size, ParamFormat format)
         {
@@ -243,7 +248,12 @@ namespace Cpl
         * \param [in,out] is - Source stream positioned at the start of an XML or YAML document.
         * \param [in] format - ParamFormatXml or ParamFormatYaml. ParamFormatByExt is not valid here.
         * \return true on success. false if format is unsupported, the text cannot be parsed,
-        *         or a node has an unexpected YAML type.
+        *         or any node of the tree fails its own load, for example a YAML node of an
+        *         unexpected type or an XML element of a vector or a map under a foreign name.
+        *         The load stops at that node and leaves the object loaded in part: the nodes read
+        *         before it hold the new values, the nodes after it are not read, and a vector or a
+        *         map may already have the size or the keys of the file, with the elements it has not
+        *         read yet in their default state.
         */
         bool Load(std::istream& is, ParamFormat format)
         {
@@ -300,6 +310,14 @@ namespace Cpl
             return result;
         }
 
+        // A node is copied, never moved. Its name comes from the place it is declared in, while a
+        // move would take that name from the source and leave the source node nameless, writing
+        // empty XML elements and YAML keys. Declaring the copy members suppresses the implicit
+        // move ones, so a move request binds to a copy.
+        Param(const Param& other) = default;
+
+        Param& operator = (const Param& other) = default;
+
     protected:
         String _name;
         Type _value;
@@ -345,6 +363,24 @@ namespace Cpl
         typedef Param<int> Unknown;
 
         virtual Unknown* End() const = 0;
+
+        // ParamStorage walks the children of a group as Unknown* and reaches a property through
+        // ParamProp<int>*, whose own virtual methods occupy slots that a node of another kind
+        // fills with methods of its own, so a child that is not a property must be told apart
+        // before it is reached that way.
+        virtual bool IsProp() const
+        {
+            return false;
+        }
+
+        // The same for a group: ParamStorage reaches one through ParamStruct<int>* and asks it
+        // for ChildEnd(), the first virtual method ParamStruct declares of its own, whose slot a
+        // node of another kind fills with a method of its own, and that method answers with
+        // anything but the end of a row of children.
+        virtual bool IsStruct() const
+        {
+            return false;
+        }
 
         virtual bool EqualNode(const Unknown* other) const = 0;
 
@@ -620,7 +656,9 @@ namespace Cpl
     * \brief Parameter node whose children are the consecutive Param fields of a user struct T.
     * \tparam T - User struct that contains only Param-derived members declared with the CPL_PARAM_* macros.
     * \note Declare instances with CPL_PARAM_STRUCT or CPL_PARAM_STRUCT_MOD, or a root with CPL_PARAM_HOLDER.
-    *       Children are walked in memory from the first field of T up to the end of this node.
+    *       Children are walked in memory from the first field of T up to ChildEnd(), the end of
+    *       the ParamStruct part. A derived class that adds fields of its own must override End(),
+    *       which the enclosing node uses to reach the field declared after this one.
     *       XML and YAML represent the struct as a named map of those children.
     */
     template<class T> struct ParamStruct : public Cpl::Param<T>
@@ -632,7 +670,7 @@ namespace Cpl
         */
         bool Changed() const override
         {
-            for (const Unknown* child = this->ChildBeg(); child < this->End(); child = child->End())
+            for (const Unknown* child = this->ChildBeg(); child < this->ChildEnd(); child = child->End())
             {
                 if (child->Changed())
                     return true;
@@ -659,25 +697,40 @@ namespace Cpl
             return (Unknown*)(&this->_value); 
         }
 
+        // A structure is the only kind of node ParamStorage may reach through ParamStruct<int>*,
+        // see the note of Param::IsStruct.
+        bool IsStruct() const override
+        {
+            return true;
+        }
+
+        // A derived class may add fields of its own, so its End() lies past them. The walk over
+        // the children of this structure stops at the end of the ParamStruct part instead.
+        // Virtual, because ParamStorage reaches a group through ParamStruct<int>*, where this + 1
+        // would give the size of that type instead of the size of the group.
+        virtual Unknown* ChildEnd() const
+        {
+            return (Unknown*)(this + 1);
+        }
+
         bool EqualNode(const Unknown* other) const override
         {
             const ParamStruct* that = (ParamStruct*)other;
             for (Unknown* tc = this->ChildBeg(), *oc = that->ChildBeg();; tc = tc->End(), oc = oc->End())
             {
-                if (tc >= this->End())
-                    return oc >= that->End();
-                if (oc >= that->End())
-                    return tc >= this->End();
+                if (tc >= this->ChildEnd())
+                    return oc >= that->ChildEnd();
+                if (oc >= that->ChildEnd())
+                    return false;
                 if (!tc->EqualNode(oc))
                     return false;
             }
-            return true;
         }
 
         void CloneNode(const Unknown * other) override
         {
             const ParamStruct* that = (ParamStruct*)other;
-            for (Unknown* tc = this->ChildBeg(), *oc = that->ChildBeg(); tc < this->End(); tc = tc->End(), oc = oc->End())
+            for (Unknown* tc = this->ChildBeg(), *oc = that->ChildBeg(); tc < this->ChildEnd(); tc = tc->End(), oc = oc->End())
                 tc->CloneNode(oc);
         }
 
@@ -686,10 +739,10 @@ namespace Cpl
             Xml::XmlNode<char>* xmlCurrent = xmlParent->FirstNode(this->Name().c_str());
             if (xmlCurrent)
             {
-                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->ChildEnd(); paramChild = paramChild->End())
                 {
                     if (!paramChild->LoadNodeXml(xmlCurrent))
-                        return true;
+                        return false;
                 }
             }
             return true;
@@ -698,7 +751,7 @@ namespace Cpl
         void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
         {
             Xml::XmlNode<char>* xmlCurrent = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString(this->Name().c_str()));
-            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->ChildEnd(); paramChild = paramChild->End())
             {
                 if (full || paramChild->Changed())
                     paramChild->SaveNodeXml(xmlDoc, xmlCurrent, full);
@@ -713,10 +766,10 @@ namespace Cpl
             {
                 if (current.Type() != Yaml::Node::MapType)
                     return false;
-                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+                for (Unknown* paramChild = this->ChildBeg(); paramChild < this->ChildEnd(); paramChild = paramChild->End())
                 {
                     if (!paramChild->LoadNodeYaml(current))
-                        return true;
+                        return false;
                 }
             }
             return true;
@@ -725,7 +778,7 @@ namespace Cpl
         void SaveNodeYaml(Yaml::Node& node, bool full) const override
         {
             Yaml::Node& current = node[this->Name()];
-            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->End(); paramChild = paramChild->End())
+            for (const Unknown* paramChild = this->ChildBeg(); paramChild < this->ChildEnd(); paramChild = paramChild->End())
             {
                 if (full || paramChild->Changed())
                     paramChild->SaveNodeYaml(current, full);
@@ -825,7 +878,7 @@ namespace Cpl
                     for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                     {
                         if (!paramChild->LoadNodeXml(xmlItem))
-                            return true;
+                            return false;
                     }
                     xmlItem = xmlItem->NextSibling();
                 }
@@ -866,7 +919,7 @@ namespace Cpl
                     for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                     {
                         if (!paramChild->LoadNodeYaml(current[i]))
-                            return true;
+                            return false;
                     }
                 }
             }
@@ -962,12 +1015,18 @@ namespace Cpl
                 const Unknown* oChildEnd = that->ChildEnd(o->second);
                 const Unknown* tChild = this->ChildBeg(t->second);
                 const Unknown* tChildEnd = this->ChildEnd(t->second);
+                // The end of the children of one entry is not the end of the map: the walk goes
+                // on with the next entry.
                 for (;; oChild = oChild->End(), tChild = tChild->End())
                 {
                     if (tChild >= tChildEnd)
-                        return oChild >= oChildEnd;
+                    {
+                        if (oChild < oChildEnd)
+                            return false;
+                        break;
+                    }
                     if (oChild >= oChildEnd)
-                        return tChild >= tChildEnd;
+                        return false;
                     if (!oChild->EqualNode(tChild))
                         return false;
                 }
@@ -1015,7 +1074,7 @@ namespace Cpl
                             for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                             {
                                 if (!paramChild->LoadNodeXml(xmlValue))
-                                    return true;
+                                    return false;
                             }
                         }
                     }
@@ -1070,7 +1129,7 @@ namespace Cpl
                         for (; paramChild < paramChildEnd; paramChild = paramChild->End())
                         {
                             if (!paramChild->LoadNodeYaml((*it).second))
-                                return true;
+                                return false;
                         }
                     }
                 }
@@ -1137,11 +1196,13 @@ namespace Cpl
 * \param type - Stored value type. Must support Cpl::%ToStr, Cpl::%ToVal and operator==.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \param value - Default value. Changed() is true when the stored value differs from this default.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_VALUE(type, name, value) \
 struct Param_##name : public Cpl::ParamValue<type> \
 { \
     typedef Cpl::ParamValue<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) { this->_value = this->Default(); } \
     type Default() const override { return value; } \
 } name;
@@ -1154,12 +1215,14 @@ struct Param_##name : public Cpl::ParamValue<type> \
 * \param value - Default value. Must satisfy min <= value <= max.
 * \param min - Inclusive lower bound. Out-of-range assignment stores value and logs a warning.
 * \param max - Inclusive upper bound.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_LIMITED(type, name, value, min, max) \
 struct Param_##name : public Cpl::ParamLimited<type> \
 { \
     typedef Cpl::ParamLimited<type> Base; \
-    Param_##name() : Base(#name) { assert(min <= value && value <= max); this->_value = this->Default(); } \
+    static constexpr const char* StaticName() { return #name; } \
+    Param_##name() : Base(#name) { assert((min) <= (value) && (value) <= (max)); this->_value = this->Default(); } \
     type Default() const override { return value; } \
     type Min() const override { return min; } \
     type Max() const override { return max; } \
@@ -1170,11 +1233,13 @@ struct Param_##name : public Cpl::ParamLimited<type> \
 * \brief Declares a nested parameter structure field.
 * \param type - User struct whose members are Param fields declared with the CPL_PARAM_* macros.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_STRUCT(type, name) \
 struct Param_##name : public Cpl::ParamStruct<type> \
 { \
     typedef Cpl::ParamStruct<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) {} \
 } name;
 
@@ -1184,11 +1249,13 @@ struct Param_##name : public Cpl::ParamStruct<type> \
 * \param type - User struct whose members are Param fields declared with the CPL_PARAM_* macros.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \param value - Initial value of type copied into the field.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_STRUCT_MOD(type, name, value) \
 struct Param_##name : public Cpl::ParamStruct<type> \
 { \
     typedef Cpl::ParamStruct<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) { this->_value = value; } \
 } name;
 
@@ -1198,11 +1265,13 @@ struct Param_##name : public Cpl::ParamStruct<type> \
 * \param type - Item type. Typically a user struct of Param fields.
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \note operator() returns std::vector of type. XML items are named "item"; YAML uses a sequence.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_VECTOR(type, name) \
 struct Param_##name : public Cpl::ParamVector<type> \
 { \
     typedef Cpl::ParamVector<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) {} \
 } name;
 
@@ -1214,11 +1283,13 @@ struct Param_##name : public Cpl::ParamVector<type> \
 * \param name - Field name. Used as the member identifier and as the XML/YAML node name.
 * \note operator() returns std::map of key to type. XML items use "item" / "first" / "second";
 *       YAML uses a mapping from the stringified key.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_MAP(key, type, name) \
 struct Param_##name : public Cpl::ParamMap<key, type> \
 { \
     typedef Cpl::ParamMap<key, type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) {} \
 } name;
 
@@ -1323,10 +1394,12 @@ namespace Cpl \
 * \param holder - Name of the generated holder type.
 * \param type - User struct whose members are Param fields declared with the CPL_PARAM_* macros.
 * \param name - Root XML element or YAML key written by Save and expected by Load.
+* \note StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PARAM_HOLDER(holder, type, name) \
 struct holder : public Cpl::ParamStruct<type> \
 { \
     typedef Cpl::ParamStruct<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     holder() : Base(#name) {} \
 };

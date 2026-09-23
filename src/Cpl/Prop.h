@@ -29,6 +29,9 @@
 #include "Cpl/Param.h"
 #include "Cpl/Log.h"
 
+#include <type_traits>
+#include <utility>
+
 namespace Cpl
 {
     /*! @ingroup cpl_prop
@@ -38,9 +41,22 @@ namespace Cpl
     * \note Declare instances with CPL_PROP or CPL_PROP_EX. operator() returns a ParamValidator,
     *       so `field() = x` rejects values outside [Min(), Max()] and restores Default().
     *       ToVal and XML load write the parsed value directly and do not apply that range check.
-    *       XML save writes children "value", "desc", "value_min", "value_max" and "value_default".
-    *       When Limited() is false, "value_min" and "value_max" are a single space.
-    *       Empty strings are written as a single space. XML load reads only the "value" child.
+    *       Inside a ParamStruct a property is saved to and loaded from a node of its own name.
+    *       FullName() returns the name the property is registered under in its ParamStorage - the
+    *       key of the map, which the property points at - and an empty string outside a storage.
+    *       StaticName() returns the same name without an object; CPL_PROP_FULL_NAME builds the
+    *       dotted one at compile time.
+    *       SaveBodyXml writes the descriptive body - "value", "desc", "value_min", "value_max"
+    *       and "value_default"; LoadBodyXml reads the "value" child back, fails without it, and
+    *       drops the rest.
+    *       Only ParamStorage calls them, under a node of its own per property.
+    *       The body leaves no text value empty: SaveBodyXml writes a single space instead, for an
+    *       empty string as well as for "value_min" and "value_max" when Limited() is false. Inside
+    *       a ParamStruct the value goes as it is, so an empty string becomes an empty node there.
+    *       A string property that is empty or holds whitespace only does not survive a save and a
+    *       load, in a storage and in a ParamStruct alike: the XML parser drops text made of
+    *       whitespace only and ToVal of a String ignores an empty one, so the property keeps the
+    *       value it had before the load.
     */
     template<class T> struct ParamProp: public Cpl::ParamLimited<T>
     {
@@ -79,6 +95,20 @@ namespace Cpl
         }
 
         /*!
+        * \fn String FullName() const
+        * \brief Returns the dotted name "group.prop" of this property inside its ParamStorage.
+        * \return A copy of the name this property is registered under in the map of the storage,
+        *         or an empty string when the property does not belong to a ParamStorage.
+        * \note The name is returned by value because the key it is taken from belongs to the map
+        *       of the storage: that map dies with the storage and is destroyed before the
+        *       properties are, so a reference into it would outlive what it points at.
+        */
+        CPL_INLINE String FullName() const
+        {
+            return _fullName ? *_fullName : String();
+        }
+
+        /*!
         * \fn void ToVal(const String & str)
         * \brief Parses a string into the stored value.
         * \param [in] str - Text recognized by Cpl::%ToVal for type T.
@@ -90,20 +120,76 @@ namespace Cpl
             return Cpl::ToVal<T>(str, this->_value);
         }
 
+        // The full name belongs to the place a property occupies in a storage, not to its value, so
+        // a copy never takes it from the source: it would point into a storage that does not hold
+        // the copy. An assignment keeps the full name this property already has, while the node
+        // name is assigned by Param along with the value. A property is not movable, see the note
+        // of Param, so a move request copies.
+        ParamProp(const ParamProp& other)
+            : Base(other)
+            , _fullName(NULL)
+        {
+        }
+
+        ParamProp& operator = (const ParamProp& other)
+        {
+            Base::operator = (other);
+            return *this;
+        }
+
     protected:
         typedef Cpl::ParamLimited<T> Base;
         typedef Cpl::Param<int> Unknown;
 
+        // The name of a property is the key it has in the map of its storage, so the property
+        // keeps the address of that key instead of a copy of the string. Keys of std::map do not
+        // move, and BuildMap points every property at the key of its own storage.
+        const String* _fullName;
+
         ParamProp(const String& name)
             : Base(name)
+            , _fullName(NULL)
         {
         }
 
+        // A property is the only kind of node ParamStorage may reach through ParamProp<int>*,
+        // see the note of Param::IsProp.
+        bool IsProp() const override
+        {
+            return true;
+        }
+
+        // ParamStorage keeps every property as ParamProp<int>*, whatever the stored type is, and
+        // the offset of _fullName depends on that type, so the field is reached through a virtual
+        // method only.
+        virtual CPL_INLINE void SetFullName(const String* fullName)
+        {
+            _fullName = fullName;
+        }
+
+        // The field above lies after the ParamValue part, whose End() would leave the walk over the
+        // properties of a group inside it.
+        Unknown* End() const override
+        {
+            return (Unknown*)(this + 1);
+        }
+
+        // ParamLimited loads through the validator, which replaces a value outside [Min(), Max()]
+        // with the default one. A property takes the value of the file as it is, the way the class
+        // promises and the way LoadBodyXml does it for ParamStorage.
         bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
         {
+            return Cpl::ParamValue<T>::LoadNodeXml(xmlParent);
+        }
+
+        // The body of a property is its item in the map of a storage, so a body without a value is
+        // a broken item and fails the load, the way an item without a body does.
+        virtual bool LoadBodyXml(Xml::XmlNode<char>* xmlParent)
+        {
             Xml::XmlNode<char>* xmlValue = xmlParent->FirstNode("value");
-            if(xmlValue)
-                Cpl::ToVal(xmlValue->Value(), this->_value);
+            if (!xmlValue)
+                return false;
+            Cpl::ToVal(xmlValue->Value(), this->_value);
             return true;
         }
 
@@ -112,7 +198,7 @@ namespace Cpl
             return value.empty() ? " " : value.c_str();
         }
 
-        void SaveNodeXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent, bool full) const override
+        virtual void SaveBodyXml(Xml::XmlDocument<char>& xmlDoc, Xml::XmlNode<char>* xmlParent) const
         {
             Xml::XmlNode<char>* xmlValue = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString("value"));
             xmlValue->Value(xmlDoc.AllocateString(NotEmpty(Cpl::ToStr(this->_value))));
@@ -146,13 +232,42 @@ namespace Cpl
     * \tparam T - User struct whose members are property groups declared with CPL_PROP_GROUP.
     *             Each group is a struct of CPL_PROP / CPL_PROP_EX fields.
     * \note Declare a holder with CPL_PROP_STORAGE. operator() returns T.
-    *       The constructor walks two levels of children (groups, then properties) and
-    *       fills an internal map used by SetProperty and GetProperty.
+    *       The constructor walks two levels of children (groups, then properties), fills an
+    *       internal map used by SetProperty and GetProperty and gives every property the dotted
+    *       name it is registered under, which ParamProp::FullName() returns.
+    *       A storage holds groups only and a group holds properties only: a child of another kind
+    *       is skipped with an Error in the log and stays out of the map, so SetProperty and
+    *       GetProperty do not know its name and the XML of the storage, written and read through
+    *       that map, neither saves nor loads it.
+    *       A storage inside a storage is such a child too, it is reported and skipped; the nested
+    *       one keeps its own map and serves its properties through its own SetProperty and GetProperty.
+    *       In XML a structure may hold one storage only: whatever its name, a storage writes under
+    *       a node named "storage" and loads from the first such node of its parent, so storages of
+    *       one structure take the values of each other: a second storage loads the node of the
+    *       first one, and after a short save, which leaves out a storage that has not changed, the
+    *       first storage loads the node of the second one. The load reports success in both cases.
+    *       A dotted name taken twice, possible only with nodes written by hand, stays with the
+    *       property that got it first; the other one is reported, gets no full name and stays out
+    *       of the map in the same way.
+    *       YAML has no map: a storage is saved and loaded there as a plain structure, every child
+    *       by its own node name, so a skipped child goes to YAML, and two nodes of one name share
+    *       one key there: the one declared last is what a save leaves, and a load gives both of
+    *       them the value of that key.
+    *       The map lies after the ParamStruct part, so End() is overridden: an enclosing structure
+    *       steps over the whole storage, while the own children stop at ChildEnd().
+    *       A copy rebuilds that map from its own fields, so every storage owns an independent set
+    *       of properties; an assignment keeps its own map, because it writes the children of T in
+    *       place and leaves their addresses unchanged, and a property keeps the name of its own
+    *       storage, because ParamProp never assigns that name from the source. A storage is not
+    *       movable: a move request binds to the copy and leaves the source untouched.
     *       XML save writes a "storage" / "map" tree: a "count" child and one "item" per
     *       property (or per Changed() property when full is false). Each item has
     *       "first" (the dotted name) and "second" (the ParamProp XML).
-    *       XML load skips unknown names after a Debug log; a missing "storage", "map",
-    *       "first" or "second" node fails the load.
+    *       XML load skips unknown names after a Debug log. An absent "storage" node inside a
+    *       structure leaves the storage as it is and is not a failure; at the top of a file it
+    *       fails the load, as does a missing "map", "first" or "second" node, or a "second"
+    *       without "value". YAML loads a storage as a plain structure, so there a file without
+    *       its node loads with success at the top as well.
     */
     template<class T> struct ParamStorage : public Cpl::ParamStruct<T>
     {
@@ -190,6 +305,22 @@ namespace Cpl
             return true;
         }
 
+        // _map points at the property subobjects of this very object, so a copy builds its own map
+        // instead of taking the pointers of the source. An assignment keeps the map it has: the
+        // base assigns the children in place, so their addresses do not change. A storage is not
+        // movable, see the note of Param, so a move request copies.
+        ParamStorage(const ParamStorage& other)
+            : Base(other)
+        {
+            BuildMap();
+        }
+
+        ParamStorage& operator = (const ParamStorage& other)
+        {
+            Base::operator = (other);
+            return *this;
+        }
+
     protected:
         typedef Cpl::ParamStruct<T> Base;
         typedef Cpl::Param<int> Unknown;
@@ -202,21 +333,32 @@ namespace Cpl
         ParamStorage(const String& name)
             : Base(name)
         {
-            for (Unknown* group = this->ChildBeg(); group < this->End(); group = group->End())
-            {
-                for (Unknown* prop = ((UnknownGroup*)group)->ChildBeg(); prop < group->End(); prop = prop->End())
-                {
-                    String name = group->Name() + "." + prop->Name();
-                    _map[name] = (UnknownProp*)prop;
-                }
-            }
+            BuildMap();
+        }
+
+        // The map lies after the ParamStruct part, so the end inherited from it would leave a
+        // storage used as a field of another structure overlapping the field declared after it.
+        Unknown* End() const override
+        {
+            return (Unknown*)(this + 1);
+        }
+
+        // A storage is a structure, but not a group: its children are groups, not properties, so
+        // the walk of an enclosing storage must report the storage itself instead of reporting
+        // every group inside it. Nesting a storage in a storage is not supported.
+        bool IsStruct() const override
+        {
+            return false;
         }
 
         bool LoadNodeXml(Xml::XmlNode<char>* xmlParent) override
         {
+            // Inside a structure an absent node is not a failure: a short save leaves out a storage
+            // that has not changed. At the top of a file the node is always written, so a file
+            // without it is not a file of a storage.
             Xml::XmlNode<char>* xmlStorage = xmlParent->FirstNode("storage");
             if (xmlStorage == NULL)
-                return false;
+                return xmlParent->Type() != Xml::NodeDocument;
             Xml::XmlNode<char>* xmlMap = xmlStorage->FirstNode("map");
             if (xmlMap == NULL)
                 return false;
@@ -234,7 +376,7 @@ namespace Cpl
                 Xml::XmlNode<char>* xmlSecond = xmlItem->FirstNode("second");
                 if (xmlSecond == NULL)
                     return false;
-                if (!it->second->LoadNodeXml(xmlSecond))
+                if (!it->second->LoadBodyXml(xmlSecond))
                     return false;
             }
             return true;
@@ -269,7 +411,7 @@ namespace Cpl
                     xmlItem->AppendNode(xmlFirst);
 
                     Xml::XmlNode<char>* xmlSecond = xmlDoc.AllocateNode(Xml::NodeElement, xmlDoc.AllocateString("second"));
-                    it->second->SaveNodeXml(xmlDoc, xmlSecond, true);
+                    it->second->SaveBodyXml(xmlDoc, xmlSecond);
                     xmlItem->AppendNode(xmlSecond);
 
                     xmlMap->AppendNode(xmlItem);
@@ -278,10 +420,153 @@ namespace Cpl
             xmlStorage->AppendNode(xmlMap);
             xmlParent->AppendNode(xmlStorage);
         }
+
+    private:
+        void BuildMap()
+        {
+            for (Unknown* group = this->ChildBeg(); group < this->ChildEnd(); group = group->End())
+            {
+                // A child that is not a group holds no properties and answers the question below
+                // with a method of its own, which sends the walk into memory that holds no node.
+                if (!group->IsStruct())
+                {
+                    CPL_LOG_SS(Error, "The child '" << group->Name() << "' of the storage '" << this->Name()
+                        << "' is not a group! It is skipped, declare it with CPL_PROP_GROUP.");
+                    continue;
+                }
+
+                // The properties of a group end where its ParamStruct part does: End() of the
+                // group lies past the fields the group itself may add.
+                UnknownGroup* groupNode = (UnknownGroup*)group;
+                for (Unknown* prop = groupNode->ChildBeg(); prop < groupNode->ChildEnd(); prop = prop->End())
+                {
+                    // Every pointer of the map is used as a property, so a child of another kind
+                    // has no place in it and the virtual call below would land in a slot such a
+                    // node fills with a method of its own.
+                    if (!prop->IsProp())
+                    {
+                        CPL_LOG_SS(Error, "The child '" << prop->Name() << "' of the group '" << group->Name()
+                            << "' is not a property! It is skipped, declare it with CPL_PROP or CPL_PROP_EX.");
+                        continue;
+                    }
+
+                    String name = group->Name() + "." + prop->Name();
+                    UnknownProp* property = (UnknownProp*)prop;
+                    std::pair<typename Map::iterator, bool> inserted =
+                        _map.insert(typename Map::value_type(name, property));
+                    if (!inserted.second)
+                    {
+                        CPL_LOG_SS(Error, "The name '" << name << "' of a property of the storage '" << this->Name()
+                            << "' is taken already! The property is skipped, the name stays with the first one.");
+                        continue;
+                    }
+                    property->SetFullName(&inserted.first->first);
+                }
+            }
+        }
+    };
+
+    /*! @ingroup cpl_prop
+    * \struct StaticNameOf
+    * \brief Value() returns StaticName() of T, which every field and holder macro declares, or an
+    *        empty string when T has none.
+    */
+    template<class T> struct StaticNameOf
+    {
+        template<class U> static constexpr const char* Get(decltype(&U::StaticName))
+        {
+            return U::StaticName();
+        }
+
+        template<class U> static constexpr const char* Get(...)
+        {
+            return "";
+        }
+
+        static constexpr const char* Value()
+        {
+            return Get<T>(0);
+        }
+    };
+
+    /*! @ingroup cpl_prop
+    * \struct CheckedName
+    * \brief Checks the two fields named by CPL_PROP_FULL_NAME and hands its dotted name back.
+    * \tparam Group - Type of the group field, config::Param_<group>.
+    * \tparam Prop - Type of the property field inside the struct of that group.
+    * \note Value() returns its argument unchanged, the work is done by the checks below. They
+    *       reject a name that no ParamStorage registers: a group in place of a property, a
+    *       property or a storage in place of a group, a field declared by hand rather than by a
+    *       macro, and a field whose StaticName() is not the name of the field, as with
+    *       CPL_PARAM_HOLDER.
+    */
+    template<class Group, class Prop> struct CheckedName
+    {
+        static_assert(std::is_base_of<Cpl::ParamStruct<typename Group::Type>, Group>::value,
+            "CPL_PROP_FULL_NAME: the second argument must be a group declared with CPL_PROP_GROUP.");
+        // A storage is a structure too, but the storage holding it skips it, see the note of ParamStorage.
+        static_assert(!std::is_base_of<Cpl::ParamStorage<typename Group::Type>, Group>::value,
+            "CPL_PROP_FULL_NAME: the second argument must be a group, not a storage.");
+        static_assert(std::is_base_of<Cpl::ParamProp<typename Prop::Type>, Prop>::value,
+            "CPL_PROP_FULL_NAME: the third argument must be a property declared with CPL_PROP or CPL_PROP_EX.");
+        // BuildMap takes the key of a property from the names of its nodes, and only a field
+        // declared by a macro has StaticName(), where that name and the name of the field are one
+        // and the same token. A field written by hand gives its node any name it likes, so the
+        // dotted name built out of the field names would not be the key it gets in the map.
+        // Every macro gives a field a name that is not empty.
+        static_assert(StaticNameOf<Group>::Value()[0] != '\0' && StaticNameOf<Prop>::Value()[0] != '\0',
+            "CPL_PROP_FULL_NAME: both fields must be declared by a macro, which gives them StaticName().");
+
+        // A holder macro takes the name of the node apart from the name of its type, so StaticName()
+        // of a field declared with it is not the name of the field. A field without StaticName() is
+        // reported by the check above and passes this one.
+        static constexpr bool SameNames(const char* group, const char* prop)
+        {
+            return IsFieldName(StaticNameOf<Group>::Value(), group) && IsFieldName(StaticNameOf<Prop>::Value(), prop);
+        }
+
+        template<bool sameNames> static constexpr const char* Value(const char* fullName)
+        {
+            static_assert(sameNames, "CPL_PROP_FULL_NAME: StaticName() of both fields must be the name of the field, "
+                "as a field declared with CPL_PROP_GROUP, CPL_PROP or CPL_PROP_EX has it.");
+            return fullName;
+        }
+
+    private:
+        static constexpr bool IsFieldName(const char* name, const char* field)
+        {
+            return name[0] == '\0' || Equal(name, field);
+        }
+
+        static constexpr bool Equal(const char* a, const char* b)
+        {
+            return *a == *b && (*a == '\0' || Equal(a + 1, b + 1));
+        }
     };
 }
 
 //-------------------------------------------------------------------------------------------------
+
+/*! @ingroup cpl_prop
+* \def CPL_PROP_FULL_NAME(config, group, prop)
+* \brief Builds the dotted name "group.prop" of a property from the field names, without an object.
+* \param config - Struct that declares the group field with CPL_PROP_GROUP.
+* \param group - Field name of the group inside config.
+* \param prop - Field name of the property inside the struct of the group.
+* \note The result is a compile time constant equal to the key the property gets in the map of a
+*       ParamStorage over config, the string ParamProp::FullName() returns for it. What does not
+*       compile: a group or a property that does not exist, a property of another group, a group
+*       in place of a property and the other way round, a storage in place of a group, and a field
+*       declared by hand or by a holder macro instead of CPL_PROP_GROUP, CPL_PROP or CPL_PROP_EX,
+*       whose node may carry a name of its own. See Cpl::CheckedName.
+*       config may be a parameter of a template.
+*/
+#define CPL_PROP_FULL_NAME(config, group, prop) \
+    CPL_PROP_CHECKED_NAME(config, group, prop)::template Value< \
+        CPL_PROP_CHECKED_NAME(config, group, prop)::SameNames(#group, #prop)>(#group "." #prop)
+
+#define CPL_PROP_CHECKED_NAME(config, group, prop) \
+    Cpl::CheckedName<typename config::Param_##group, typename config::Param_##group::Type::Param_##prop>
 
 /*! @ingroup cpl_prop
 * \def CPL_PROP(type, name, value, descr)
@@ -293,11 +578,13 @@ namespace Cpl
 * \note Limited() stays false, so XML "value_min" and "value_max" are a single space.
 *       Assignment through operator() still uses ParamLimited range checks against
 *       std::numeric_limits<type>::min() and max().
+*       StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PROP(type, name, value, descr) \
 struct Param_##name : public Cpl::ParamProp<type> \
 { \
     typedef Cpl::ParamProp<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     Param_##name() : Base(#name) { this->_value = this->Default(); } \
     type Default() const override { return value; } \
     Cpl::String Description() const override { return descr; } \
@@ -314,12 +601,14 @@ struct Param_##name : public Cpl::ParamProp<type> \
 * \param descr - Description string returned by Description().
 * \note Limited() is true. operator() rejects assignments outside [min, max] and restores value.
 *       ToVal and XML load still write the parsed value without that check.
+*       StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PROP_EX(type, name, value, min, max, descr) \
 struct Param_##name : public Cpl::ParamProp<type> \
 { \
     typedef Cpl::ParamProp<type> Base; \
-    Param_##name() : Base(#name) { assert(min <= value && value <= max); this->_value = this->Default(); } \
+    static constexpr const char* StaticName() { return #name; } \
+    Param_##name() : Base(#name) { assert((min) <= (value) && (value) <= (max)); this->_value = this->Default(); } \
     type Default() const override { return value; } \
     type Min() const override { return min; } \
     type Max() const override { return max; } \
@@ -343,10 +632,12 @@ struct Param_##name : public Cpl::ParamProp<type> \
 * \param name - Root node name passed to the ParamStorage constructor.
 * \note The holder is default-constructible. operator() returns type. Use SetProperty and
 *       GetProperty with dotted names "group.prop". Save and Load use the ParamStorage XML format.
+*       StaticName() returns name as a compile time constant, without an instance.
 */
 #define CPL_PROP_STORAGE(storage, type, name) \
 struct storage : public Cpl::ParamStorage<type> \
 { \
     typedef Cpl::ParamStorage<type> Base; \
+    static constexpr const char* StaticName() { return #name; } \
     storage() : Base(#name) {} \
 };

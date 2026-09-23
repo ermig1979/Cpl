@@ -207,13 +207,41 @@ namespace Test
     TEST_ADD(ParamEnum);
     TEST_ADD(ParamMap);
     TEST_ADD(ParamMapBug);
+    TEST_ADD(ParamMapEqualEveryEntry);
+    TEST_ADD(ParamXmlLoadChildFailure);
+    TEST_ADD(ParamYamlLoadChildFailure);
     TEST_ADD(ParamLimited);
+    TEST_ADD(ParamLimitedTernaryArgument);
     TEST_ADD(ParamTemplate);
 
     TEST_ADD(ParamVectorV2);
     TEST_ADD(ParamMapV2);
+    TEST_ADD(ParamV2XmlLoadChildFailure);
 
     TEST_ADD(Prop);
+    TEST_ADD(PropStorageCopy);
+    TEST_ADD(PropStorageAssign);
+    TEST_ADD(PropStorageCopyOutlivesSource);
+    TEST_ADD(PropStorageMoveConstructOutlivesSource);
+    TEST_ADD(PropStorageMoveAssignOutlivesSource);
+    TEST_ADD(PropInStructRoundTrip);
+    TEST_ADD(PropStringInStructRoundTrip);
+    TEST_ADD(PropStorageMixedTypeAccess);
+    TEST_ADD(PropFullName);
+    TEST_ADD(PropFullNameOutlivesStorage);
+    TEST_ADD(PropStaticName);
+    TEST_ADD(PropXmlLoadKeepsOutOfRange);
+    TEST_ADD(PropStorageXmlLoadNoValue);
+    TEST_ADD(PropStorageXmlLoadForeign);
+    TEST_ADD(PropStorageAsChild);
+#if defined(__unix__) || defined(__APPLE__)
+    TEST_ADD(PropStorageGroupWithOwnField);
+    TEST_ADD(PropStorageGroupWithNonProperty);
+    TEST_ADD(PropStorageChildWithoutGroup);
+#endif
+    TEST_ADD(PropStorageInStorage);
+    TEST_ADD(PropStorageDuplicateName);
+    TEST_ADD(PropExTernaryArgument);
 
     TEST_ADD(PerformanceSimple);
     TEST_ADD(PerformanceStdThread);
